@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "registration": {
+      "title": "Registration",
+      "description": "Delegate registration details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the registration" },
+        "userId": { "type": "string", "description": "The Firebase Auth user ID of the registrant" },
+        "timestamp": { "type": "string", "description": "ISO timestamp or formatted date" },
+        "regType": { "type": "string", "enum": ["individual", "double", "contingent"], "description": "Type of delegation" },
+        "name": { "type": "string", "description": "Full name of the delegate" },
+        "email": { "type": "string", "description": "Email address" },
+        "phone": { "type": "string", "description": "Contact number" },
+        "institution": { "type": "string", "description": "Academic institution" },
+        "course": { "type": "string", "description": "Course/Department/Class" },
+        "munExperience": { "type": "string", "description": "Previous MUN experience" },
+        "pref1Committee": { "type": "string", "description": "First committee choice" },
+        "pref1Country": { "type": "string", "description": "First country choice" },
+        "pref2Committee": { "type": "string", "description": "Second committee choice" },
+        "pref2Country": { "type": "string", "description": "Second country choice" },
+        "pref3Committee": { "type": "string", "description": "Third committee choice" },
+        "pref3Country": { "type": "string", "description": "Third country choice" },
+        "partnerName": { "type": "string", "description": "Double delegation partner name" },
+        "partnerEmail": { "type": "string", "description": "Double delegation partner email" },
+        "contingentSize": { "type": "string", "description": "Contingent size if applicable" },
+        "motivation": { "type": "string", "description": "Statement of motivation" }
+      },
+      "required": ["id", "userId", "regType", "name", "email", "phone", "institution", "course", "munExperience", "pref1Committee", "pref1Country", "motivation"]
+    },
+    "portfolio_state": {
+      "title": "Portfolio State",
+      "description": "Custom availability or assignment state override for a country/portfolio",
+      "type": "object",
+      "properties": {
+        "copuos": { "type": "string", "enum": ["Available", "Assigned", "Reserved"], "description": "COPUOS committee portfolio state" },
+        "disec": { "type": "string", "enum": ["Available", "Assigned", "Reserved"], "description": "DISEC committee portfolio state" },
+        "aippm": { "type": "string", "enum": ["Available", "Assigned", "Reserved"], "description": "AIPPM committee portfolio state" },
+        "unsc": { "type": "string", "enum": ["Available", "Assigned", "Reserved"], "description": "UNSC committee portfolio state" }
+      }
+    }
+  },
+  "firestore": {
+    "registrations/{registrationId}": {
+      "schema": "registration",
+      "description": "Registrations submitted by delegates"
+    },
+    "portfolio_states/{countryName}": {
+      "schema": "portfolio_state",
+      "description": "Overrides for portfolio statuses in different committees"
+    }
+  }
+}

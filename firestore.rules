@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Phase 3: Primitives & Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isEmailVerified() {
+      return isSignedIn() && (request.auth.token.email_verified == true || !('email_verified' in request.auth.token));
+    }
+    
+    function isAdmin() {
+      return isEmailVerified() && request.auth.token.email == "agnit.dg@gmail.com";
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    // Phase 4: Validation Blueprints (Anti-Update-Gap)
+    function isValidRegistration(data) {
+      return data.id is string && data.id.size() <= 32 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.regType is string && (data.regType == "individual" || data.regType == "double" || data.regType == "contingent") &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 254 &&
+             data.phone is string && data.phone.size() > 0 && data.phone.size() <= 32 &&
+             data.institution is string && data.institution.size() > 0 && data.institution.size() <= 200 &&
+             data.course is string && data.course.size() > 0 && data.course.size() <= 200 &&
+             data.munExperience is string && data.munExperience.size() > 0 && data.munExperience.size() <= 32 &&
+             data.pref1Committee is string && data.pref1Committee.size() > 0 && data.pref1Committee.size() <= 128 &&
+             data.pref1Country is string && data.pref1Country.size() > 0 && data.pref1Country.size() <= 128 &&
+             data.motivation is string && data.motivation.size() >= 20 && data.motivation.size() <= 5000 &&
+             (!('timestamp' in data) || (data.timestamp is string && data.timestamp.size() <= 128)) &&
+             (!('partnerName' in data) || (data.partnerName is string && data.partnerName.size() <= 200)) &&
+             (!('partnerEmail' in data) || (data.partnerEmail is string && data.partnerEmail.size() <= 254)) &&
+             (!('contingentSize' in data) || (data.contingentSize is string && data.contingentSize.size() <= 32)) &&
+             (!('pref2Committee' in data) || (data.pref2Committee is string && data.pref2Committee.size() <= 128)) &&
+             (!('pref2Country' in data) || (data.pref2Country is string && data.pref2Country.size() <= 128)) &&
+             (!('pref3Committee' in data) || (data.pref3Committee is string && data.pref3Committee.size() <= 128)) &&
+             (!('pref3Country' in data) || (data.pref3Country is string && data.pref3Country.size() <= 128));
+    }
+
+    // Match block for registrations
+    match /registrations/{registrationId} {
+      allow get: if isAdmin() || (isSignedIn() && registrationId == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      
+      allow create: if isEmailVerified() &&
+                       isValidId(registrationId) &&
+                       isValidRegistration(request.resource.data) &&
+                       request.resource.data.userId == request.auth.uid;
+                       
+      allow update: if isEmailVerified() &&
+                       isValidId(registrationId) &&
+                       resource.data.userId == request.auth.uid &&
+                       isValidRegistration(request.resource.data) &&
+                       request.resource.data.userId == resource.data.userId &&
+                       request.resource.data.id == resource.data.id;
+                       
+      allow delete: if isAdmin() || (isEmailVerified() && resource.data.userId == request.auth.uid);
+    }
+
+    // Match block for portfolio states overrides
+    match /portfolio_states/{countryName} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
