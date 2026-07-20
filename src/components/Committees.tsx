@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import { COMMITTEES } from "../data";
 import { Committee } from "../types";
 import { Orbit, ShieldAlert, Users, Globe, ChevronRight, FileText, Download, X, HelpCircle, Star } from "lucide-react";
+import { motion } from "motion/react";
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
   Orbit: Orbit,
@@ -81,7 +82,13 @@ export default function Committees() {
     <div className="bg-[#020617] text-slate-100 min-h-screen py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden" style={{ backgroundImage: "radial-gradient(circle at 50% -20%, #1e293b 0%, #020617 80%)" }}>
       <div className="relative z-10 mx-auto max-w-7xl">
         {/* Page Header */}
-        <div className="text-center mb-16">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="text-center mb-16"
+        >
           <span className="font-mono text-xs uppercase tracking-widest text-blue-400 font-bold">// ACADEMIC CHAMBERS</span>
           <h1 className="mt-2 font-sans text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
             Simulation Committees
@@ -89,19 +96,23 @@ export default function Committees() {
           <p className="mx-auto mt-4 max-w-2xl font-sans text-slate-400 text-xs sm:text-sm leading-relaxed">
             Our 8th edition features four meticulously structured councils. Tap on any committee bento tile to inspect academic briefs, executive board profiles, and access background guides.
           </p>
-        </div>
+        </motion.div>
 
         {/* Committees Grid */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2" id="committees-grid">
-          {COMMITTEES.map((com) => {
+          {COMMITTEES.map((com, idx) => {
             const IconComponent = ICON_MAP[com.logo] || HelpCircle;
             const style = getColorClasses(com.color);
 
             return (
-              <div
+              <motion.div
                 key={com.id}
                 id={`com-card-${com.id}`}
                 onClick={() => setSelectedCommittee(com)}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.6, ease: "easeOut", delay: idx * 0.1 }}
                 className={`group relative flex flex-col justify-between overflow-hidden rounded-3xl border ${style.border} bg-slate-900/40 p-6 md:p-8 backdrop-blur-md cursor-pointer transition-all duration-300 hover:scale-[1.01] ${style.glow}`}
               >
                 {/* Visual hover corner flare */}
@@ -143,109 +154,111 @@ export default function Committees() {
                     <ChevronRight className="h-4 w-4" />
                   </span>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
+      </div>
 
-        {/* Detailed Committee Modal Overlay */}
-        {selectedCommittee && (() => {
-          const style = getColorClasses(selectedCommittee.color);
-          const IconComponent = ICON_MAP[selectedCommittee.logo] || HelpCircle;
+      {/* Detailed Committee Modal Overlay */}
+      {selectedCommittee && (() => {
+        const style = getColorClasses(selectedCommittee.color);
+        const IconComponent = ICON_MAP[selectedCommittee.logo] || HelpCircle;
 
-          return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md overflow-y-auto animate-fade-in" id="committee-detail-modal">
-              <div className="relative w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900/95 p-6 md:p-8 shadow-2xl my-8">
-                {/* Close Button */}
-                <button
-                  onClick={() => setSelectedCommittee(null)}
-                  className="absolute right-4 top-4 rounded-full border border-slate-800 bg-slate-950 p-2 text-slate-400 hover:text-white hover:border-slate-700"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-
-                {/* Modal Title */}
-                <div className="flex items-start gap-4 pr-10 text-left">
-                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${style.bg} border ${style.border} ${style.text}`}>
-                    <IconComponent className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-wider ${style.badge} mb-1.5`}>
-                      {selectedCommittee.abbreviation}
-                    </span>
-                    <h2 className="font-sans text-xl md:text-2xl font-extrabold text-white">
-                      {selectedCommittee.name}
-                    </h2>
-                  </div>
-                </div>
-
-                {/* Agenda Box */}
-                <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/60 p-5 text-left">
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-blue-400 font-bold block mb-1">
-                    Debate Agenda
-                  </span>
-                  <p className="font-sans text-sm md:text-base text-blue-100 font-medium leading-relaxed italic">
-                    "{selectedCommittee.agenda}"
-                  </p>
-                </div>
-
-                {/* Main description */}
-                <div className="mt-6 font-sans text-xs md:text-sm text-slate-300 leading-relaxed space-y-4 text-left">
-                  <h4 className="font-mono text-[9px] uppercase tracking-widest text-slate-500 font-bold">// ABOUT THE COMMITTEE</h4>
-                  <p>{selectedCommittee.description}</p>
-                  <p>
-                    Delegates in this chamber are expected to prepare extensive position papers detailing their country's technological capabilities, legislative policies, and treaties regarding the peaceful exploration of orbit. Direct crisis inputs will require quick, collaborative resolutions under simulated pressure.
-                  </p>
-                </div>
-
-                {/* Executive Board */}
-                <div className="mt-8 border-t border-slate-800 pt-6 text-left">
-                  <h4 className="font-mono text-[9px] uppercase tracking-widest text-slate-500 font-bold mb-4">// EXECUTIVE BOARD (EB)</h4>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    {selectedCommittee.eb.map((member) => (
-                      <div key={member.name} className="flex items-center gap-3 rounded-2xl border border-slate-850 bg-slate-950/40 p-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-950 text-xs font-extrabold text-blue-400 border border-blue-800/40">
-                          {member.avatar}
-                        </div>
-                        <div>
-                          <p className="font-sans text-xs sm:text-sm font-bold text-white">{member.name}</p>
-                          <p className="font-mono text-[9px] uppercase text-slate-400 tracking-wider font-bold">{member.role}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Footer and Downloads */}
-                <div className="mt-8 flex flex-wrap gap-4 justify-between items-center border-t border-slate-800 pt-6">
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <FileText className="h-4 w-4 text-slate-500" />
-                    <span>Study Guide v1.0 (PDF)</span>
-                  </div>
-                  
+        return (
+          <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/90 backdrop-blur-md animate-fade-in" id="committee-detail-modal">
+            <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
+              <div className="relative w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900/95 p-6 md:p-8 shadow-2xl my-8 text-left">
+                  {/* Close Button */}
                   <button
-                    disabled={downloadingGuide === selectedCommittee.id}
-                    onClick={() => handleDownload(selectedCommittee.id, selectedCommittee.name)}
-                    className="flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-500 px-6 py-2.5 font-sans text-xs font-bold uppercase tracking-wider text-white transition-all active:scale-95 disabled:opacity-50"
+                    onClick={() => setSelectedCommittee(null)}
+                    className="absolute right-4 top-4 rounded-full border border-slate-800 bg-slate-950 p-2 text-slate-400 hover:text-white hover:border-slate-700"
                   >
-                    {downloadingGuide === selectedCommittee.id ? (
-                      <>
-                        <Orbit className="h-4 w-4 animate-spin" />
-                        Downloading briefing...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="h-4 w-4" />
-                        Download Study Guide
-                      </>
-                    )}
+                    <X className="h-4 w-4" />
                   </button>
+
+                  {/* Modal Title */}
+                  <div className="flex items-start gap-4 pr-10 text-left">
+                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${style.bg} border ${style.border} ${style.text}`}>
+                      <IconComponent className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-wider ${style.badge} mb-1.5`}>
+                        {selectedCommittee.abbreviation}
+                      </span>
+                      <h2 className="font-sans text-xl md:text-2xl font-extrabold text-white">
+                        {selectedCommittee.name}
+                      </h2>
+                    </div>
+                  </div>
+
+                  {/* Agenda Box */}
+                  <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/60 p-5 text-left">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-blue-400 font-bold block mb-1">
+                      Debate Agenda
+                    </span>
+                    <p className="font-sans text-sm md:text-base text-blue-100 font-medium leading-relaxed italic">
+                      "{selectedCommittee.agenda}"
+                    </p>
+                  </div>
+
+                  {/* Main description */}
+                  <div className="mt-6 font-sans text-xs md:text-sm text-slate-300 leading-relaxed space-y-4 text-left">
+                    <h4 className="font-mono text-[9px] uppercase tracking-widest text-slate-500 font-bold">// ABOUT THE COMMITTEE</h4>
+                    <p>{selectedCommittee.description}</p>
+                    <p>
+                      Delegates in this chamber are expected to prepare extensive position papers detailing their country's technological capabilities, legislative policies, and treaties regarding the peaceful exploration of orbit. Direct crisis inputs will require quick, collaborative resolutions under simulated pressure.
+                    </p>
+                  </div>
+
+                  {/* Executive Board */}
+                  <div className="mt-8 border-t border-slate-800 pt-6 text-left">
+                    <h4 className="font-mono text-[9px] uppercase tracking-widest text-slate-500 font-bold mb-4">// EXECUTIVE BOARD (EB)</h4>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      {selectedCommittee.eb.map((member) => (
+                        <div key={member.name} className="flex items-center gap-3 rounded-2xl border border-slate-850 bg-slate-950/40 p-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-950 text-xs font-extrabold text-blue-400 border border-blue-800/40">
+                            {member.avatar}
+                          </div>
+                          <div>
+                            <p className="font-sans text-xs sm:text-sm font-bold text-white">{member.name}</p>
+                            <p className="font-mono text-[9px] uppercase text-slate-400 tracking-wider font-bold">{member.role}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Footer and Downloads */}
+                  <div className="mt-8 flex flex-wrap gap-4 justify-between items-center border-t border-slate-800 pt-6">
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <FileText className="h-4 w-4 text-slate-500" />
+                      <span>Study Guide v1.0 (PDF)</span>
+                    </div>
+                    
+                    <button
+                      disabled={downloadingGuide === selectedCommittee.id}
+                      onClick={() => handleDownload(selectedCommittee.id, selectedCommittee.name)}
+                      className="flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-500 px-6 py-2.5 font-sans text-xs font-bold uppercase tracking-wider text-white transition-all active:scale-95 disabled:opacity-50"
+                    >
+                      {downloadingGuide === selectedCommittee.id ? (
+                        <>
+                          <Orbit className="h-4 w-4 animate-spin" />
+                          Downloading briefing...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4" />
+                          Download Study Guide
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           );
         })()}
-      </div>
     </div>
   );
 }

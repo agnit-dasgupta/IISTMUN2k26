@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import { SCHEDULE } from "../data";
 import { TimelineEvent } from "../types";
 import { CalendarRange, MapPin, Clock, Star, Landmark, ChevronRight } from "lucide-react";
+import { motion } from "motion/react";
 
 export default function Schedule() {
   const [activeDay, setActiveDay] = useState<"day1" | "day2" | "day3">("day1");
@@ -55,7 +56,13 @@ export default function Schedule() {
     <div className="bg-slate-950 text-white min-h-screen py-16 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl">
         {/* Section Header */}
-        <div className="text-center mb-12">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="text-center mb-12"
+        >
           <span className="font-mono text-xs uppercase tracking-widest text-cyan-400">Chronos Agenda</span>
           <h1 className="mt-2 font-sans text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
             Conference Timeline
@@ -63,7 +70,7 @@ export default function Schedule() {
           <p className="mx-auto mt-4 max-w-2xl font-sans text-slate-400 text-sm">
             Check the standard orbital timelines for three days of rigorous diplomacy and stargazing social integrations.
           </p>
-        </div>
+        </motion.div>
 
         {/* Day Selectors */}
         <div className="flex justify-center mb-10">
@@ -115,7 +122,14 @@ export default function Schedule() {
         {/* Timeline list */}
         <div className="relative border-l border-slate-800 ml-4 sm:ml-6 space-y-8 pb-8" id="timeline-list">
           {SCHEDULE[activeDay].map((event, index) => (
-            <div key={index} className="relative pl-8 group">
+            <motion.div 
+              key={index} 
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, ease: "easeOut", delay: index * 0.08 }}
+              className="relative pl-8 group"
+            >
               {/* Timeline bubble bullet */}
               <div className="absolute -left-3 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 border-2 border-slate-800 group-hover:border-cyan-400 transition-colors duration-300">
                 <div className="h-2 w-2 rounded-full bg-cyan-500" />
@@ -146,7 +160,7 @@ export default function Schedule() {
                   <span>Venue: <span className="text-white font-medium">{event.location}</span></span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

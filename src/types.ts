@@ -44,12 +44,14 @@ export interface FAQItem {
   category: "general" | "registration" | "committees";
 }
 
+export type PortfolioStatus = "Available" | "Assigned" | "Reserved" | "Pending" | "N/A";
+
 export interface CountryMatrixRow {
   country: string;
-  copuos: "Available" | "Assigned" | "Reserved";
-  disec: "Available" | "Assigned" | "Reserved";
-  aippm: "Available" | "Assigned" | "Reserved";
-  unsc: "Available" | "Assigned" | "Reserved";
+  copuos: PortfolioStatus;
+  disec: PortfolioStatus;
+  aippm: PortfolioStatus;
+  unsc: PortfolioStatus;
 }
 
 export interface RegistrationDetails {
@@ -63,6 +65,7 @@ export interface RegistrationDetails {
   institution: string;
   course: string;
   munExperience: string; // "None" | "1-2" | "3-5" | "5+"
+  role: "Delegate" | "Photographer";
   pref1Committee: string;
   pref1Country: string;
   pref2Committee: string;
@@ -71,6 +74,8 @@ export interface RegistrationDetails {
   pref3Country: string;
   partnerName?: string;
   partnerEmail?: string;
+  partnerRole?: "Delegate" | "Photographer";
+  partnerId?: string;
   contingentSize?: string;
   motivation: string;
 }

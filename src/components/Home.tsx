@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Rocket, ShieldAlert, Award, Star, Mail, MapPin, Landmark, Compass, ChevronRight, FileText } from "lucide-react";
+import { motion } from "motion/react";
 
 interface HomeProps {
   setActiveTab: (tab: string) => void;
@@ -126,7 +127,13 @@ export default function Home({ setActiveTab }: HomeProps) {
         <main className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:auto-rows-min mt-4">
           
           {/* TILE 1: WELCOME & HERO HEROICS (col-span-8, rows-3 equivalent) */}
-          <div className="lg:col-span-8 bg-slate-900/40 border border-slate-800 rounded-3xl p-8 md:p-10 flex flex-col justify-center relative overflow-hidden backdrop-blur-md shadow-2xl group">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="lg:col-span-8 bg-slate-900/40 border border-slate-800 rounded-3xl p-8 md:p-10 flex flex-col justify-center relative overflow-hidden backdrop-blur-md shadow-2xl group"
+          >
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] rounded-full"></div>
             <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-cyan-500/5 blur-[80px] rounded-full"></div>
             
@@ -164,10 +171,16 @@ export default function Home({ setActiveTab }: HomeProps) {
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
-          </div>
+          </motion.div>
 
           {/* TILE 2: DATE & VENUE CARD (col-span-4, gradient background) */}
-          <div className="lg:col-span-4 bg-gradient-to-br from-blue-600 to-indigo-700 border border-blue-400/30 rounded-3xl p-6 md:p-8 flex flex-col justify-between text-white shadow-2xl relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+            className="lg:col-span-4 bg-gradient-to-br from-blue-600 to-indigo-700 border border-blue-400/30 rounded-3xl p-6 md:p-8 flex flex-col justify-between text-white shadow-2xl relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300"
+          >
             <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 blur-2xl rounded-full"></div>
             <div>
               <span className="text-xs uppercase tracking-[0.2em] font-bold opacity-80 mb-1 block">Date & Venue</span>
@@ -183,10 +196,62 @@ export default function Home({ setActiveTab }: HomeProps) {
                 <MapPin className="w-5 h-5 text-white" />
               </div>
             </div>
-          </div>
+          </motion.div>
+
+          {/* TILE 2B: WORKSHOP REGISTRATION CARD (col-span-4) */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+            className="lg:col-span-4 bg-slate-900/40 border border-slate-800 rounded-3xl p-6 md:p-8 flex flex-col justify-between backdrop-blur-md shadow-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-300 text-left"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 blur-2xl rounded-full"></div>
+            
+            <div>
+              <span className="inline-flex items-center gap-1 text-cyan-400 text-[10px] uppercase tracking-widest font-bold mb-3 font-mono">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                </span>
+                Exclusive Masterclass
+              </span>
+              <h3 className="text-xl font-extrabold tracking-tight text-white mb-2">Space Tech & Diplomacy</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Join active ISRO scientists and legal scholars for a hands-on session on satellite engineering, orbital mechanics, and space debris treaties.
+              </p>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center gap-2.5 text-xs text-slate-300">
+                <div className="h-7 w-7 rounded-lg bg-cyan-950/20 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+                  <span className="font-mono text-[10px] font-bold">17</span>
+                </div>
+                <div>
+                  <p className="font-bold text-white text-[11px]">Thursday, Sept 17, 2026</p>
+                  <p className="text-[10px] text-slate-500 font-mono">14:00 - 18:00 IST (Pre-MUN)</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setActiveTab("workshop-register")}
+                id="workshop-register-btn"
+                className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-sans text-xs font-bold uppercase tracking-widest rounded-full transition-all duration-300 shadow-[0_0_15px_rgba(6,182,212,0.2)] hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                Register for Workshop
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </motion.div>
 
           {/* TILE 3: LIVE COUNTDOWN TIMER (col-span-4, medium row-span) */}
-          <div className="lg:col-span-4 bg-slate-900/60 border border-slate-800 rounded-3xl p-6 flex flex-col justify-center shadow-xl relative overflow-hidden">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+            className="lg:col-span-4 bg-slate-900/60 border border-slate-800 rounded-3xl p-6 flex flex-col justify-center shadow-xl relative overflow-hidden"
+          >
             <div className="absolute top-0 left-0 w-2 h-full bg-blue-600/30"></div>
             <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-3 block">Launch Countdown Clock</span>
             
@@ -220,10 +285,16 @@ export default function Home({ setActiveTab }: HomeProps) {
                 </div>
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* TILE 4: FEATURED COMMITTEES / DIRECTORY HIGHLIGHTS (col-span-4) */}
-          <div className="lg:col-span-4 bg-slate-900/40 border border-slate-800 rounded-3xl p-6 flex flex-col shadow-2xl relative overflow-hidden">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+            className="lg:col-span-4 bg-slate-900/40 border border-slate-800 rounded-3xl p-6 flex flex-col shadow-2xl relative overflow-hidden"
+          >
             <h3 className="text-xs uppercase tracking-widest font-bold text-slate-500 mb-4">Simulation Highlights</h3>
             
             <div className="space-y-2.5 flex-grow text-left">
@@ -244,10 +315,16 @@ export default function Home({ setActiveTab }: HomeProps) {
                 <p className="text-xs font-semibold text-white">Social Networking Social Beneath Stars</p>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* TILE 5: THE SECRETARIAT LETTER / ADDRESS (col-span-5) */}
-          <div className="lg:col-span-5 bg-slate-900/40 border border-slate-800 rounded-3xl p-6 md:p-8 relative overflow-hidden backdrop-blur-md shadow-2xl flex flex-col justify-between group text-left">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 }}
+            className="lg:col-span-5 bg-slate-900/40 border border-slate-800 rounded-3xl p-6 md:p-8 relative overflow-hidden backdrop-blur-md shadow-2xl flex flex-col justify-between group text-left"
+          >
             <div className="absolute bottom-0 right-0 w-48 h-48 bg-indigo-500/10 blur-3xl pointer-events-none"></div>
             
             <div>
@@ -275,11 +352,15 @@ export default function Home({ setActiveTab }: HomeProps) {
                 Read Letter &bull; App
               </button>
             </div>
-          </div>
+          </motion.div>
 
           {/* TILE 6: APPLY TO DELEGATE CTA TILE (col-span-3, High Contrast White Box) */}
-          <div
+          <motion.div
             onClick={() => setActiveTab("register")}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: "easeOut", delay: 0.4 }}
             className="lg:col-span-3 bg-white text-slate-950 border border-slate-200 rounded-3xl p-6 flex flex-col justify-between hover:scale-[1.02] transition-all duration-300 cursor-pointer shadow-2xl group min-h-[220px] text-left"
           >
             <div className="w-10 h-10 bg-slate-950 rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300">
@@ -295,47 +376,77 @@ export default function Home({ setActiveTab }: HomeProps) {
               Access Launch Portal
               <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
-          </div>
+          </motion.div>
 
         </main>
 
         {/* SECTION 2: THE IIST ADVANTAGE BENTO HIGHLIGHTS */}
         <section className="mt-16 text-left" id="iist-experience">
-          <div className="mb-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="mb-8"
+          >
             <span className="font-mono text-xs uppercase tracking-widest text-blue-400">// BEYOND THE DEBATE ROOMS</span>
             <h3 className="mt-1 font-sans text-2xl font-extrabold text-white">The IIST Advantage</h3>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 relative overflow-hidden backdrop-blur-md hover:border-blue-500/30 transition-colors duration-300 group">
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+              className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 relative overflow-hidden backdrop-blur-md hover:border-blue-500/30 transition-colors duration-300 group"
+            >
               <div className="text-blue-500 font-mono font-bold text-3xl mb-3">01</div>
               <h4 className="text-base font-bold text-white mb-2">ISRO Laboratory Access</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
                 Delegates gain exclusive access to IIST's engineering complexes, guided by researchers working directly on ISRO lunar missions and nano-satellite payloads.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 relative overflow-hidden backdrop-blur-md hover:border-blue-500/30 transition-colors duration-300 group">
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+              className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 relative overflow-hidden backdrop-blur-md hover:border-blue-500/30 transition-colors duration-300 group"
+            >
               <div className="text-blue-500 font-mono font-bold text-3xl mb-3">02</div>
               <h4 className="text-base font-bold text-white mb-2">Stargazing at the Observatory</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
                 We move the debate from simulated politics to infinite realities. Spend your evening tracking Jovian moons and stellar clusters using our high-magnification telescope dome.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 relative overflow-hidden backdrop-blur-md hover:border-blue-500/30 transition-colors duration-300 group">
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 }}
+              className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 relative overflow-hidden backdrop-blur-md hover:border-blue-500/30 transition-colors duration-300 group"
+            >
               <div className="text-blue-500 font-mono font-bold text-3xl mb-3">03</div>
               <h4 className="text-base font-bold text-white mb-2">Scientific & Technical Advisory</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
                 COPUOS and DISEC delegates can consult active space sciences faculty members during drafting phases to ensure technical feasibility of orbital policies.
               </p>
-            </div>
+            </motion.div>
           </div>
         </section>
 
         {/* SECTION 3: VENUE & GOOGLE MAPS DIRECT INTEGRATION */}
         <section className="mt-12 mb-12 text-left" id="venue-info">
-          <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden"
+          >
             <div className="absolute right-0 top-0 w-64 h-64 bg-cyan-500/5 blur-3xl pointer-events-none"></div>
             <div>
               <div className="flex items-center gap-1.5 text-blue-400 mb-2">
@@ -365,60 +476,62 @@ export default function Home({ setActiveTab }: HomeProps) {
                 <Compass className="h-3.5 w-3.5 text-white" />
               </a>
             </div>
-          </div>
+          </motion.div>
         </section>
 
       </div>
 
       {/* DETAILED SECRETARIAT MESSAGE MODAL OVERLAY */}
       {isLetterOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md overflow-y-auto animate-fade-in" id="sec-gen-modal">
-          <div className="relative w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900/95 p-6 md:p-8 shadow-2xl my-8">
-            {/* Close */}
-            <button
-              onClick={() => setIsLetterOpen(false)}
-              className="absolute right-4 top-4 rounded-full border border-slate-800 bg-slate-950 p-2 text-slate-400 hover:text-white hover:border-slate-700"
-            >
-              <ChevronRight className="h-4 w-4 rotate-90" />
-            </button>
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/90 backdrop-blur-md animate-fade-in" id="sec-gen-modal">
+          <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
+            <div className="relative w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900/95 p-6 md:p-8 shadow-2xl my-8 text-left">
+              {/* Close */}
+              <button
+                onClick={() => setIsLetterOpen(false)}
+                className="absolute right-4 top-4 rounded-full border border-slate-800 bg-slate-950 p-2 text-slate-400 hover:text-white hover:border-slate-700"
+              >
+                <ChevronRight className="h-4 w-4 rotate-90" />
+              </button>
 
-            {/* Header */}
-            <div>
-              <span className="font-mono text-xs uppercase tracking-widest text-blue-400 font-semibold block mb-1">Official Communiqué</span>
-              <h3 className="text-xl md:text-2xl font-bold tracking-tight text-white mb-6">
-                Address from the Secretary-General
-              </h3>
-            </div>
-
-            {/* Letter Content */}
-            <div className="space-y-4 text-xs md:text-sm text-slate-300 leading-relaxed text-left max-h-[60vh] overflow-y-auto pr-2">
-              <p className="font-semibold text-white">Esteemed Delegates, Advisors, and Guests,</p>
-              
-              <p>
-                As humans extend their reach further into the lunar surface and establish persistent constellations in Earth's orbit, the mechanisms of global diplomacy must adapt to govern realms once thought to be purely science fiction. It is my absolute honor to welcome you to the 8th annual edition of the <span className="text-white font-semibold">Indian Institute of Space Science and Technology Model United Nations</span>.
-              </p>
-              
-              <p>
-                IIST, as an institution directly nurtured by the <span className="text-blue-400 font-semibold">Indian Space Research Organisation (ISRO)</span>, serves as the perfect crucible where scientific rigor and political pragmatism converge. This year, our committees are designed to push the boundaries of conventional debate. You will navigate the legal nuances of asteroid mining under COPUOS, tackle satellite military security under UNGA DISEC, and coordinate real-time geopolitical space commands in the UNSC.
-              </p>
-              
-              <p>
-                Whether you are a seasoned diplomat or a novice delegation launching into your very first session, IIST MUN 2026 offers a platform of academic excellence, meticulous crisis orchestration, and unforgettable stargazing memories.
-              </p>
-              
-              <p className="font-semibold text-blue-400">
-                Prepare your portfolios. Orbits await your command.
-              </p>
-            </div>
-
-            {/* Sender Sign-off */}
-            <div className="mt-8 flex items-center gap-3 border-t border-slate-800 pt-6">
-              <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white text-xs">
-                AN
+              {/* Header */}
+              <div>
+                <span className="font-mono text-xs uppercase tracking-widest text-blue-400 font-semibold block mb-1">Official Communiqué</span>
+                <h3 className="text-xl md:text-2xl font-bold tracking-tight text-white mb-6">
+                  Address from the Secretary-General
+                </h3>
               </div>
-              <div className="text-left">
-                <p className="text-sm font-bold text-white">Aarav Nair</p>
-                <p className="text-xs text-slate-400">Secretary-General, IIST MUN 2026</p>
+
+              {/* Letter Content */}
+              <div className="space-y-4 text-xs md:text-sm text-slate-300 leading-relaxed text-left max-h-[60vh] overflow-y-auto pr-2">
+                <p className="font-semibold text-white">Esteemed Delegates, Advisors, and Guests,</p>
+                
+                <p>
+                  As humans extend their reach further into the lunar surface and establish persistent constellations in Earth's orbit, the mechanisms of global diplomacy must adapt to govern realms once thought to be purely science fiction. It is my absolute honor to welcome you to the 8th annual edition of the <span className="text-white font-semibold">Indian Institute of Space Science and Technology Model United Nations</span>.
+                </p>
+                
+                <p>
+                  IIST, as an institution directly nurtured by the <span className="text-blue-400 font-semibold">Indian Space Research Organisation (ISRO)</span>, serves as the perfect crucible where scientific rigor and political pragmatism converge. This year, our committees are designed to push the boundaries of conventional debate. You will navigate the legal nuances of asteroid mining under COPUOS, tackle satellite military security under UNGA DISEC, and coordinate real-time geopolitical space commands in the UNSC.
+                </p>
+                
+                <p>
+                  Whether you are a seasoned diplomat or a novice delegation launching into your very first session, IIST MUN 2026 offers a platform of academic excellence, meticulous crisis orchestration, and unforgettable stargazing memories.
+                </p>
+                
+                <p className="font-semibold text-blue-400">
+                  Prepare your portfolios. Orbits await your command.
+                </p>
+              </div>
+
+              {/* Sender Sign-off */}
+              <div className="mt-8 flex items-center gap-3 border-t border-slate-800 pt-6">
+                <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white text-xs">
+                  AN
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-bold text-white">Aarav Nair</p>
+                  <p className="text-xs text-slate-400">Secretary-General, IIST MUN 2026</p>
+                </div>
               </div>
             </div>
           </div>

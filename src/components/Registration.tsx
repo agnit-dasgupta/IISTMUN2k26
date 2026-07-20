@@ -4,17 +4,113 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { COMMITTEES } from "../data";
-import { RegistrationDetails } from "../types";
-import { Rocket, Sparkles, User, Users, Landmark, ChevronRight, ChevronLeft, CheckCircle, Ticket, Calendar, Download, Share2, Phone, Mail, Award, AlertCircle } from "lucide-react";
+import { COMMITTEES, COUNTRY_MATRIX } from "../data";
+import { RegistrationDetails, PortfolioStatus, CountryMatrixRow } from "../types";
+import { Rocket, Sparkles, User, Users, Landmark, ChevronRight, ChevronLeft, CheckCircle, Ticket, Calendar, Download, Share2, Phone, Mail, Award, AlertCircle, Search, Globe, X } from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { db, handleFirestoreError, OperationType } from "../firebase";
-import { doc, onSnapshot, setDoc, deleteDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, deleteDoc, collection } from "firebase/firestore";
+import { motion } from "motion/react";
 
-export default function Registration() {
-  const { user, loading: authLoading, signInWithGoogle } = useFirebase();
+interface RegistrationProps {
+  initialPreference?: { country: string; committee: string } | null;
+  clearInitialPreference?: () => void;
+}
+
+export default function Registration({ initialPreference, clearInitialPreference }: RegistrationProps) {
+  const { user, loading: authLoading, signInWithGoogle, authError, clearAuthError, isSigningIn } = useFirebase();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
+  const [matrixSearchTerm, setMatrixSearchTerm] = useState("");
+  const [portfolioOverrides, setPortfolioOverrides] = useState<Record<string, Partial<Record<"copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>>({});
+
+  // Auto-fill selected trajectory portfolio preferences
+  useEffect(() => {
+    if (initialPreference) {
+      setFormData((prev) => ({
+        ...prev,
+        pref1Country: initialPreference.country,
+        pref1Committee: initialPreference.committee,
+      }));
+      
+      if (user) {
+        setStep(2);
+        if (clearInitialPreference) {
+          clearInitialPreference();
+        }
+      }
+    }
+  }, [initialPreference, user, clearInitialPreference]);
+
+  // Fetch live portfolio overrides to filter the matrix dropdown properly
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "portfolio_states"), (snapshot) => {
+      const overrides: typeof portfolioOverrides = {};
+      snapshot.forEach((doc) => {
+        overrides[doc.id] = doc.data() as any;
+      });
+      setPortfolioOverrides(overrides);
+    }, (error) => {
+      console.error("Error loading portfolio overrides:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const getPortfolioStatus = (country: string, committee: string): PortfolioStatus => {
+    const row = COUNTRY_MATRIX.find(r => r.country === country);
+    if (!row) return "Reserved";
+    const commKey = committee as "copuos" | "disec" | "aippm" | "unsc";
+    return portfolioOverrides[country]?.[commKey] ?? row[commKey];
+  };
+
+  const getSelectedPreferences = (): { country: string; committee: string }[] => {
+    const prefs: { country: string; committee: string }[] = [];
+    if (formData.pref1Country) {
+      prefs.push({ country: formData.pref1Country, committee: formData.pref1Committee });
+    }
+    if (formData.pref2Country) {
+      prefs.push({ country: formData.pref2Country, committee: formData.pref2Committee });
+    }
+    if (formData.pref3Country) {
+      prefs.push({ country: formData.pref3Country, committee: formData.pref3Committee });
+    }
+    return prefs;
+  };
+
+  const getSelectionNumber = (country: string, committee: string) => {
+    if (formData.pref1Country === country && formData.pref1Committee === committee) return 1;
+    if (formData.pref2Country === country && formData.pref2Committee === committee) return 2;
+    if (formData.pref3Country === country && formData.pref3Committee === committee) return 3;
+    return null;
+  };
+
+  const handlePortfolioClick = (country: string, committee: string) => {
+    const current = getSelectedPreferences();
+    const existingIndex = current.findIndex(
+      (p) => p.country === country && p.committee === committee
+    );
+
+    let updated: { country: string; committee: string }[];
+    if (existingIndex !== -1) {
+      // Deselect
+      updated = current.filter((_, idx) => idx !== existingIndex);
+    } else {
+      // Select (if less than 3)
+      if (current.length >= 3) return;
+      updated = [...current, { country, committee }];
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      pref1Country: updated[0]?.country ?? "",
+      pref1Committee: updated[0]?.committee ?? "",
+      pref2Country: updated[1]?.country ?? "",
+      pref2Committee: updated[1]?.committee ?? "",
+      pref3Country: updated[2]?.country ?? "",
+      pref3Committee: updated[2]?.committee ?? "",
+    }));
+  };
   const [formData, setFormData] = useState({
     regType: "individual" as "individual" | "double" | "contingent",
     name: "",
@@ -23,6 +119,7 @@ export default function Registration() {
     institution: "",
     course: "",
     munExperience: "None",
+    role: "Delegate" as "Delegate" | "Photographer",
     pref1Committee: "copuos",
     pref1Country: "",
     pref2Committee: "disec",
@@ -31,6 +128,7 @@ export default function Registration() {
     pref3Country: "",
     partnerName: "",
     partnerEmail: "",
+    partnerRole: "Delegate" as "Delegate" | "Photographer",
     contingentSize: "5",
     motivation: ""
   });
@@ -110,12 +208,67 @@ export default function Registration() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateStep() && user) {
+    
+    // Comprehensive validation of all required details across steps
+    const newErrors: Record<string, string> = {};
+    
+    // Contact & Academic details validation (Step 2)
+    if (!formData.name.trim()) newErrors.name = "Full name is required.";
+    if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Valid email is required.";
+    if (!formData.phone.trim()) newErrors.phone = "Phone number is required.";
+    if (!formData.institution.trim()) newErrors.institution = "College or School name is required.";
+    if (!formData.course.trim()) newErrors.course = "Course/Department or Class is required.";
+    
+    if (formData.regType === "double") {
+      if (!formData.partnerName.trim()) newErrors.partnerName = "Partner's full name is required.";
+      if (!formData.partnerEmail.trim() || !/\S+@\S+\.\S+/.test(formData.partnerEmail)) {
+        newErrors.partnerEmail = "Valid partner email is required.";
+      }
+    }
+
+    // Preference & Motivation details validation (Step 3)
+    if (!formData.pref1Country.trim()) newErrors.pref1Country = "First choice country portfolio is required.";
+    if (!formData.motivation.trim() || formData.motivation.length < 20) {
+      newErrors.motivation = "Motivation statement must be at least 20 characters.";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      alert("🚨 Missing Details! Please fill up all required fields in your delegate registration and country preferences before boarding.");
+      
+      // If contact details are missing, direct the user back to Step 2
+      const hasContactErrors = newErrors.name || newErrors.email || newErrors.phone || newErrors.institution || newErrors.course || newErrors.partnerName || newErrors.partnerEmail;
+      if (hasContactErrors) {
+        setStep(2);
+      } else {
+        setStep(3);
+      }
+      return;
+    }
+
+    if (user) {
       setLoading(true);
       try {
-        const randomId = "IIST-" + Math.floor(100000 + Math.random() * 900000);
+        const commAbbr = 
+          formData.pref1Committee === "copuos" ? "COPUOS" :
+          formData.pref1Committee === "disec" ? "DISEC" :
+          formData.pref1Committee === "aippm" ? "AIPPM" :
+          formData.pref1Committee === "unsc" ? "UNSC" : "MUN";
+
+        const primaryRoleAbbr = formData.role === "Photographer" ? "P" : "D";
+        const primary4Digit = Math.floor(1000 + Math.random() * 9000);
+        const primaryId = `${commAbbr}${primaryRoleAbbr}${primary4Digit}`;
+
+        let partnerId = "";
+        if (formData.regType === "double") {
+          const partnerRoleAbbr = (formData.partnerRole || "Delegate") === "Photographer" ? "P" : "D";
+          const partner4Digit = Math.floor(1000 + Math.random() * 9000);
+          partnerId = `${commAbbr}${partnerRoleAbbr}${partner4Digit}`;
+        }
+
         const newReg = {
-          id: randomId,
+          id: primaryId,
+          ...(partnerId ? { partnerId } : {}),
           userId: user.uid,
           timestamp: new Date().toLocaleString(),
           ...formData
@@ -131,7 +284,10 @@ export default function Registration() {
 
   const handleShare = () => {
     if (!submittedPass) return;
-    navigator.clipboard.writeText(`🚀 I just registered as a delegate for IIST MUN 2026! Portfolio Preferred: ${submittedPass.pref1Country} in ${submittedPass.pref1Committee.toUpperCase()}. Launch Code: ${submittedPass.id}`);
+    const partnerText = submittedPass.regType === "double" && submittedPass.partnerName
+      ? ` & Partner: ${submittedPass.partnerName} (${submittedPass.partnerId || "TBD"})`
+      : "";
+    navigator.clipboard.writeText(`🚀 I just registered for IIST MUN 2026! Portfolio Preferred: ${submittedPass.pref1Country} in ${submittedPass.pref1Committee.toUpperCase()}. ID: ${submittedPass.id}${partnerText}`);
     alert("🌌 Orbit credentials copied to clipboard! Share with your delegates pool.");
   };
 
@@ -152,6 +308,7 @@ export default function Registration() {
           institution: "",
           course: "",
           munExperience: "None",
+          role: "Delegate",
           pref1Committee: "copuos",
           pref1Country: "",
           pref2Committee: "disec",
@@ -160,6 +317,7 @@ export default function Registration() {
           pref3Country: "",
           partnerName: "",
           partnerEmail: "",
+          partnerRole: "Delegate",
           contingentSize: "5",
           motivation: ""
         });
@@ -175,7 +333,13 @@ export default function Registration() {
 
   return (
     <div className="bg-[#020617] text-slate-100 min-h-screen py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden" style={{ backgroundImage: "radial-gradient(circle at 50% -20%, #1e293b 0%, #020617 80%)" }}>
-      <div className="relative z-10 mx-auto max-w-4xl">
+      <motion.div 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="relative z-10 mx-auto max-w-4xl"
+      >
         {authLoading ? (
           <div className="text-center py-24">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-blue-500 border-t-transparent mx-auto" />
@@ -194,13 +358,66 @@ export default function Registration() {
               To request a delegate portfolio, register your country matrix choices, and lock in your boarding pass, you must establish a secure link with our cloud registry.
             </p>
             <button
-              onClick={signInWithGoogle}
-              className="mt-8 w-full rounded-full bg-blue-600 hover:bg-blue-500 px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-blue-900/25 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+              onClick={() => signInWithGoogle().catch(() => {})}
+              disabled={isSigningIn}
+              className={`mt-8 w-full rounded-full px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-blue-900/25 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
+                isSigningIn 
+                  ? "bg-blue-850 opacity-75 cursor-not-allowed" 
+                  : "bg-blue-600 hover:bg-blue-500 active:scale-95"
+              }`}
               id="registration-login-btn"
             >
-              Sign In with Google
-              <ChevronRight className="h-4 w-4" />
+              {isSigningIn ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent animate-spin-slow" />
+                  Uplinking Identity...
+                </>
+              ) : (
+                <>
+                  Sign In with Google
+                  <ChevronRight className="h-4 w-4" />
+                </>
+              )}
             </button>
+
+            {authError && (
+              <div className="mt-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-left animate-fade-in text-xs font-sans">
+                <div className="flex items-center gap-2 text-rose-400 font-bold mb-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>🔒 Connection Interrupted (Iframe Sandbox Restriction)</span>
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                  Your browser blocked or closed the Google sign-in popup. Since this preview runs inside a sandboxed iframe, popups are frequently restricted by browser security policies.
+                </p>
+                <div className="mt-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800 font-mono text-[10px] text-slate-400 break-words">
+                  <strong>Telemetry trace:</strong> {authError.message || String(authError)}
+                </div>
+                <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={() => {
+                      // Retrieve the full development/preview URL
+                      const devUrl = window.location.href;
+                      window.open(devUrl, "_blank");
+                    }}
+                    className="flex-1 rounded-full bg-blue-600 hover:bg-blue-50 px-4 py-2 font-mono text-[10px] uppercase font-bold tracking-wider text-white hover:text-blue-900 text-center cursor-pointer transition-all duration-200"
+                  >
+                    🛰️ Open App in New Tab
+                  </button>
+                  <button
+                    onClick={() => {
+                      clearAuthError();
+                      signInWithGoogle().catch(() => {});
+                    }}
+                    className="rounded-full bg-slate-800 hover:bg-slate-700 px-4 py-2 font-mono text-[10px] uppercase font-bold tracking-wider text-slate-300 text-center cursor-pointer transition-colors"
+                  >
+                    🔄 Retry
+                  </button>
+                </div>
+                <p className="text-[9px] text-slate-500 mt-2.5 text-center italic leading-normal">
+                  Pro-Tip: Clicking "Open App in New Tab" runs the app as a top-level window, which permits popup authentication perfectly.
+                </p>
+              </div>
+            )}
           </div>
         ) : loading ? (
           <div className="text-center py-24">
@@ -257,8 +474,14 @@ export default function Registration() {
                       <div>
                         <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-500 font-bold">Passenger / Delegate</span>
                         <span className="font-sans text-base font-extrabold text-white">{submittedPass.name}</span>
-                        {submittedPass.regType === "double" && (
-                          <span className="block font-sans text-xs text-slate-400">Partner: {submittedPass.partnerName}</span>
+                        <span className="block font-mono text-[9.5px] text-blue-400 font-bold mt-0.5">{submittedPass.id} ({submittedPass.role || "Delegate"})</span>
+                        
+                        {submittedPass.regType === "double" && submittedPass.partnerName && (
+                          <div className="mt-3 pt-2 border-t border-slate-800/40">
+                            <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-500 font-bold">Partner Delegate</span>
+                            <span className="font-sans text-sm font-extrabold text-white">{submittedPass.partnerName}</span>
+                            <span className="block font-mono text-[9.5px] text-indigo-400 font-bold mt-0.5">{submittedPass.partnerId} ({submittedPass.partnerRole || "Delegate"})</span>
+                          </div>
                         )}
                       </div>
                       <div>
@@ -575,13 +798,25 @@ export default function Registration() {
                         <option value="5+" className="bg-slate-950">5+ (Veteran Delegate)</option>
                       </select>
                     </div>
+
+                    <div>
+                      <label className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 mb-1.5 font-bold">Participation Role</label>
+                      <select
+                        value={formData.role}
+                        onChange={(e) => setFormData({ ...formData, role: e.target.value as "Delegate" | "Photographer" })}
+                        className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-300 outline-none focus:border-blue-500/50 transition-all font-bold uppercase tracking-wider"
+                      >
+                        <option value="Delegate" className="bg-slate-950">Delegate</option>
+                        <option value="Photographer" className="bg-slate-950">Photographer</option>
+                      </select>
+                    </div>
                   </div>
 
                   {/* Double Delegation Partner details if double selected */}
                   {formData.regType === "double" && (
                     <div className="rounded-3xl border border-indigo-500/20 bg-indigo-950/5 p-5 space-y-4">
                       <span className="font-mono text-[9px] uppercase tracking-widest text-indigo-400 font-bold block">// DOUBLE DELEGATION: PARTNER DETAILS</span>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div>
                           <label className="block font-mono text-[9px] uppercase text-slate-400 mb-1">Partner Full Name</label>
                           <input
@@ -603,6 +838,17 @@ export default function Registration() {
                             placeholder="partner@university.edu"
                           />
                           {errors.partnerEmail && <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold">{errors.partnerEmail}</p>}
+                        </div>
+                        <div>
+                          <label className="block font-mono text-[9px] uppercase text-slate-400 mb-1">Partner Role</label>
+                          <select
+                            value={formData.partnerRole}
+                            onChange={(e) => setFormData({ ...formData, partnerRole: e.target.value as "Delegate" | "Photographer" })}
+                            className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-300 outline-none focus:border-indigo-500/50 transition-all font-bold uppercase tracking-wider"
+                          >
+                            <option value="Delegate" className="bg-slate-950">Delegate</option>
+                            <option value="Photographer" className="bg-slate-950">Photographer</option>
+                          </select>
                         </div>
                       </div>
                     </div>
@@ -660,84 +906,243 @@ export default function Registration() {
                     </p>
                   </div>
 
+                  {/* Selected Preferences Visual Cards */}
+                  <div className="space-y-2">
+                    <label className="block font-mono text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                      Your Selected Preferences (Up to 3 in order of selection)
+                    </label>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      {/* Preference 1 */}
+                      <div className={`p-4 rounded-2xl border ${
+                        formData.pref1Country 
+                          ? "border-blue-500/40 bg-blue-950/20 shadow-lg shadow-blue-500/5 text-white" 
+                          : "border-slate-800 bg-slate-950/20 border-dashed text-slate-500"
+                      } transition-all relative flex flex-col justify-between min-h-[90px]`}>
+                        <div>
+                          <div className="font-mono text-[9px] uppercase tracking-wider text-blue-400 font-bold mb-1">
+                            1st Choice Portfolio
+                          </div>
+                          {formData.pref1Country ? (
+                            <div className="font-sans text-xs font-bold leading-relaxed">
+                              {formData.pref1Country}
+                              <div className="text-[10px] text-slate-400 font-medium font-mono uppercase mt-0.5">
+                                {COMMITTEES.find(c => c.id === formData.pref1Committee)?.abbreviation || formData.pref1Committee}
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="font-sans text-[11px] leading-snug">Click an available portfolio below...</p>
+                          )}
+                        </div>
+                        {formData.pref1Country && (
+                          <button
+                            type="button"
+                            onClick={() => handlePortfolioClick(formData.pref1Country, formData.pref1Committee)}
+                            className="absolute top-2 right-2 p-1 rounded-full hover:bg-slate-850 text-slate-400 hover:text-white transition-all"
+                            title="Remove"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Preference 2 */}
+                      <div className={`p-4 rounded-2xl border ${
+                        formData.pref2Country 
+                          ? "border-indigo-500/40 bg-indigo-950/20 shadow-lg shadow-indigo-500/5 text-white" 
+                          : "border-slate-800 bg-slate-950/20 border-dashed text-slate-500"
+                      } transition-all relative flex flex-col justify-between min-h-[90px]`}>
+                        <div>
+                          <div className="font-mono text-[9px] uppercase tracking-wider text-indigo-400 font-bold mb-1">
+                            2nd Choice Portfolio
+                          </div>
+                          {formData.pref2Country ? (
+                            <div className="font-sans text-xs font-bold leading-relaxed">
+                              {formData.pref2Country}
+                              <div className="text-[10px] text-slate-400 font-medium font-mono uppercase mt-0.5">
+                                {COMMITTEES.find(c => c.id === formData.pref2Committee)?.abbreviation || formData.pref2Committee}
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="font-sans text-[11px] leading-snug">Optional 2nd choice...</p>
+                          )}
+                        </div>
+                        {formData.pref2Country && (
+                          <button
+                            type="button"
+                            onClick={() => handlePortfolioClick(formData.pref2Country, formData.pref2Committee)}
+                            className="absolute top-2 right-2 p-1 rounded-full hover:bg-slate-850 text-slate-400 hover:text-white transition-all"
+                            title="Remove"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Preference 3 */}
+                      <div className={`p-4 rounded-2xl border ${
+                        formData.pref3Country 
+                          ? "border-purple-500/40 bg-purple-950/20 shadow-lg shadow-purple-500/5 text-white" 
+                          : "border-slate-800 bg-slate-950/20 border-dashed text-slate-500"
+                      } transition-all relative flex flex-col justify-between min-h-[90px]`}>
+                        <div>
+                          <div className="font-mono text-[9px] uppercase tracking-wider text-purple-400 font-bold mb-1">
+                            3rd Choice Portfolio
+                          </div>
+                          {formData.pref3Country ? (
+                            <div className="font-sans text-xs font-bold leading-relaxed">
+                              {formData.pref3Country}
+                              <div className="text-[10px] text-slate-400 font-medium font-mono uppercase mt-0.5">
+                                {COMMITTEES.find(c => c.id === formData.pref3Committee)?.abbreviation || formData.pref3Committee}
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="font-sans text-[11px] leading-snug">Optional 3rd choice...</p>
+                          )}
+                        </div>
+                        {formData.pref3Country && (
+                          <button
+                            type="button"
+                            onClick={() => handlePortfolioClick(formData.pref3Country, formData.pref3Committee)}
+                            className="absolute top-2 right-2 p-1 rounded-full hover:bg-slate-850 text-slate-400 hover:text-white transition-all"
+                            title="Remove"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {errors.pref1Country && (
+                      <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold">{errors.pref1Country}</p>
+                    )}
+                  </div>
+
+                  {/* Interactive Portfolio Matrix Panel */}
                   <div className="space-y-4">
-                    {/* Preference 1 */}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 p-5 rounded-3xl border border-slate-900 bg-slate-950/40">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <label className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-bold">1st Council Preference</label>
-                        <select
-                          value={formData.pref1Committee}
-                          onChange={(e) => setFormData({ ...formData, pref1Committee: e.target.value })}
-                          className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-300 outline-none font-bold uppercase tracking-wider"
-                        >
-                          {COMMITTEES.map((com) => (
-                            <option key={com.id} value={com.id} className="bg-slate-950">{com.abbreviation} - {com.name}</option>
-                          ))}
-                        </select>
+                        <h3 className="font-sans text-sm font-bold text-white flex items-center gap-1.5">
+                          <Landmark className="h-4 w-4 text-blue-500" />
+                          Live Available Portfolio Matrix
+                        </h3>
+                        <p className="font-sans text-[11px] text-slate-400">
+                          Click any available cell to select. Maximum of 3. Click again to deselect.
+                        </p>
                       </div>
-                      <div>
-                        <label className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-bold">1st Choice Country / Portfolio</label>
+
+                      {/* Matrix Search */}
+                      <div className="relative w-full sm:max-w-xs">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
                         <input
                           type="text"
-                          value={formData.pref1Country}
-                          onChange={(e) => setFormData({ ...formData, pref1Country: e.target.value })}
-                          className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-200 placeholder-slate-750 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 font-medium"
-                          placeholder="e.g. United States or Narendra Modi"
+                          placeholder="Search Country / Portfolio..."
+                          value={matrixSearchTerm}
+                          onChange={(e) => setMatrixSearchTerm(e.target.value)}
+                          className="w-full rounded-full border border-slate-800 bg-slate-950 py-2 pl-9 pr-8 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-blue-500/50 transition-all font-medium"
                         />
-                        {errors.pref1Country && <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold">{errors.pref1Country}</p>}
+                        {matrixSearchTerm && (
+                          <button
+                            type="button"
+                            onClick={() => setMatrixSearchTerm("")}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
-                    {/* Preference 2 */}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 p-5 rounded-3xl border border-slate-900 bg-slate-950/30 opacity-90">
-                      <div>
-                        <label className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-bold">2nd Council Preference</label>
-                        <select
-                          value={formData.pref2Committee}
-                          onChange={(e) => setFormData({ ...formData, pref2Committee: e.target.value })}
-                          className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-300 outline-none font-bold uppercase tracking-wider"
-                        >
-                          {COMMITTEES.map((com) => (
-                            <option key={com.id} value={com.id} className="bg-slate-950">{com.abbreviation} - {com.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-bold">2nd Choice Country / Portfolio</label>
-                        <input
-                          type="text"
-                          value={formData.pref2Country}
-                          onChange={(e) => setFormData({ ...formData, pref2Country: e.target.value })}
-                          className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-200 placeholder-slate-750 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 font-medium"
-                          placeholder="e.g. Russian Federation"
-                        />
-                      </div>
-                    </div>
+                    {/* Matrix table container */}
+                    <div className="overflow-x-auto rounded-2xl border border-slate-900 bg-slate-950/40 shadow-xl max-h-[350px] scrollbar-thin">
+                      <table className="w-full min-w-[650px] border-collapse text-left font-sans text-xs">
+                        <thead>
+                          <tr className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950 font-mono text-[9px] uppercase tracking-wider text-slate-450">
+                            <th className="px-4 py-3 font-bold bg-slate-950">Nation / Character</th>
+                            <th className="px-4 py-3 font-bold bg-slate-950 text-center">COPUOS</th>
+                            <th className="px-4 py-3 font-bold bg-slate-950 text-center">UNGA DISEC</th>
+                            <th className="px-4 py-3 font-bold bg-slate-950 text-center">AIPPM</th>
+                            <th className="px-4 py-3 font-bold bg-slate-950 text-center">UNSC</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-900/60">
+                          {(() => {
+                            const filtered = COUNTRY_MATRIX.filter((row) => {
+                              const matchesSearch = row.country.toLowerCase().includes(matrixSearchTerm.toLowerCase());
+                              if (!matchesSearch) return false;
 
-                    {/* Preference 3 */}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 p-5 rounded-3xl border border-slate-900 bg-slate-950/20 opacity-80">
-                      <div>
-                        <label className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-bold">3rd Council Preference</label>
-                        <select
-                          value={formData.pref3Committee}
-                          onChange={(e) => setFormData({ ...formData, pref3Committee: e.target.value })}
-                          className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-300 outline-none font-bold uppercase tracking-wider"
-                        >
-                          {COMMITTEES.map((com) => (
-                            <option key={com.id} value={com.id} className="bg-slate-950">{com.abbreviation} - {com.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 mb-1 font-bold">3rd Choice Country / Portfolio</label>
-                        <input
-                          type="text"
-                          value={formData.pref3Country}
-                          onChange={(e) => setFormData({ ...formData, pref3Country: e.target.value })}
-                          className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-200 placeholder-slate-750 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 font-medium"
-                          placeholder="e.g. Japan"
-                        />
-                      </div>
+                              // Only show rows that contain at least one Available portfolio
+                              return (
+                                getPortfolioStatus(row.country, "copuos") === "Available" ||
+                                getPortfolioStatus(row.country, "disec") === "Available" ||
+                                getPortfolioStatus(row.country, "aippm") === "Available" ||
+                                getPortfolioStatus(row.country, "unsc") === "Available"
+                              );
+                            });
+
+                            if (filtered.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500 font-sans text-xs">
+                                    No available portfolios found matching "{matrixSearchTerm}"
+                                  </td>
+                                </tr>
+                              );
+                            }
+
+                            return filtered.map((row) => {
+                              return (
+                                <tr key={row.country} className="hover:bg-slate-900/20 transition-all">
+                                  <td className="px-4 py-2.5 font-bold text-slate-200">{row.country}</td>
+                                  
+                                  {["copuos", "disec", "aippm", "unsc"].map((comm) => {
+                                    const status = getPortfolioStatus(row.country, comm);
+                                    const selNum = getSelectionNumber(row.country, comm);
+                                    const hasReachedMax = getSelectedPreferences().length >= 3;
+
+                                    if (status !== "Available") {
+                                      return (
+                                        <td key={comm} className="px-4 py-2.5 text-center text-slate-750 font-mono text-[10px]">
+                                          —
+                                        </td>
+                                      );
+                                    }
+
+                                    return (
+                                      <td key={comm} className="px-4 py-2.5 text-center">
+                                        {selNum ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => handlePortfolioClick(row.country, comm)}
+                                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all shadow-md ${
+                                              selNum === 1
+                                                ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/10"
+                                                : selNum === 2
+                                                ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/10"
+                                                : "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/10"
+                                            }`}
+                                          >
+                                            {selNum === 1 ? "1st Choice" : selNum === 2 ? "2nd Choice" : "3rd Choice"}
+                                          </button>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => handlePortfolioClick(row.country, comm)}
+                                            disabled={hasReachedMax}
+                                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider transition-all ${
+                                              hasReachedMax ? "opacity-40 cursor-not-allowed border-slate-850 bg-slate-900/10 text-slate-500" : ""
+                                            }`}
+                                          >
+                                            Select
+                                          </button>
+                                        )}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            });
+                          })()}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
 
@@ -786,7 +1191,7 @@ export default function Registration() {
             </form>
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

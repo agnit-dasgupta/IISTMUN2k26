@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import { FAQ_ITEMS } from "../data";
 import { FAQItem } from "../types";
 import { HelpCircle, ChevronDown, ChevronUp, Search, Info, Landmark } from "lucide-react";
+import { motion } from "motion/react";
 
 export default function FAQs() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -35,7 +36,13 @@ export default function FAQs() {
     <div className="bg-[#020617] text-slate-100 min-h-screen py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden" style={{ backgroundImage: "radial-gradient(circle at 50% -20%, #1e293b 0%, #020617 80%)" }}>
       <div className="relative z-10 mx-auto max-w-3xl">
         {/* Section Header */}
-        <div className="text-center mb-12">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="text-center mb-12"
+        >
           <span className="font-mono text-[9px] uppercase tracking-widest text-blue-400 font-bold">// INTELLIGENCE DOSSIER</span>
           <h1 className="mt-2 font-sans text-3xl font-black tracking-tight text-white sm:text-5xl uppercase">
             Frequently Answered Intel
@@ -43,10 +50,16 @@ export default function FAQs() {
           <p className="mx-auto mt-4 max-w-xl font-sans text-slate-400 text-sm">
             Everything you need to resolve regarding accommodations, fee schedules, registrations, portfolio matrices, and research policies.
           </p>
-        </div>
+        </motion.div>
 
         {/* Filters Panel */}
-        <div className="space-y-4 mb-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+          className="space-y-4 mb-8"
+        >
           {/* Search bar */}
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
@@ -75,10 +88,17 @@ export default function FAQs() {
               </button>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* FAQs Accordion */}
-        <div className="space-y-4" id="faq-accordion-list">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+          className="space-y-4" 
+          id="faq-accordion-list"
+        >
           {filteredFAQs.length > 0 ? (
             filteredFAQs.map((faq, index) => {
               const isOpen = openIndexes.includes(index);
@@ -120,10 +140,16 @@ export default function FAQs() {
               No matching intelligence dossiers found. Try broad keywords like "ISRO" or "matrix".
             </div>
           )}
-        </div>
+        </motion.div>
 
         {/* Contact info desk */}
-        <div className="mt-12 rounded-3xl border border-slate-900 bg-slate-950/40 p-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="mt-12 rounded-3xl border border-slate-900 bg-slate-950/40 p-6 flex flex-col sm:flex-row gap-4 items-center justify-between"
+        >
           <div className="flex gap-3 items-center">
             <Info className="h-5 w-5 text-blue-450 shrink-0" />
             <div className="text-left">
@@ -137,7 +163,7 @@ export default function FAQs() {
           >
             Direct Inquiry
           </a>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@
 import React, { useState } from "react";
 import { SECRETARIAT } from "../data";
 import { Mail, Linkedin, Compass, MessageSquare, ShieldCheck, CheckCircle2, X } from "lucide-react";
+import { motion } from "motion/react";
 
 export default function Secretariat() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -23,7 +24,7 @@ export default function Secretariat() {
       
       {/* Custom Toast Notification System */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 animate-bounce-slow flex items-center gap-3 rounded-full border border-blue-500/30 bg-slate-900/95 px-5 py-3 shadow-[0_0_20px_rgba(37,99,235,0.3)] backdrop-blur-md">
+        <div className="fixed bottom-6 right-6 z-[100] animate-bounce-slow flex items-center gap-3 rounded-full border border-blue-500/30 bg-slate-900/95 px-5 py-3 shadow-[0_0_20px_rgba(37,99,235,0.3)] backdrop-blur-md">
           <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
           <span className="font-sans text-xs font-bold text-slate-200">{toastMessage}</span>
           <button onClick={() => setToastMessage(null)} className="text-slate-500 hover:text-slate-300 ml-1">
@@ -34,7 +35,13 @@ export default function Secretariat() {
 
       <div className="relative z-10 mx-auto max-w-7xl">
         {/* Section Header */}
-        <div className="text-center mb-16">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="text-center mb-16"
+        >
           <span className="font-mono text-[9px] uppercase tracking-widest text-blue-400 font-bold">// COMMAND & OPERATIONS</span>
           <h1 className="mt-2 font-sans text-3xl font-black tracking-tight text-white sm:text-5xl uppercase">
             The Secretariat Board
@@ -42,14 +49,18 @@ export default function Secretariat() {
           <p className="mx-auto mt-4 max-w-2xl font-sans text-slate-400 text-sm">
             Meet the academic orchestrators, logistics command, and diplomacy designers behind the 8th annual Indian Institute of Space Science and Technology Model UN.
           </p>
-        </div>
+        </motion.div>
 
         {/* Secretariat Grid */}
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4" id="secretariat-grid">
-          {SECRETARIAT.map((member) => (
-            <div
+          {SECRETARIAT.map((member, index) => (
+            <motion.div
               key={member.id}
               id={`sec-member-${member.id}`}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, ease: "easeOut", delay: index * 0.08 }}
               className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-900 bg-slate-900/35 p-6 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-slate-800 hover:bg-slate-900/50 hover:shadow-xl"
             >
               {/* Outer decorative ring */}
@@ -115,12 +126,18 @@ export default function Secretariat() {
                   </a>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
 
         {/* Secretarial Note */}
-        <div className="mt-16 rounded-3xl border border-slate-900 bg-gradient-to-br from-slate-950 via-slate-900/20 to-slate-950 p-8 text-center max-w-4xl mx-auto relative overflow-hidden">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="mt-16 rounded-3xl border border-slate-900 bg-gradient-to-br from-slate-950 via-slate-900/20 to-slate-950 p-8 text-center max-w-4xl mx-auto relative overflow-hidden"
+        >
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
           <Compass className="mx-auto h-8 w-8 text-blue-400 animate-spin-slow mb-4" />
           <h3 className="font-sans text-xl font-bold text-white uppercase tracking-wider">Need Coordination Assistance?</h3>
@@ -135,7 +152,7 @@ export default function Secretariat() {
               Contact General Registry
             </a>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

@@ -58,3 +58,28 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Global custom sleek scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.15);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.35);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.15) transparent;
+}
+

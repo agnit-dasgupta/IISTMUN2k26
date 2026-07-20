@@ -13,10 +13,12 @@ import Secretariat from "./components/Secretariat";
 import FAQs from "./components/FAQs";
 import Registration from "./components/Registration";
 import AdminDashboard from "./components/AdminDashboard";
+import WorkshopRegistration from "./components/WorkshopRegistration";
 import { Compass, Globe, Star, ShieldCheck, Mail, ArrowUpRight } from "lucide-react";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("home");
+  const [initialPreference, setInitialPreference] = useState<{ country: string; committee: string } | null>(null);
 
   const renderActiveContent = () => {
     switch (activeTab) {
@@ -25,7 +27,10 @@ export default function App() {
       case "committees":
         return <Committees />;
       case "matrix":
-        return <CountryMatrix />;
+        return <CountryMatrix onSelectPreference={(country, committee) => {
+          setInitialPreference({ country, committee });
+          setActiveTab("register");
+        }} />;
       case "schedule":
         return <Schedule />;
       case "secretariat":
@@ -33,7 +38,12 @@ export default function App() {
       case "faq":
         return <FAQs />;
       case "register":
-        return <Registration />;
+        return <Registration 
+          initialPreference={initialPreference} 
+          clearInitialPreference={() => setInitialPreference(null)} 
+        />;
+      case "workshop-register":
+        return <WorkshopRegistration setActiveTab={setActiveTab} />;
       case "admin":
         return <AdminDashboard />;
       default:
@@ -48,13 +58,13 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200">
       {/* Decorative ambient glowing grids in background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none z-0 opacity-40" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none z-[-10] opacity-40" />
 
       {/* Navbar Component */}
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Tabbed Layout Content */}
-      <main className="flex-grow relative z-10">
+      <main className="flex-grow relative">
         {renderActiveContent()}
       </main>
 

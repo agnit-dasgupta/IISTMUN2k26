@@ -12,6 +12,9 @@ interface FirebaseContextType {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  authError: Error | null;
+  clearAuthError: () => void;
+  isSigningIn: boolean;
 }
 
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
@@ -19,6 +22,8 @@ const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined
 export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<Error | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -29,18 +34,36 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const signInWithGoogle = async () => {
+    if (isSigningIn) return;
+    setIsSigningIn(true);
+    setAuthError(null);
     const provider = new GoogleAuthProvider();
+    
+    // Configure Custom Parameters for Google Provider
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+
     try {
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error("Authentication error during Google Sign-In:", error);
-      throw error;
+      const err = error as Error;
+      setAuthError(err);
+      throw err;
+    } finally {
+      setIsSigningIn(false);
     }
+  };
+
+  const clearAuthError = () => {
+    setAuthError(null);
   };
 
   const logout = async () => {
     try {
       await signOut(auth);
+      setAuthError(null);
     } catch (error) {
       console.error("Sign-out error:", error);
       throw error;
@@ -48,7 +71,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   return (
-    <FirebaseContext.Provider value={{ user, loading, signInWithGoogle, logout }}>
+    <FirebaseContext.Provider value={{ user, loading, signInWithGoogle, logout, authError, clearAuthError, isSigningIn }}>
       {children}
     </FirebaseContext.Provider>
   );
