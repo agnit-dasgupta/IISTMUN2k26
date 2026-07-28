@@ -49,24 +49,25 @@ export interface FirestoreErrorInfo {
  * Packs details into a stringified JSON exception for easier system diagnostics.
  */
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errorMessage = error instanceof Error ? error.message : String(error);
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errorMessage,
     authInfo: {
-      userId: auth.currentUser?.uid || null,
-      email: auth.currentUser?.email || null,
+      userId: auth.currentUser?.uid ? '***authenticated***' : null,
+      email: auth.currentUser?.email ? '***@***' : null,
       emailVerified: auth.currentUser?.emailVerified || null,
       isAnonymous: auth.currentUser?.isAnonymous || null,
       tenantId: auth.currentUser?.tenantId || null,
       providerInfo: auth.currentUser?.providerData?.map(provider => ({
         providerId: provider.providerId,
-        email: provider.email,
+        email: '***@***',
       })) || []
     },
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.error(`Firestore Error [${operationType}]: ${errorMessage}`);
+  throw new Error(`Firestore operation (${operationType}) failed: ${errorMessage}`);
 }
 
 /**
@@ -76,8 +77,10 @@ export async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration. Client appears to be offline.");
+    if (error instanceof Error && (error.message.includes('offline') || error.message.includes('Could not reach Cloud Firestore backend'))) {
+      console.warn("Firestore status: Client operating in offline mode or waiting for connection.");
+    } else {
+      console.warn("Firestore connection check:", error instanceof Error ? error.message : "Connection warning");
     }
   }
 }

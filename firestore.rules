@@ -48,6 +48,11 @@ service cloud.firestore {
              (!('pref3Country' in data) || (data.pref3Country is string && data.pref3Country.size() <= 128));
     }
 
+    // Match block for connection testing
+    match /test/{docId} {
+      allow read: if true;
+    }
+
     // Match block for registrations
     match /registrations/{registrationId} {
       allow get: if isAdmin() || (isSignedIn() && registrationId == request.auth.uid);

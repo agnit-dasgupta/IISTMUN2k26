@@ -3,14 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { COMMITTEES, COUNTRY_MATRIX } from "../data";
 import { RegistrationDetails, PortfolioStatus, CountryMatrixRow } from "../types";
-import { Rocket, Sparkles, User, Users, Landmark, ChevronRight, ChevronLeft, CheckCircle, Ticket, Calendar, Download, Share2, Phone, Mail, Award, AlertCircle, Search, Globe, X } from "lucide-react";
+import { Rocket, Sparkles, User, Users, Landmark, ChevronRight, ChevronLeft, CheckCircle, Ticket, Calendar, Download, Share2, Phone, Mail, Award, AlertCircle, Search, Globe, X, CheckCircle2 } from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { doc, onSnapshot, setDoc, deleteDoc, collection } from "firebase/firestore";
 import { motion } from "motion/react";
+import { InstitutionSelect } from "./InstitutionSelect";
+import QRCodeDisplay from "./QRCodeDisplay";
+import { downloadBoardingPassPDF } from "../utils/pdfGenerator";
 
 interface RegistrationProps {
   initialPreference?: { country: string; committee: string } | null;
@@ -51,7 +54,7 @@ export default function Registration({ initialPreference, clearInitialPreference
       });
       setPortfolioOverrides(overrides);
     }, (error) => {
-      console.error("Error loading portfolio overrides:", error);
+      console.error("Error loading portfolio overrides:", error instanceof Error ? error.message : "Fetch error");
     });
 
     return () => unsubscribe();
@@ -135,6 +138,8 @@ export default function Registration({ initialPreference, clearInitialPreference
 
   const [submittedPass, setSubmittedPass] = useState<RegistrationDetails | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isDownloading, setIsDownloading] = useState(false);
+  const boardingPassRef = useRef<HTMLDivElement>(null);
 
   // Auto-fill user profile fields on successful login
   useEffect(() => {
@@ -291,8 +296,27 @@ export default function Registration({ initialPreference, clearInitialPreference
     alert("🌌 Orbit credentials copied to clipboard! Share with your delegates pool.");
   };
 
-  const handleDownloadReceipt = () => {
-    alert("🛰️ Generating high-resolution vector boarding pass...\nDownload started successfully for IIST-MUN-2026-BoardingPass.png!");
+  const handleDownloadReceipt = async () => {
+    if (!submittedPass) return;
+    setIsDownloading(true);
+    try {
+      await downloadBoardingPassPDF({
+        element: boardingPassRef.current,
+        ticketId: submittedPass.id,
+        candidateName: submittedPass.name,
+        registrationType: "mun",
+        details: {
+          institution: submittedPass.institution,
+          chamber: submittedPass.pref1Committee,
+          preferredCountry: submittedPass.pref1Country,
+          email: submittedPass.email,
+          phone: submittedPass.phone,
+          timestamp: submittedPass.timestamp,
+        },
+      });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const handleReset = async () => {
@@ -425,20 +449,24 @@ export default function Registration({ initialPreference, clearInitialPreference
             <p className="font-sans text-slate-400 text-xs mt-4 font-bold tracking-widest uppercase">// RETRIEVING ORBITAL CLEARANCE...</p>
           </div>
         ) : submittedPass ? (
-          <div className="animate-fade-in" id="boarding-pass-display">
+          <div className="animate-fade-in space-y-6" id="boarding-pass-display">
             {/* Success message */}
-            <div className="text-center mb-8">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-4 animate-bounce-slow">
+            <div className="text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-3 animate-bounce-slow">
                 <CheckCircle className="h-8 w-8" />
               </div>
               <h1 className="font-sans text-3xl font-extrabold text-white">Orbit Clearance Approved</h1>
-              <p className="font-sans text-sm text-slate-400 mt-2">
-                Your delegate file has been loaded into our orbital database successfully. Below is your official Boarding Pass.
+              <p className="font-sans text-sm text-slate-400 mt-2 max-w-xl mx-auto">
+                Your delegate registration is <strong className="text-emerald-400 font-semibold">CONFIRMED</strong>. A confirmation email has been dispatched to <span className="text-cyan-300 font-mono font-bold">{submittedPass.email}</span>. Your portfolio will be allotted shortly.
               </p>
             </div>
 
             {/* Futuristic Boarding Pass Card */}
-            <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/95 shadow-2xl">
+            <div
+              ref={boardingPassRef}
+              id="mun-boarding-pass-card"
+              className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/95 shadow-2xl text-left"
+            >
               {/* Outer Glow Borders */}
               <div className="absolute top-0 left-0 w-full h-1.5 bg-blue-600" />
               
@@ -511,33 +539,22 @@ export default function Registration({ initialPreference, clearInitialPreference
                         <span className="font-sans text-[11px] text-slate-400">Sept 18, 2026 &bull; IIST Campus</span>
                       </div>
                     </div>
+
+                    {/* Notice Callout */}
+                    <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-xs font-sans text-amber-400/90 leading-relaxed">
+                      ⚡ <strong>Portfolio Allotment Status:</strong> Your registration is confirmed. Committee and country portfolio will be allotted shortly by the Executive Secretariat.
+                    </div>
                   </div>
 
-                  {/* Right Column: Ticket / QR Code simulation */}
-                  <div className="flex flex-col items-center justify-center bg-slate-950/80 rounded-2xl p-6 border border-slate-800">
-                    {/* Simulated Pixelated QR Code */}
-                    <div className="grid grid-cols-6 gap-1 h-20 w-20 bg-white p-2 rounded-lg">
-                      <div className="bg-slate-950 col-span-2 row-span-2"></div>
-                      <div className="bg-white"></div>
-                      <div className="bg-slate-950"></div>
-                      <div className="bg-slate-950"></div>
-                      <div className="bg-white"></div>
-                      <div className="bg-white"></div>
-                      <div className="bg-slate-950 col-span-2"></div>
-                      <div className="bg-slate-950"></div>
-                      <div className="bg-white"></div>
-                      <div className="bg-white"></div>
-                      <div className="bg-slate-950"></div>
-                      <div className="bg-slate-950 col-span-2 row-span-2"></div>
-                      <div className="bg-white"></div>
-                      <div className="bg-slate-950"></div>
-                      <div className="bg-slate-950"></div>
-                      <div className="bg-white"></div>
-                      <div className="bg-slate-950"></div>
-                      <div className="bg-white"></div>
-                      <div className="bg-slate-950"></div>
-                    </div>
-                    <span className="mt-3 font-mono text-[9px] uppercase tracking-wider text-slate-500 font-bold">Scan at Security</span>
+                  {/* Right Column: Scannable QR Code */}
+                  <div className="flex flex-col items-center justify-center bg-slate-950/80 rounded-2xl p-4 border border-slate-800">
+                    <QRCodeDisplay
+                      uniqueId={submittedPass.id}
+                      candidateName={submittedPass.name}
+                      title="IIST MUN 2026 Boarding Pass"
+                      size={120}
+                      showScannerTest={true}
+                    />
                   </div>
                 </div>
 
@@ -572,16 +589,22 @@ export default function Registration({ initialPreference, clearInitialPreference
             <div className="mt-8 flex flex-wrap justify-center gap-4">
               <button
                 onClick={handleDownloadReceipt}
+                disabled={isDownloading}
                 id="receipt-download-btn"
-                className="flex items-center gap-2 rounded-full bg-slate-900 border border-slate-800 hover:bg-slate-850 px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider text-slate-200 transition-all active:scale-95"
+                className="flex items-center gap-2 rounded-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all active:scale-95 cursor-pointer"
               >
-                <Download className="h-4 w-4 text-slate-400" />
-                Download Boarding Pass
+                {isDownloading ? (
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 text-white" />
+                )}
+                {isDownloading ? "Generating PDF..." : "Download Boarding Pass (PDF)"}
               </button>
+              
               <button
                 onClick={handleShare}
                 id="receipt-share-btn"
-                className="flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-500 px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all active:scale-95 shadow-blue-900/20"
+                className="flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-500 px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all active:scale-95 shadow-blue-900/20 cursor-pointer"
               >
                 <Share2 className="h-4 w-4" />
                 Share Orbit Status
@@ -592,7 +615,7 @@ export default function Registration({ initialPreference, clearInitialPreference
               <button
                 onClick={handleReset}
                 id="receipt-reset-btn"
-                className="text-slate-500 hover:text-slate-300 font-mono text-xs uppercase tracking-wider underline underline-offset-4"
+                className="text-slate-500 hover:text-slate-300 font-mono text-xs uppercase tracking-wider underline underline-offset-4 cursor-pointer"
               >
                 Register Another Delegate / Team
               </button>
@@ -762,15 +785,15 @@ export default function Registration({ initialPreference, clearInitialPreference
                     </div>
 
                     <div>
-                      <label className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 mb-1.5 font-bold">Academic Institution</label>
-                      <input
-                        type="text"
+                      <label className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 mb-1.5 font-bold">Academic Institution / College / School</label>
+                      <InstitutionSelect
                         value={formData.institution}
-                        onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
-                        className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium"
-                        placeholder="Indian Institute of Space Science and Technology"
+                        onChange={(val) => setFormData({ ...formData, institution: val })}
+                        error={errors.institution}
+                        placeholder="Select or type School / College in India..."
+                        accentColor="blue"
+                        id="reg-institution-select"
                       />
-                      {errors.institution && <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold">{errors.institution}</p>}
                     </div>
 
                     <div>

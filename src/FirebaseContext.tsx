@@ -47,8 +47,8 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       await signInWithPopup(auth, provider);
     } catch (error) {
-      console.error("Authentication error during Google Sign-In:", error);
-      const err = error as Error;
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error("Authentication failed during Google Sign-In:", err.message);
       setAuthError(err);
       throw err;
     } finally {
@@ -65,7 +65,8 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       await signOut(auth);
       setAuthError(null);
     } catch (error) {
-      console.error("Sign-out error:", error);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error("Sign-out error:", errMsg);
       throw error;
     }
   };

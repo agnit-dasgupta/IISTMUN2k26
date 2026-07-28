@@ -103,7 +103,7 @@ export default function AdminDashboard() {
       });
       setWorkshopRegistrations(list);
     }, (error) => {
-      console.error("Error fetching workshop registrations:", error);
+      console.error("Error fetching workshop registrations:", error instanceof Error ? error.message : "Access denied");
     });
 
     return () => unsubscribe();
@@ -134,7 +134,7 @@ export default function AdminDashboard() {
       setRegistrations(list);
       setLoading(false);
     }, (error) => {
-      console.error("Error fetching registrations collection:", error);
+      console.error("Error fetching registrations collection:", error instanceof Error ? error.message : "Access denied");
       handleFirestoreError(error, OperationType.LIST, "registrations");
       setLoading(false);
     });
@@ -152,7 +152,7 @@ export default function AdminDashboard() {
       });
       setPortfolioOverrides(overrides);
     }, (error) => {
-      console.error("Error fetching portfolio overrides:", error);
+      console.error("Error fetching portfolio overrides:", error instanceof Error ? error.message : "Access denied");
     });
 
     return () => unsubscribe();
@@ -168,7 +168,7 @@ export default function AdminDashboard() {
       await setDoc(docRef, { [committee]: newStatus }, { merge: true });
       showToast(`Updated ${country}'s ${committee.toUpperCase()} status to ${newStatus === "Reserved" ? "Special EB" : newStatus}.`);
     } catch (err) {
-      console.error("Error setting portfolio status:", err);
+      console.error("Error setting portfolio status:", err instanceof Error ? err.message : "Update failed");
       showToast("Error updating portfolio status in database.");
     }
   };
@@ -196,7 +196,7 @@ export default function AdminDashboard() {
       showToast(`Successfully deleted registration for ${name}.`);
       setConfirmDeleteId(null);
     } catch (err) {
-      console.error("Failed to delete registration doc:", err);
+      console.error("Failed to delete registration doc:", err instanceof Error ? err.message : "Delete failed");
       showToast("Error deleting registration. Check permissions.");
     } finally {
       setActionLoading(false);
@@ -210,7 +210,7 @@ export default function AdminDashboard() {
       showToast(`Successfully deleted workshop registration for ${name}.`);
       setConfirmWorkshopDeleteId(null);
     } catch (err) {
-      console.error("Failed to delete workshop registration doc:", err);
+      console.error("Failed to delete workshop registration doc:", err instanceof Error ? err.message : "Delete failed");
       showToast("Error deleting workshop registration. Check permissions.");
     } finally {
       setActionLoading(false);
@@ -219,17 +219,28 @@ export default function AdminDashboard() {
 
   const exportWorkshopToCSV = () => {
     if (workshopRegistrations.length === 0) return;
-    const headers = ["Ticket ID", "Name", "Email", "Phone", "Institution", "Course", "Technical Experience", "Timestamp", "Motivation"];
+    const headers = [
+      "Ticket ID", "Type", "Participant/School Name", "Teacher in Charge", 
+      "Teacher Designation", "Teacher Email", "Teacher Phone", "Contact Email", 
+      "Contact Phone", "Institution", "Course/Grades", "Est Students", 
+      "Technical Level", "Timestamp", "Motivation/Notes"
+    ];
     const rows = workshopRegistrations.map(r => [
       r.id || "",
+      r.regType === "school" ? "School Delegation" : "Individual",
       r.name || "",
+      r.teacherName || "",
+      r.teacherDesignation || "",
+      r.teacherEmail || "",
+      r.teacherPhone || "",
       r.email || "",
       r.phone || "",
       r.institution || "",
-      r.course || "",
+      r.course || r.gradeLevels || "",
+      r.estimatedStudents || "",
       r.experience || "",
       r.timestamp || "",
-      r.motivation || ""
+      r.motivation || r.specialRequirements || ""
     ]);
     
     const csvContent = "data:text/csv;charset=utf-8," 
@@ -789,31 +800,58 @@ export default function AdminDashboard() {
                           reg.name?.toLowerCase().includes(q) ||
                           reg.email?.toLowerCase().includes(q) ||
                           reg.institution?.toLowerCase().includes(q) ||
+                          reg.teacherName?.toLowerCase().includes(q) ||
                           reg.id?.toLowerCase().includes(q)
                         );
                       }).map((reg) => (
                         <tr key={reg.uid} className="hover:bg-slate-900/10 transition-colors">
-                          <td className="p-4 pl-6 font-mono text-cyan-400 font-bold">{reg.id}</td>
+                          <td className="p-4 pl-6 font-mono text-cyan-400 font-bold">
+                            <span className="block">{reg.id}</span>
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold font-mono uppercase mt-1 ${
+                              reg.regType === "school" 
+                                ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" 
+                                : "bg-slate-800 text-slate-400 border border-slate-700"
+                            }`}>
+                              {reg.regType === "school" ? "School" : "Individual"}
+                            </span>
+                          </td>
                           <td className="p-4">
                             <span className="font-bold text-white block">{reg.name}</span>
-                            <span className="text-[10px] text-slate-500 font-mono">{reg.timestamp}</span>
+                            {reg.regType === "school" && reg.teacherName && (
+                              <span className="text-[11px] text-cyan-400 font-medium block">
+                                Teacher: {reg.teacherName} ({reg.teacherDesignation || "In Charge"})
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-500 font-mono block mt-0.5">{reg.timestamp}</span>
                           </td>
                           <td className="p-4">
                             <span className="text-slate-300 block">{reg.email}</span>
                             <span className="text-slate-500 block text-[10px]">{reg.phone}</span>
+                            {reg.regType === "school" && reg.teacherEmail && reg.teacherEmail !== reg.email && (
+                              <span className="text-slate-400 block text-[10px] font-mono">Tr Email: {reg.teacherEmail}</span>
+                            )}
                           </td>
                           <td className="p-4">
                             <span className="text-slate-300 block font-semibold">{reg.institution}</span>
                             <span className="text-slate-500 block text-[10px]">{reg.course}</span>
                           </td>
                           <td className="p-4">
-                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase ${
-                              reg.experience === "Advanced" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
-                              reg.experience === "Intermediate" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
-                              "bg-slate-500/10 text-slate-400 border border-slate-500/20"
-                            }`}>
-                              {reg.experience}
-                            </span>
+                            {reg.regType === "school" ? (
+                              <div className="space-y-1">
+                                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                                  Est. {reg.estimatedStudents || "10+"}
+                                </span>
+                                <span className="text-[10px] text-slate-400 block font-mono">{reg.gradeLevels || "All Grades"}</span>
+                              </div>
+                            ) : (
+                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase ${
+                                reg.experience === "Advanced" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                                reg.experience === "Intermediate" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
+                                "bg-slate-500/10 text-slate-400 border border-slate-500/20"
+                              }`}>
+                                {reg.experience}
+                              </span>
+                            )}
                           </td>
                           <td className="p-4 max-w-xs">
                             <p className="text-slate-400 truncate text-[11px]" title={reg.motivation}>

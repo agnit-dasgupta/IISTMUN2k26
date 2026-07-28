@@ -31,7 +31,7 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
       });
       setPortfolioOverrides(overrides);
     }, (error) => {
-      console.error("Error loading portfolio overrides:", error);
+      console.error("Error loading portfolio overrides:", error instanceof Error ? error.message : "Fetch error");
     });
 
     return () => unsubscribe();
