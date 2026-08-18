@@ -4,8 +4,16 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import { Rocket, ShieldAlert, Award, Star, Mail, MapPin, Landmark, Compass, ChevronRight, FileText } from "lucide-react";
-import { motion } from "motion/react";
+import { 
+  Rocket, Shield, Award, Star, Mail, MapPin, Landmark, 
+  Compass, ChevronRight, FileText, Sparkles, Orbit, Radio, 
+  Users, Globe, ArrowRight, Zap, CheckCircle2, X, Activity,
+  Cpu, Flame, ExternalLink
+} from "lucide-react";
+import { motion, useScroll, useTransform, useSpring } from "motion/react";
+import SpotlightCard from "./SpotlightCard";
+import MarqueeTicker from "./MarqueeTicker";
+import AnimatedCounter from "./AnimatedCounter";
 
 interface HomeProps {
   setActiveTab: (tab: string) => void;
@@ -22,6 +30,18 @@ export default function Home({ setActiveTab }: HomeProps) {
     expired: false
   });
   const [isLetterOpen, setIsLetterOpen] = useState(false);
+
+  // Parallax scroll hooks
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"]
+  });
+
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
+  const heroParallaxY = useTransform(smoothProgress, [0, 0.5], [0, -60]);
+  const heroOpacity = useTransform(smoothProgress, [0, 0.4], [1, 0.3]);
+  const sphereRotate = useTransform(smoothProgress, [0, 1], [0, 180]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -43,7 +63,7 @@ export default function Home({ setActiveTab }: HomeProps) {
     return () => clearInterval(timer);
   }, [targetDate]);
 
-  // Starry Background Canvas Effect
+  // Orionix Interactive Starlight & Cosmic Canvas
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -53,57 +73,64 @@ export default function Home({ setActiveTab }: HomeProps) {
 
     let animationId: number;
     let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
-    let height = (canvas.height = canvas.parentElement?.clientHeight || 800);
+    let height = (canvas.height = canvas.parentElement?.clientHeight || 900);
 
     const handleResize = () => {
       if (!canvas) return;
       width = canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
-      height = canvas.height = canvas.parentElement?.clientHeight || 800;
+      height = canvas.height = canvas.parentElement?.clientHeight || 900;
     };
     window.addEventListener("resize", handleResize);
 
-    const stars: { x: number; y: number; size: number; speed: number; opacity: number }[] = [];
-    for (let i = 0; i < 150; i++) {
+    const stars: { x: number; y: number; size: number; speed: number; opacity: number; color: string }[] = [];
+    const colors = ["#38bdf8", "#818cf8", "#c084fc", "#ffffff"];
+    for (let i = 0; i < 180; i++) {
       stars.push({
         x: Math.random() * width,
         y: Math.random() * height,
-        size: Math.random() * 1.5 + 0.2,
-        speed: Math.random() * 0.12 + 0.02,
-        opacity: Math.random()
+        size: Math.random() * 1.6 + 0.3,
+        speed: Math.random() * 0.15 + 0.03,
+        opacity: Math.random() * 0.8 + 0.2,
+        color: colors[Math.floor(Math.random() * colors.length)]
       });
     }
 
     const animate = () => {
-      ctx.fillStyle = "rgba(2, 6, 23, 1)"; // slate-950
+      ctx.fillStyle = "rgba(4, 6, 10, 0.9)";
       ctx.fillRect(0, 0, width, height);
 
-      // Draw subtle purple/blue glow in center
-      const gradient = ctx.createRadialGradient(width / 2, height / 2, 50, width / 2, height / 2, 500);
-      gradient.addColorStop(0, "rgba(29, 78, 216, 0.12)"); // blue-700/12
-      gradient.addColorStop(0.5, "rgba(6, 182, 212, 0.04)"); // cyan-500/4
-      gradient.addColorStop(1, "rgba(2, 6, 23, 0)");
-      ctx.fillStyle = gradient;
+      // Draw subtle cyan/indigo ambient light orbs
+      const grad1 = ctx.createRadialGradient(width * 0.3, height * 0.2, 20, width * 0.3, height * 0.2, 500);
+      grad1.addColorStop(0, "rgba(56, 189, 248, 0.08)");
+      grad1.addColorStop(1, "rgba(4, 6, 10, 0)");
+      ctx.fillStyle = grad1;
+      ctx.fillRect(0, 0, width, height);
+
+      const grad2 = ctx.createRadialGradient(width * 0.8, height * 0.6, 20, width * 0.8, height * 0.6, 600);
+      grad2.addColorStop(0, "rgba(99, 102, 241, 0.07)");
+      grad2.addColorStop(1, "rgba(4, 6, 10, 0)");
+      ctx.fillStyle = grad2;
       ctx.fillRect(0, 0, width, height);
 
       // Draw and update stars
       stars.forEach((star) => {
-        ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+        ctx.fillStyle = star.color;
+        ctx.globalAlpha = star.opacity;
         ctx.beginPath();
         ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
         ctx.fill();
 
-        // Move star down slowly
         star.y += star.speed;
         if (star.y > height) {
           star.y = 0;
           star.x = Math.random() * width;
         }
 
-        // Twinkle opacity
-        star.opacity += Math.random() * 0.04 - 0.02;
+        star.opacity += (Math.random() - 0.5) * 0.02;
         if (star.opacity < 0.2) star.opacity = 0.2;
-        if (star.opacity > 1) star.opacity = 1;
+        if (star.opacity > 0.95) star.opacity = 0.95;
       });
+      ctx.globalAlpha = 1.0;
 
       animationId = requestAnimationFrame(animate);
     };
@@ -117,387 +144,573 @@ export default function Home({ setActiveTab }: HomeProps) {
   }, []);
 
   return (
-    <div className="relative bg-[#020617] text-slate-100 min-h-screen py-8 px-4 sm:px-6 lg:px-8 overflow-hidden" style={{ backgroundImage: "radial-gradient(circle at 50% -20%, #1e293b 0%, #020617 80%)" }}>
-      {/* Absolute canvas background */}
-      <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none opacity-40" />
+    <div ref={containerRef} className="relative bg-[#04060a] text-slate-100 min-h-screen overflow-hidden selection:bg-cyan-500/30 selection:text-cyan-200">
+      
+      {/* Background Interactive Cosmic Canvas */}
+      <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none opacity-60" />
 
-      <div className="relative z-10 mx-auto max-w-7xl">
-        
-        {/* Main Bento Grid layout */}
-        <main className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:auto-rows-min mt-4">
-          
-          {/* TILE 1: WELCOME & HERO HEROICS (col-span-8, rows-3 equivalent) */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="lg:col-span-8 bg-slate-900/40 border border-slate-800 rounded-3xl p-8 md:p-10 flex flex-col justify-center relative overflow-hidden backdrop-blur-md shadow-2xl group"
-          >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] rounded-full"></div>
-            <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-cyan-500/5 blur-[80px] rounded-full"></div>
-            
-            <div className="mb-4">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-950/40 px-3.5 py-1 text-xs font-mono font-bold tracking-widest text-blue-400">
-                <Compass className="h-3.5 w-3.5 animate-spin-slow text-blue-400" />
-                // EIGHTH ANNUAL EDITION
-              </span>
-            </div>
-
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight mb-4">
-              Decisions in Orbit,<br />
-              <span className="italic font-serif text-blue-200 font-normal">Diplomacy on Earth</span>
-            </h2>
-
-            <p className="text-slate-400 text-sm sm:text-base max-w-2xl leading-relaxed mb-8">
-              Welcome to <span className="text-white font-semibold">IIST MUN 2026</span>. Join the premier space-focused Model United Nations hosted at the Indian Institute of Space Science and Technology (IIST), Trivandrum, where interstellar governance converges with global diplomacy.
-            </p>
-
-            <div className="flex flex-wrap gap-4 mt-auto">
-              <button
-                onClick={() => setActiveTab("register")}
-                id="hero-register-btn"
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-xs font-bold tracking-widest uppercase transition-all duration-300 shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] active:scale-95 flex items-center gap-2"
-              >
-                Access Launch Portal
-                <Rocket className="h-4 w-4 text-white animate-bounce-slow" />
-              </button>
-              <button
-                onClick={() => setActiveTab("committees")}
-                id="hero-committees-btn"
-                className="px-6 py-3 bg-slate-800/60 hover:bg-slate-850/80 border border-slate-700/50 text-slate-200 hover:text-white rounded-full text-xs font-bold tracking-widest uppercase transition-all duration-300 flex items-center gap-1.5"
-              >
-                Explore Committees
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </motion.div>
-
-          {/* TILE 2: DATE & VENUE CARD (col-span-4, gradient background) */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-            className="lg:col-span-4 bg-gradient-to-br from-blue-600 to-indigo-700 border border-blue-400/30 rounded-3xl p-6 md:p-8 flex flex-col justify-between text-white shadow-2xl relative overflow-hidden group hover:scale-[1.01] transition-transform duration-300"
-          >
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 blur-2xl rounded-full"></div>
-            <div>
-              <span className="text-xs uppercase tracking-[0.2em] font-bold opacity-80 mb-1 block">Date & Venue</span>
-              <p className="text-3xl font-extrabold tracking-tight">Sept 18—20, 2026</p>
-            </div>
-
-            <div className="flex items-end justify-between mt-10 md:mt-16">
-              <div className="text-sm leading-relaxed opacity-95">
-                <span className="font-semibold block text-blue-200 text-xs uppercase tracking-wider mb-1">Thiruvananthapuram, Kerala</span>
-                IIST Campus,<br />Valiamala, Kerala, India
-              </div>
-              <div className="h-10 w-10 bg-white/10 border border-white/20 rounded-full flex items-center justify-center shadow-inner">
-                <MapPin className="w-5 h-5 text-white" />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* TILE 2B: WORKSHOP REGISTRATION CARD (col-span-4) */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-            className="lg:col-span-4 bg-slate-900/40 border border-slate-800 rounded-3xl p-6 md:p-8 flex flex-col justify-between backdrop-blur-md shadow-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-300 text-left"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 blur-2xl rounded-full"></div>
-            
-            <div>
-              <span className="inline-flex items-center gap-1 text-cyan-400 text-[10px] uppercase tracking-widest font-bold mb-3 font-mono">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
-                </span>
-                Exclusive Masterclass
-              </span>
-              <h3 className="text-xl font-extrabold tracking-tight text-white mb-2">Space Tech & Diplomacy</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Join active ISRO scientists and legal scholars for a hands-on session on satellite engineering, orbital mechanics, and space debris treaties.
-              </p>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              <div className="flex items-center gap-2.5 text-xs text-slate-300">
-                <div className="h-7 w-7 rounded-lg bg-cyan-950/20 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
-                  <span className="font-mono text-[10px] font-bold">17</span>
-                </div>
-                <div>
-                  <p className="font-bold text-white text-[11px]">Thursday, Sept 17, 2026</p>
-                  <p className="text-[10px] text-slate-500 font-mono">14:00 - 18:00 IST (Pre-MUN)</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setActiveTab("workshop-register")}
-                id="workshop-register-btn"
-                className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-sans text-xs font-bold uppercase tracking-widest rounded-full transition-all duration-300 shadow-[0_0_15px_rgba(6,182,212,0.2)] hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                Register for Workshop
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </motion.div>
-
-          {/* TILE 3: LIVE COUNTDOWN TIMER (col-span-4, medium row-span) */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-            className="lg:col-span-4 bg-slate-900/60 border border-slate-800 rounded-3xl p-6 flex flex-col justify-center shadow-xl relative overflow-hidden"
-          >
-            <div className="absolute top-0 left-0 w-2 h-full bg-blue-600/30"></div>
-            <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-3 block">Launch Countdown Clock</span>
-            
-            {timeLeft.expired ? (
-              <p className="font-bold text-blue-400 text-sm sm:text-base">🚀 Conference is currently Underway!</p>
-            ) : (
-              <div className="grid grid-cols-4 gap-2 text-center">
-                <div>
-                  <span className="block font-mono text-xl md:text-2xl font-bold text-white leading-none">
-                    {String(timeLeft.days).padStart(2, "0")}
-                  </span>
-                  <span className="text-[9px] uppercase tracking-wider text-slate-500 block mt-1">Days</span>
-                </div>
-                <div className="border-l border-slate-800/80">
-                  <span className="block font-mono text-xl md:text-2xl font-bold text-blue-400 leading-none">
-                    {String(timeLeft.hours).padStart(2, "0")}
-                  </span>
-                  <span className="text-[9px] uppercase tracking-wider text-slate-500 block mt-1">Hours</span>
-                </div>
-                <div className="border-l border-slate-800/80">
-                  <span className="block font-mono text-xl md:text-2xl font-bold text-indigo-400 leading-none">
-                    {String(timeLeft.minutes).padStart(2, "0")}
-                  </span>
-                  <span className="text-[9px] uppercase tracking-wider text-slate-500 block mt-1">Mins</span>
-                </div>
-                <div className="border-l border-slate-800/80">
-                  <span className="block font-mono text-xl md:text-2xl font-bold text-emerald-400 leading-none animate-pulse">
-                    {String(timeLeft.seconds).padStart(2, "0")}
-                  </span>
-                  <span className="text-[9px] uppercase tracking-wider text-slate-500 block mt-1">Secs</span>
-                </div>
-              </div>
-            )}
-          </motion.div>
-
-          {/* TILE 4: FEATURED COMMITTEES / DIRECTORY HIGHLIGHTS (col-span-4) */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-            className="lg:col-span-4 bg-slate-900/40 border border-slate-800 rounded-3xl p-6 flex flex-col shadow-2xl relative overflow-hidden"
-          >
-            <h3 className="text-xs uppercase tracking-widest font-bold text-slate-500 mb-4">Simulation Highlights</h3>
-            
-            <div className="space-y-2.5 flex-grow text-left">
-              <div className="p-3 bg-slate-800/30 rounded-2xl border border-slate-800/80 hover:bg-slate-800/50 transition-colors cursor-pointer" onClick={() => setActiveTab("committees")}>
-                <p className="text-blue-400 font-mono text-[9px] font-bold uppercase tracking-widest mb-0.5">// COPUOS & UNSC</p>
-                <p className="text-xs font-semibold text-white">Legal Frameworks & Space Assets</p>
-              </div>
-              <div className="p-3 bg-slate-800/30 rounded-2xl border border-slate-800/80 hover:bg-slate-800/50 transition-colors cursor-pointer" onClick={() => setActiveTab("committees")}>
-                <p className="text-blue-400 font-mono text-[9px] font-bold uppercase tracking-widest mb-0.5">// PRIZE SCHEME</p>
-                <p className="text-xs font-semibold text-white">₹50,000+ Cache Pool & Merit Badges</p>
-              </div>
-              <div className="p-3 bg-slate-800/30 rounded-2xl border border-slate-800/80 hover:bg-slate-800/50 transition-colors cursor-pointer" onClick={() => setActiveTab("home")}>
-                <p className="text-blue-400 font-mono text-[9px] font-bold uppercase tracking-widest mb-0.5">// ISRO LAB TOURS</p>
-                <p className="text-xs font-semibold text-white">Exclusive Spacecraft Lab Overviews</p>
-              </div>
-              <div className="p-3 bg-slate-800/30 rounded-2xl border border-slate-800/80 hover:bg-slate-800/50 transition-colors cursor-pointer" onClick={() => setActiveTab("home")}>
-                <p className="text-blue-400 font-mono text-[9px] font-bold uppercase tracking-widest mb-0.5">// OBSERVATORY</p>
-                <p className="text-xs font-semibold text-white">Social Networking Social Beneath Stars</p>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* TILE 5: THE SECRETARIAT LETTER / ADDRESS (col-span-5) */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 }}
-            className="lg:col-span-5 bg-slate-900/40 border border-slate-800 rounded-3xl p-6 md:p-8 relative overflow-hidden backdrop-blur-md shadow-2xl flex flex-col justify-between group text-left"
-          >
-            <div className="absolute bottom-0 right-0 w-48 h-48 bg-indigo-500/10 blur-3xl pointer-events-none"></div>
-            
-            <div>
-              <span className="text-xs uppercase tracking-widest font-bold text-slate-500 block mb-4">The Secretariat Message</span>
-              <blockquote className="text-base md:text-lg font-serif italic text-slate-300 leading-relaxed mb-6">
-                "In the vastness of space, we find the perspective needed to solve our greatest terrestrial challenges. IIST MUN 2026 is a platform for the next generation of space leaders."
-              </blockquote>
-            </div>
-
-            <div className="flex items-center justify-between border-t border-slate-800/80 pt-4 mt-4">
-              <div className="flex items-center space-x-3">
-                <div className="relative h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-white text-xs border border-blue-400/30 shadow-md">
-                  AN
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-white">Aarav Nair</p>
-                  <p className="text-[9px] uppercase tracking-wider text-blue-400 font-bold font-mono">Secretary General</p>
-                </div>
-              </div>
-              
-              <button
-                onClick={() => setIsLetterOpen(true)}
-                className="text-[10px] font-mono uppercase tracking-widest font-bold text-blue-400 hover:text-white transition-colors cursor-pointer border border-blue-500/20 rounded-full px-3 py-1 bg-blue-950/20"
-              >
-                Read Letter &bull; App
-              </button>
-            </div>
-          </motion.div>
-
-          {/* TILE 6: APPLY TO DELEGATE CTA TILE (col-span-3, High Contrast White Box) */}
+      {/* Subtle Orionix Ambient Glows */}
+      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-gradient-to-b from-cyan-500/10 via-indigo-500/5 to-transparent blur-[140px] rounded-full" />
+      
+      {/* HERO SECTION */}
+      <section className="relative z-10 pt-16 pb-14 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <motion.div 
+          style={{ y: heroParallaxY, opacity: heroOpacity }}
+          className="flex flex-col items-center text-center"
+        >
+          {/* Status Beacon Pill Badge */}
           <motion.div
-            onClick={() => setActiveTab("register")}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.4 }}
-            className="lg:col-span-3 bg-white text-slate-950 border border-slate-200 rounded-3xl p-6 flex flex-col justify-between hover:scale-[1.02] transition-all duration-300 cursor-pointer shadow-2xl group min-h-[220px] text-left"
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-white/[0.12] bg-white/[0.04] backdrop-blur-xl shadow-[0_0_25px_rgba(56,189,248,0.15)] mb-6 hover:border-cyan-500/40 transition-all duration-300 group cursor-default"
           >
-            <div className="w-10 h-10 bg-slate-950 rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300">
-              <Rocket className="w-5 h-5 text-blue-400" />
-            </div>
-
-            <div className="my-4">
-              <h3 className="text-lg font-extrabold leading-tight mb-1 text-slate-950">Apply to Delegate</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">Phase I Registrations are now open for all universities and high schools.</p>
-            </div>
-
-            <div className="flex items-center text-[10px] font-bold uppercase tracking-widest text-slate-950 border-t border-slate-100 pt-3 mt-auto">
-              Access Launch Portal
-              <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-            </div>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
+            </span>
+            <span className="font-mono text-[11px] uppercase tracking-widest text-slate-300 font-bold group-hover:text-cyan-300 transition-colors">
+              IIST MUN 2026 // 8TH ANNUAL CONVOCATION
+            </span>
           </motion.div>
 
-        </main>
-
-        {/* SECTION 2: THE IIST ADVANTAGE BENTO HIGHLIGHTS */}
-        <section className="mt-16 text-left" id="iist-experience">
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="mb-8"
+          {/* Main Display Headline */}
+          <motion.h1
+            initial={{ opacity: 0, y: 25 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+            className="font-sans text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight text-white max-w-5xl leading-[1.08]"
           >
-            <span className="font-mono text-xs uppercase tracking-widest text-blue-400">// BEYOND THE DEBATE ROOMS</span>
-            <h3 className="mt-1 font-sans text-2xl font-extrabold text-white">The IIST Advantage</h3>
+            Decisions in Orbit,{" "}
+            <span className="bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 bg-clip-text text-transparent italic font-serif font-normal">
+              Diplomacy on Earth
+            </span>
+          </motion.h1>
+
+          {/* Subtitle Description */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+            className="mt-6 max-w-2xl text-sm sm:text-base md:text-lg text-slate-400 leading-relaxed font-normal"
+          >
+            Experience India's premier space-focused Model United Nations at the{" "}
+            <span className="text-slate-200 font-semibold">Indian Institute of Space Science and Technology (IIST)</span>, 
+            Trivandrum. Where celestial governance meets real-time geopolitical crisis simulations.
+          </motion.p>
+
+          {/* Action CTAs */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
+            className="mt-8 flex flex-wrap items-center justify-center gap-4"
+          >
+            <button
+              onClick={() => setActiveTab("register")}
+              id="hero-launch-portal-btn"
+              className="group relative inline-flex items-center gap-2.5 rounded-full bg-white px-7 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-950 shadow-[0_0_30px_rgba(255,255,255,0.25)] hover:shadow-[0_0_40px_rgba(56,189,248,0.5)] hover:bg-cyan-300 transition-all duration-300 active:scale-95 cursor-pointer"
+            >
+              <span>Access Launch Portal</span>
+              <Rocket className="h-4 w-4 text-slate-950 group-hover:translate-x-1 group-hover:-translate-y-0.5 transition-transform duration-300" />
+            </button>
+
+            <button
+              onClick={() => setActiveTab("committees")}
+              id="hero-view-committees-btn"
+              className="inline-flex items-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.03] px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-200 backdrop-blur-xl hover:border-cyan-500/40 hover:bg-white/[0.08] hover:text-white transition-all duration-300 active:scale-95 cursor-pointer"
+            >
+              <span>Explore Councils</span>
+              <ChevronRight className="h-4 w-4 text-cyan-400" />
+            </button>
           </motion.div>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-              className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 relative overflow-hidden backdrop-blur-md hover:border-blue-500/30 transition-colors duration-300 group"
-            >
-              <div className="text-blue-500 font-mono font-bold text-3xl mb-3">01</div>
-              <h4 className="text-base font-bold text-white mb-2">ISRO Laboratory Access</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Delegates gain exclusive access to IIST's engineering complexes, guided by researchers working directly on ISRO lunar missions and nano-satellite payloads.
-              </p>
-            </motion.div>
-
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-              className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 relative overflow-hidden backdrop-blur-md hover:border-blue-500/30 transition-colors duration-300 group"
-            >
-              <div className="text-blue-500 font-mono font-bold text-3xl mb-3">02</div>
-              <h4 className="text-base font-bold text-white mb-2">Stargazing at the Observatory</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                We move the debate from simulated politics to infinite realities. Spend your evening tracking Jovian moons and stellar clusters using our high-magnification telescope dome.
-              </p>
-            </motion.div>
-
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 }}
-              className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 relative overflow-hidden backdrop-blur-md hover:border-blue-500/30 transition-colors duration-300 group"
-            >
-              <div className="text-blue-500 font-mono font-bold text-3xl mb-3">03</div>
-              <h4 className="text-base font-bold text-white mb-2">Scientific & Technical Advisory</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                COPUOS and DISEC delegates can consult active space sciences faculty members during drafting phases to ensure technical feasibility of orbital policies.
-              </p>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* SECTION 3: VENUE & GOOGLE MAPS DIRECT INTEGRATION */}
-        <section className="mt-12 mb-12 text-left" id="venue-info">
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden"
+          {/* Quick Metrics Bar */}
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
+            className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl w-full"
           >
-            <div className="absolute right-0 top-0 w-64 h-64 bg-cyan-500/5 blur-3xl pointer-events-none"></div>
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 backdrop-blur-lg">
+              <span className="block font-mono text-2xl sm:text-3xl font-extrabold text-white">
+                <AnimatedCounter value={4} />
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-slate-400 mt-1 block">
+                Councils & Chambers
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 backdrop-blur-lg">
+              <span className="block font-mono text-2xl sm:text-3xl font-extrabold text-cyan-400">
+                <AnimatedCounter value={120} suffix="+" />
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-slate-400 mt-1 block">
+                Allocated Portfolios
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 backdrop-blur-lg">
+              <span className="block font-mono text-2xl sm:text-3xl font-extrabold text-indigo-400">
+                <AnimatedCounter value={50000} prefix="₹" suffix="+" />
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-slate-400 mt-1 block">
+                Prize & Cache Pool
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 backdrop-blur-lg">
+              <span className="block font-mono text-2xl sm:text-3xl font-extrabold text-emerald-400">
+                <AnimatedCounter value={3} suffix=" Days" />
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-slate-400 mt-1 block">
+                Sept 18 – 20, 2026
+              </span>
+            </div>
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* MARQUEE TELEMETRY TICKER */}
+      <MarqueeTicker />
+
+      {/* BENTO GRID SHOWCASE SECTION */}
+      <section className="relative z-10 py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="mb-10 text-left"
+        >
+          <span className="font-mono text-[10px] uppercase tracking-widest text-cyan-400 font-bold">
+            // ORIONIX DIPLOMATIC ECOSYSTEM
+          </span>
+          <h2 className="mt-2 font-sans text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white">
+            Command Center
+          </h2>
+          <p className="mt-2 font-sans text-sm text-slate-400 max-w-xl">
+            Everything you need for an immersive academic simulation, right at your fingertips.
+          </p>
+        </motion.div>
+
+        {/* Bento Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5">
+          
+          {/* TILE 1: VENUE & CONVOCATION DATES (lg:col-span-4) */}
+          <SpotlightCard
+            id="bento-venue-card"
+            className="lg:col-span-4 p-7 flex flex-col justify-between group min-h-[300px]"
+            spotlightColor="rgba(56, 189, 248, 0.15)"
+          >
             <div>
-              <div className="flex items-center gap-1.5 text-blue-400 mb-2">
-                <MapPin className="h-4 w-4" />
-                <span className="font-mono text-xs uppercase tracking-widest font-bold">Conference Location</span>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-cyan-400 font-bold">
+                  // OFFICIAL VENUE
+                </span>
+                <span className="h-8 w-8 rounded-full bg-white/[0.05] border border-white/[0.1] flex items-center justify-center text-cyan-400">
+                  <MapPin className="h-4 w-4" />
+                </span>
               </div>
-              <h3 className="text-lg md:text-xl font-bold text-white">Indian Institute of Space Science and Technology</h3>
-              <p className="mt-2 text-xs md:text-sm text-slate-400 max-w-2xl leading-relaxed">
-                Located in the scenic foothills of Ponmudi, Valiamala, Thiruvananthapuram, Kerala. IIST offers a serene, technically charged atmosphere perfect for high-focus space diplomacy deliberations.
+              <h3 className="mt-4 font-sans text-2xl font-extrabold text-white tracking-tight">
+                IIST Valiamala Campus
+              </h3>
+              <p className="mt-2 font-sans text-xs text-slate-400 leading-relaxed">
+                Trivandrum, Kerala. Set amidst the scenic Western Ghats, directly adjacent to ISRO propulsion & spacecraft testing grounds.
               </p>
             </div>
-            
-            <div className="flex flex-wrap gap-3 shrink-0">
-              <button
-                onClick={() => setActiveTab("register")}
-                className="rounded-full bg-slate-850 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 px-5 py-2.5 font-sans text-xs font-bold uppercase tracking-wider text-slate-300 transition-colors duration-300"
-              >
-                Accommodation
-              </button>
+
+            <div className="mt-8 pt-4 border-t border-white/[0.08] flex items-center justify-between">
+              <div>
+                <span className="font-mono text-[9px] uppercase tracking-wider text-slate-500 block font-bold">
+                  CONFERENCE DATES
+                </span>
+                <span className="font-sans text-xs font-bold text-slate-200 mt-0.5 block">
+                  Sept 18 – 20, 2026
+                </span>
+              </div>
               <a
                 href="https://maps.google.com/?q=IIST+Trivandrum"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full bg-blue-600 hover:bg-blue-500 px-5 py-2.5 font-sans text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5 shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all duration-300 hover:shadow-[0_0_20px_rgba(37,99,235,0.5)]"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-cyan-400 hover:text-cyan-300 transition-colors"
               >
-                View Google Maps
-                <Compass className="h-3.5 w-3.5 text-white" />
+                Maps <ExternalLink className="h-3 w-3" />
               </a>
             </div>
-          </motion.div>
-        </section>
+          </SpotlightCard>
 
-      </div>
+          {/* TILE 2: COUNTDOWN CLOCK (lg:col-span-4) */}
+          <SpotlightCard
+            id="bento-countdown-card"
+            className="lg:col-span-4 p-7 flex flex-col justify-between min-h-[300px]"
+            spotlightColor="rgba(99, 102, 241, 0.15)"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-indigo-400 font-bold">
+                  // LAUNCH TELEMETRY
+                </span>
+                <span className="h-8 w-8 rounded-full bg-white/[0.05] border border-white/[0.1] flex items-center justify-center text-indigo-400">
+                  <Activity className="h-4 w-4" />
+                </span>
+              </div>
+              <h3 className="mt-4 font-sans text-xl font-extrabold text-white tracking-tight">
+                Countdown to Convocation
+              </h3>
+              <p className="mt-1 font-sans text-xs text-slate-400">
+                Opening ceremony begins at 09:00 IST sharp.
+              </p>
+            </div>
+
+            {/* Numeric Digits */}
+            <div className="my-6 grid grid-cols-4 gap-2 text-center">
+              <div className="rounded-xl border border-white/[0.06] bg-black/40 p-2.5">
+                <span className="block font-mono text-xl sm:text-2xl font-black text-white">
+                  {String(timeLeft.days).padStart(2, "0")}
+                </span>
+                <span className="text-[8px] uppercase font-mono tracking-wider text-slate-500 block mt-0.5">Days</span>
+              </div>
+              <div className="rounded-xl border border-white/[0.06] bg-black/40 p-2.5">
+                <span className="block font-mono text-xl sm:text-2xl font-black text-cyan-400">
+                  {String(timeLeft.hours).padStart(2, "0")}
+                </span>
+                <span className="text-[8px] uppercase font-mono tracking-wider text-slate-500 block mt-0.5">Hours</span>
+              </div>
+              <div className="rounded-xl border border-white/[0.06] bg-black/40 p-2.5">
+                <span className="block font-mono text-xl sm:text-2xl font-black text-indigo-400">
+                  {String(timeLeft.minutes).padStart(2, "0")}
+                </span>
+                <span className="text-[8px] uppercase font-mono tracking-wider text-slate-500 block mt-0.5">Mins</span>
+              </div>
+              <div className="rounded-xl border border-white/[0.06] bg-black/40 p-2.5">
+                <span className="block font-mono text-xl sm:text-2xl font-black text-emerald-400 animate-pulse">
+                  {String(timeLeft.seconds).padStart(2, "0")}
+                </span>
+                <span className="text-[8px] uppercase font-mono tracking-wider text-slate-500 block mt-0.5">Secs</span>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-white/[0.08] flex items-center justify-between text-xs text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Registrations Active
+              </span>
+              <span className="font-mono text-[10px] text-slate-500 uppercase">Phase I Tier</span>
+            </div>
+          </SpotlightCard>
+
+          {/* TILE 3: WORKSHOP MASTERCLASS (lg:col-span-4) */}
+          <SpotlightCard
+            id="bento-workshop-card"
+            className="lg:col-span-4 p-7 flex flex-col justify-between min-h-[300px] border-cyan-500/20"
+            spotlightColor="rgba(6, 182, 212, 0.2)"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-mono text-[9px] font-bold uppercase tracking-wider">
+                  <Flame className="h-3 w-3" /> Exclusive Masterclass
+                </span>
+                <span className="text-[10px] font-mono text-slate-400">Sept 17</span>
+              </div>
+
+              <h3 className="mt-4 font-sans text-xl font-extrabold text-white tracking-tight">
+                Space Tech & Diplomacy
+              </h3>
+              <p className="mt-2 font-sans text-xs text-slate-300 leading-relaxed">
+                Hands-on training session with active ISRO scientists on orbital mechanics, space debris mitigation laws, and crisis resolution.
+              </p>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-white/[0.08]">
+              <button
+                onClick={() => setActiveTab("workshop-register")}
+                id="bento-workshop-btn"
+                className="w-full py-2.5 rounded-full bg-gradient-to-r from-cyan-500 to-sky-600 hover:from-cyan-400 hover:to-sky-500 text-slate-950 font-sans text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                Register for Workshop
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </SpotlightCard>
+
+          {/* TILE 4: SATELLITE MATRIX & PORTFOLIO RADAR (lg:col-span-8) */}
+          <SpotlightCard
+            id="bento-matrix-card"
+            className="lg:col-span-8 p-7 flex flex-col justify-between"
+            spotlightColor="rgba(56, 189, 248, 0.12)"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-cyan-400 font-bold">
+                  // COUNCILS & SATELLITE RADAR
+                </span>
+                <button
+                  onClick={() => setActiveTab("matrix")}
+                  className="font-mono text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                >
+                  View Matrix <ChevronRight className="h-3 w-3" />
+                </button>
+              </div>
+
+              <h3 className="font-sans text-2xl font-black text-white tracking-tight">
+                Simulation Chambers & Agendas
+              </h3>
+              <p className="mt-1 font-sans text-xs text-slate-400 max-w-xl">
+                Four specialized councils covering outer space law, disarmament, Indian legislative policy, and high-intensity UN security crises.
+              </p>
+
+              {/* Committee grid pills */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+                <div 
+                  onClick={() => setActiveTab("committees")}
+                  className="p-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-cyan-500/30 transition-all cursor-pointer group/item"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] font-bold text-cyan-400 uppercase">COPUOS</span>
+                    <Orbit className="h-3.5 w-3.5 text-cyan-400 group-hover/item:rotate-90 transition-transform" />
+                  </div>
+                  <h4 className="font-sans text-xs font-bold text-white mt-1">Peaceful Uses of Outer Space</h4>
+                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-1 italic">Lunar extraction & debris frameworks</p>
+                </div>
+
+                <div 
+                  onClick={() => setActiveTab("committees")}
+                  className="p-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-indigo-500/30 transition-all cursor-pointer group/item"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] font-bold text-indigo-400 uppercase">UNGA DISEC</span>
+                    <Shield className="h-3.5 w-3.5 text-indigo-400 group-hover/item:scale-110 transition-transform" />
+                  </div>
+                  <h4 className="font-sans text-xs font-bold text-white mt-1">Disarmament & Security</h4>
+                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-1 italic">Anti-satellite weaponry & orbital militarization</p>
+                </div>
+
+                <div 
+                  onClick={() => setActiveTab("committees")}
+                  className="p-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-amber-500/30 transition-all cursor-pointer group/item"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] font-bold text-amber-400 uppercase">AIPPM</span>
+                    <Users className="h-3.5 w-3.5 text-amber-400 group-hover/item:scale-110 transition-transform" />
+                  </div>
+                  <h4 className="font-sans text-xs font-bold text-white mt-1">All India Political Parties Meet</h4>
+                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-1 italic">Space policy & private launch deregulation</p>
+                </div>
+
+                <div 
+                  onClick={() => setActiveTab("committees")}
+                  className="p-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] hover:border-emerald-500/30 transition-all cursor-pointer group/item"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] font-bold text-emerald-400 uppercase">UNSC</span>
+                    <Globe className="h-3.5 w-3.5 text-emerald-400 group-hover/item:scale-110 transition-transform" />
+                  </div>
+                  <h4 className="font-sans text-xs font-bold text-white mt-1">Security Council</h4>
+                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-1 italic">Continuous real-time crisis escalation</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-white/[0.08] flex items-center justify-between">
+              <span className="font-mono text-[10px] text-slate-400">
+                120+ Nation & Special Character Portfolios Open
+              </span>
+              <button
+                onClick={() => setActiveTab("matrix")}
+                className="px-4 py-1.5 rounded-full border border-white/[0.1] bg-white/[0.04] text-[11px] font-bold text-white hover:bg-white/[0.1] transition-all"
+              >
+                Inspect Country Matrix
+              </button>
+            </div>
+          </SpotlightCard>
+
+          {/* TILE 5: SECRETARY GENERAL COMMUNIQUÉ (lg:col-span-4) */}
+          <SpotlightCard
+            id="bento-secgen-card"
+            className="lg:col-span-4 p-7 flex flex-col justify-between"
+            spotlightColor="rgba(129, 140, 248, 0.15)"
+          >
+            <div>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-indigo-400 font-bold">
+                // COMMUNIQUÉ
+              </span>
+              <blockquote className="mt-4 font-serif italic text-sm text-slate-300 leading-relaxed">
+                "In the vastness of space, we find the perspective needed to solve our greatest terrestrial challenges. IIST MUN is where interstellar governance begins."
+              </blockquote>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-white/[0.08] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center font-bold text-xs text-white shadow-md">
+                  AN
+                </div>
+                <div>
+                  <p className="font-sans text-xs font-bold text-white">Aarav Nair</p>
+                  <p className="font-mono text-[9px] uppercase tracking-wider text-cyan-400 font-bold">Secretary General</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsLetterOpen(true)}
+                className="font-mono text-[10px] uppercase tracking-wider font-bold text-cyan-400 hover:text-white px-3 py-1.5 rounded-full border border-cyan-500/20 bg-cyan-950/20 transition-all cursor-pointer"
+              >
+                Read
+              </button>
+            </div>
+          </SpotlightCard>
+
+        </div>
+      </section>
+
+      {/* THE IIST ADVANTAGE SECTION (Staggered On-Scroll Reveals) */}
+      <section className="relative z-10 py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-left">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="mb-12"
+        >
+          <span className="font-mono text-[10px] uppercase tracking-widest text-cyan-400 font-bold">
+            // UNMATCHED IMMERSION
+          </span>
+          <h2 className="mt-2 font-sans text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white">
+            The IIST Advantage
+          </h2>
+          <p className="mt-2 font-sans text-sm text-slate-400 max-w-xl">
+            Why debating at India's space science hub delivers an experience like no other conference in the subcontinent.
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
+          >
+            <SpotlightCard className="p-8 h-full flex flex-col justify-between" spotlightColor="rgba(56, 189, 248, 0.15)">
+              <div>
+                <span className="font-mono text-3xl font-black text-cyan-400/80 block mb-4">01</span>
+                <h3 className="font-sans text-xl font-bold text-white mb-2">ISRO Propulsion & Lab Access</h3>
+                <p className="font-sans text-xs text-slate-400 leading-relaxed">
+                  Delegates receive guided overviews of advanced propulsion research, launch vehicle telemetry systems, and satellite cleanrooms.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center gap-2 text-cyan-400 font-mono text-[10px] uppercase font-bold">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Technical Immersion
+              </div>
+            </SpotlightCard>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+          >
+            <SpotlightCard className="p-8 h-full flex flex-col justify-between" spotlightColor="rgba(129, 140, 248, 0.15)">
+              <div>
+                <span className="font-mono text-3xl font-black text-indigo-400/80 block mb-4">02</span>
+                <h3 className="font-sans text-xl font-bold text-white mb-2">Night Stargazing at the Dome</h3>
+                <p className="font-sans text-xs text-slate-400 leading-relaxed">
+                  Conclude intense parliamentary diplomacy under Kerala's clear mountain night skies using IIST's high-magnification observatory telescope.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center gap-2 text-indigo-400 font-mono text-[10px] uppercase font-bold">
+                <Star className="h-3.5 w-3.5" /> Delegate Socials
+              </div>
+            </SpotlightCard>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" }}
+          >
+            <SpotlightCard className="p-8 h-full flex flex-col justify-between" spotlightColor="rgba(16, 185, 129, 0.15)">
+              <div>
+                <span className="font-mono text-3xl font-black text-emerald-400/80 block mb-4">03</span>
+                <h3 className="font-sans text-xl font-bold text-white mb-2">Technical Academic Advisory</h3>
+                <p className="font-sans text-xs text-slate-400 leading-relaxed">
+                  Real-time consultation with space sciences faculty and legal scholars during resolution drafting to verify orbital physics and payload feasibility.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center gap-2 text-emerald-400 font-mono text-[10px] uppercase font-bold">
+                <Cpu className="h-3.5 w-3.5" /> High Academic Rigor
+              </div>
+            </SpotlightCard>
+          </motion.div>
+
+        </div>
+      </section>
+
+      {/* FINAL CALL TO ACTION BANNER */}
+      <section className="relative z-10 py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="relative overflow-hidden rounded-3xl border border-white/[0.12] bg-gradient-to-b from-white/[0.05] to-white/[0.01] p-8 md:p-12 backdrop-blur-2xl text-center"
+        >
+          <div className="absolute inset-0 bg-radial-gradient from-cyan-500/10 via-transparent to-transparent pointer-events-none" />
+
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-mono text-[10px] font-bold uppercase tracking-widest mb-4">
+            <Sparkles className="h-3.5 w-3.5" /> PHASE I ALLOCATIONS CLOSING SOON
+          </span>
+
+          <h2 className="font-sans text-3xl sm:text-5xl font-black tracking-tight text-white max-w-3xl mx-auto">
+            Ready to Take Your Seat in the Celestial Chamber?
+          </h2>
+          
+          <p className="mt-4 font-sans text-sm text-slate-400 max-w-xl mx-auto">
+            Secure your preferred country or character portfolio before general public allocations commence.
+          </p>
+
+          <div className="mt-8 flex flex-wrap justify-center gap-4">
+            <button
+              onClick={() => setActiveTab("register")}
+              id="cta-bottom-register-btn"
+              className="rounded-full bg-white px-8 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-950 shadow-[0_0_30px_rgba(255,255,255,0.3)] hover:bg-cyan-300 transition-all duration-300 active:scale-95 cursor-pointer flex items-center gap-2"
+            >
+              <span>Submit Delegate Application</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+
+            <button
+              onClick={() => setActiveTab("workshop-register")}
+              id="cta-bottom-workshop-btn"
+              className="rounded-full border border-white/[0.15] bg-white/[0.03] px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-white/[0.08] transition-all duration-300 active:scale-95 cursor-pointer"
+            >
+              Register for Workshop
+            </button>
+          </div>
+        </motion.div>
+      </section>
 
       {/* DETAILED SECRETARIAT MESSAGE MODAL OVERLAY */}
       {isLetterOpen && (
-        <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/90 backdrop-blur-md animate-fade-in" id="sec-gen-modal">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/80 backdrop-blur-xl animate-fade-in" id="sec-gen-modal">
           <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
-            <div className="relative w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900/95 p-6 md:p-8 shadow-2xl my-8 text-left">
-              {/* Close */}
+            <div className="relative w-full max-w-2xl rounded-3xl border border-white/[0.12] bg-[#070a12]/95 p-6 md:p-8 shadow-2xl my-8 text-left backdrop-blur-2xl">
+              {/* Close button */}
               <button
                 onClick={() => setIsLetterOpen(false)}
-                className="absolute right-4 top-4 rounded-full border border-slate-800 bg-slate-950 p-2 text-slate-400 hover:text-white hover:border-slate-700"
+                className="absolute right-4 top-4 rounded-full border border-white/[0.08] bg-white/[0.04] p-2 text-slate-400 hover:text-white hover:border-white/[0.2] transition-colors cursor-pointer"
               >
-                <ChevronRight className="h-4 w-4 rotate-90" />
+                <X className="h-4 w-4" />
               </button>
 
               {/* Header */}
               <div>
-                <span className="font-mono text-xs uppercase tracking-widest text-blue-400 font-semibold block mb-1">Official Communiqué</span>
-                <h3 className="text-xl md:text-2xl font-bold tracking-tight text-white mb-6">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-cyan-400 font-bold block mb-1">
+                  // OFFICIAL COMMUNIQUÉ
+                </span>
+                <h3 className="text-xl md:text-2xl font-black tracking-tight text-white mb-6">
                   Address from the Secretary-General
                 </h3>
               </div>
@@ -511,32 +724,33 @@ export default function Home({ setActiveTab }: HomeProps) {
                 </p>
                 
                 <p>
-                  IIST, as an institution directly nurtured by the <span className="text-blue-400 font-semibold">Indian Space Research Organisation (ISRO)</span>, serves as the perfect crucible where scientific rigor and political pragmatism converge. This year, our committees are designed to push the boundaries of conventional debate. You will navigate the legal nuances of asteroid mining under COPUOS, tackle satellite military security under UNGA DISEC, and coordinate real-time geopolitical space commands in the UNSC.
+                  IIST, as an institution directly nurtured by the <span className="text-cyan-400 font-semibold">Indian Space Research Organisation (ISRO)</span>, serves as the perfect crucible where scientific rigor and political pragmatism converge. This year, our committees are designed to push the boundaries of conventional debate. You will navigate the legal nuances of asteroid mining under COPUOS, tackle satellite military security under UNGA DISEC, and coordinate real-time geopolitical space commands in the UNSC.
                 </p>
                 
                 <p>
                   Whether you are a seasoned diplomat or a novice delegation launching into your very first session, IIST MUN 2026 offers a platform of academic excellence, meticulous crisis orchestration, and unforgettable stargazing memories.
                 </p>
                 
-                <p className="font-semibold text-blue-400">
+                <p className="font-semibold text-cyan-400">
                   Prepare your portfolios. Orbits await your command.
                 </p>
               </div>
 
               {/* Sender Sign-off */}
-              <div className="mt-8 flex items-center gap-3 border-t border-slate-800 pt-6">
-                <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white text-xs">
+              <div className="mt-8 flex items-center gap-3 border-t border-white/[0.08] pt-6">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center font-bold text-white text-xs shadow-md">
                   AN
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-bold text-white">Aarav Nair</p>
-                  <p className="text-xs text-slate-400">Secretary-General, IIST MUN 2026</p>
+                  <p className="text-xs text-slate-400 font-mono">Secretary-General, IIST MUN 2026</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

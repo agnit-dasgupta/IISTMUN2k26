@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { GraduationCap, Search, Check, ChevronDown, Plus, Edit2, Building2 } from "lucide-react";
+import { GraduationCap, Search, Check, ChevronDown, Plus, Edit2, Building2, Sparkles } from "lucide-react";
 import { INDIAN_INSTITUTIONS, ALL_INSTITUTIONS_FLAT } from "../data/institutions";
 
 interface InstitutionSelectProps {
@@ -16,7 +16,7 @@ export const InstitutionSelect: React.FC<InstitutionSelectProps> = ({
   onChange,
   error,
   placeholder = "Select School / College / University",
-  accentColor = "blue",
+  accentColor = "cyan",
   id = "institution-select"
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,12 +26,9 @@ export const InstitutionSelect: React.FC<InstitutionSelectProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Determine accent color classes
-  const focusBorderColor = accentColor === "cyan" ? "focus:border-cyan-500/50" : "focus:border-blue-500/50";
-  const activeBg = accentColor === "cyan" ? "bg-cyan-500/10 text-cyan-400" : "bg-blue-500/10 text-blue-400";
-  const activeBorder = accentColor === "cyan" ? "border-cyan-500/30" : "border-blue-500/30";
-  const badgeColor = accentColor === "cyan" ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20";
-  const iconColor = accentColor === "cyan" ? "text-cyan-400" : "text-blue-400";
+  // Styling helpers
+  const iconColor = "text-cyan-400";
+  const activeBg = "bg-cyan-500/10 text-cyan-300 border-cyan-500/30";
 
   // Check if current value is custom (not in predefined list and non-empty)
   useEffect(() => {
@@ -111,15 +108,17 @@ export const InstitutionSelect: React.FC<InstitutionSelectProps> = ({
               value={customInputValue}
               onChange={handleCustomInputChange}
               placeholder="Enter your School / College / University name"
-              className={`w-full rounded-2xl border ${error ? "border-rose-500/50" : "border-slate-800"} bg-slate-950 pl-11 pr-24 py-3 text-xs text-white placeholder-slate-600 outline-none ${focusBorderColor} transition-all font-medium`}
+              className={`w-full rounded-2xl border ${
+                error ? "border-rose-500/50" : "border-white/[0.08]"
+              } bg-[#04060a]/90 pl-11 pr-24 py-3 text-xs text-white placeholder-slate-500 outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all font-medium`}
             />
             <button
               type="button"
               onClick={switchToDropdown}
-              className="absolute right-2 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 hover:text-white border border-slate-800 transition-all cursor-pointer flex items-center gap-1"
+              className="absolute right-2 px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-[10px] font-mono font-bold uppercase tracking-wider text-slate-300 hover:text-white border border-white/[0.08] transition-all cursor-pointer flex items-center gap-1.5"
               title="Select from list"
             >
-              <GraduationCap className="h-3 w-3" />
+              <GraduationCap className="h-3 w-3 text-cyan-400" />
               List
             </button>
           </div>
@@ -128,7 +127,7 @@ export const InstitutionSelect: React.FC<InstitutionSelectProps> = ({
             <button
               type="button"
               onClick={switchToDropdown}
-              className="text-slate-400 hover:text-white underline cursor-pointer"
+              className="text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
             >
               Select from dropdown list
             </button>
@@ -141,25 +140,29 @@ export const InstitutionSelect: React.FC<InstitutionSelectProps> = ({
             type="button"
             onClick={() => setIsOpen(!isOpen)}
             className={`w-full text-left rounded-2xl border ${
-              error ? "border-rose-500/50" : isOpen ? (accentColor === "cyan" ? "border-cyan-500" : "border-blue-500") : "border-slate-800"
-            } bg-slate-950 px-4 py-3 text-xs text-white outline-none transition-all flex items-center justify-between gap-2 cursor-pointer hover:border-slate-700`}
+              error
+                ? "border-rose-500/50"
+                : isOpen
+                ? "border-cyan-500 ring-2 ring-cyan-500/20"
+                : "border-white/[0.08] hover:border-white/20"
+            } bg-[#04060a]/90 px-4 py-3 text-xs text-white outline-none transition-all flex items-center justify-between gap-2 cursor-pointer`}
           >
             <div className="flex items-center gap-2.5 truncate pr-2">
-              <GraduationCap className={`h-4 w-4 shrink-0 ${value ? iconColor : "text-slate-500"}`} />
+              <GraduationCap className={`h-4 w-4 shrink-0 ${value ? "text-cyan-400" : "text-slate-500"}`} />
               {value ? (
                 <span className="font-medium text-slate-100 truncate">{value}</span>
               ) : (
-                <span className="text-slate-600 truncate">{placeholder}</span>
+                <span className="text-slate-500 truncate">{placeholder}</span>
               )}
             </div>
-            <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+            <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-cyan-400" : ""}`} />
           </button>
 
           {/* Popup Dropdown Panel */}
           {isOpen && (
-            <div className="absolute z-50 left-0 right-0 mt-2 rounded-3xl border border-slate-800 bg-slate-950/95 p-3 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 max-h-[380px] flex flex-col">
+            <div className="absolute z-50 left-0 right-0 mt-2 rounded-3xl border border-white/[0.1] bg-[#080d1a]/95 p-3.5 shadow-2xl backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150 max-h-[380px] flex flex-col">
               {/* Search Header */}
-              <div className="relative mb-2 shrink-0">
+              <div className="relative mb-2.5 shrink-0">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
                 <input
                   ref={searchInputRef}
@@ -167,7 +170,7 @@ export const InstitutionSelect: React.FC<InstitutionSelectProps> = ({
                   placeholder="Type to search college or school..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-8 py-2 font-sans text-xs text-white placeholder-slate-500 focus:outline-none focus:border-slate-700 transition-all"
+                  className="w-full bg-[#04060a] border border-white/[0.08] rounded-xl pl-9 pr-8 py-2 font-sans text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all"
                 />
                 {searchTerm && (
                   <button
@@ -185,15 +188,15 @@ export const InstitutionSelect: React.FC<InstitutionSelectProps> = ({
                 <button
                   type="button"
                   onClick={() => handleSelectOption("OTHER")}
-                  className="w-full flex items-center justify-between p-2.5 rounded-xl border border-dashed border-slate-800 hover:border-slate-700 bg-slate-900/50 hover:bg-slate-900 text-left transition-all cursor-pointer group"
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl border border-dashed border-cyan-500/20 hover:border-cyan-500/40 bg-cyan-950/10 hover:bg-cyan-950/20 text-left transition-all cursor-pointer group"
                 >
                   <div className="flex items-center gap-2">
-                    <Plus className={`h-3.5 w-3.5 ${iconColor}`} />
+                    <Plus className="h-3.5 w-3.5 text-cyan-400" />
                     <span className="font-sans text-xs text-slate-300 group-hover:text-white font-semibold">
                       {searchTerm ? `Use "${searchTerm}" (Custom Name)` : "Other Institution (Type manually)"}
                     </span>
                   </div>
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-slate-500 bg-slate-950 px-2 py-0.5 rounded border border-slate-850">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
                     Custom
                   </span>
                 </button>
@@ -204,7 +207,7 @@ export const InstitutionSelect: React.FC<InstitutionSelectProps> = ({
                 {filteredCategories.length > 0 ? (
                   filteredCategories.map((cat) => (
                     <div key={cat.category} className="space-y-1">
-                      <div className="font-mono text-[9px] uppercase tracking-widest text-slate-500 font-bold px-2 pt-1 sticky top-0 bg-slate-950/90 backdrop-blur-sm py-1 border-b border-slate-900">
+                      <div className="font-mono text-[9px] uppercase tracking-widest text-slate-500 font-bold px-2 pt-1 sticky top-0 bg-[#080d1a]/95 backdrop-blur-sm py-1 border-b border-white/[0.04]">
                         {cat.category}
                       </div>
                       <div className="space-y-0.5 pt-1">
@@ -217,12 +220,12 @@ export const InstitutionSelect: React.FC<InstitutionSelectProps> = ({
                               onClick={() => handleSelectOption(item)}
                               className={`w-full text-left px-3 py-2 rounded-xl text-xs font-sans transition-all flex items-center justify-between cursor-pointer ${
                                 isSelected
-                                  ? `${activeBg} border ${activeBorder} font-bold`
-                                  : "text-slate-300 hover:bg-slate-900 hover:text-white"
+                                  ? `${activeBg} border font-bold`
+                                  : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
                               }`}
                             >
                               <span className="truncate pr-2">{item}</span>
-                              {isSelected && <Check className="h-3.5 w-3.5 shrink-0" />}
+                              {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-cyan-400" />}
                             </button>
                           );
                         })}
@@ -235,9 +238,9 @@ export const InstitutionSelect: React.FC<InstitutionSelectProps> = ({
                     <button
                       type="button"
                       onClick={() => handleSelectOption("OTHER")}
-                      className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-white border border-slate-800 cursor-pointer transition-all"
+                      className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-white border border-white/[0.08] cursor-pointer transition-all"
                     >
-                      <Edit2 className="h-3.5 w-3.5" />
+                      <Edit2 className="h-3.5 w-3.5 text-cyan-400" />
                       Type "{searchTerm}" as Institution
                     </button>
                   </div>
@@ -248,7 +251,7 @@ export const InstitutionSelect: React.FC<InstitutionSelectProps> = ({
         </div>
       )}
 
-      {error && <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold text-left">{error}</p>}
+      {error && <p className="text-[10px] text-rose-400 mt-1.5 font-mono font-bold text-left">{error}</p>}
     </div>
   );
 };

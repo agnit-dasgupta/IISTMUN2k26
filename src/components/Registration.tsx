@@ -5,8 +5,12 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { COMMITTEES, COUNTRY_MATRIX } from "../data";
-import { RegistrationDetails, PortfolioStatus, CountryMatrixRow } from "../types";
-import { Rocket, Sparkles, User, Users, Landmark, ChevronRight, ChevronLeft, CheckCircle, Ticket, Calendar, Download, Share2, Phone, Mail, Award, AlertCircle, Search, Globe, X, CheckCircle2 } from "lucide-react";
+import { RegistrationDetails, PortfolioStatus } from "../types";
+import { 
+  Rocket, Sparkles, User, Users, Landmark, ChevronRight, ChevronLeft, 
+  CheckCircle, Ticket, Calendar, Download, Share2, Phone, Mail, Award, 
+  AlertCircle, Search, Globe, X, CheckCircle2, ShieldCheck, Check, Orbit
+} from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { doc, onSnapshot, setDoc, deleteDoc, collection } from "firebase/firestore";
@@ -114,6 +118,7 @@ export default function Registration({ initialPreference, clearInitialPreference
       pref3Committee: updated[2]?.committee ?? "",
     }));
   };
+
   const [formData, setFormData] = useState({
     regType: "individual" as "individual" | "double" | "contingent",
     name: "",
@@ -239,9 +244,8 @@ export default function Registration({ initialPreference, clearInitialPreference
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      alert("🚨 Missing Details! Please fill up all required fields in your delegate registration and country preferences before boarding.");
+      alert("Missing Details: Please fill up all required fields in your delegate registration and country preferences before submitting.");
       
-      // If contact details are missing, direct the user back to Step 2
       const hasContactErrors = newErrors.name || newErrors.email || newErrors.phone || newErrors.institution || newErrors.course || newErrors.partnerName || newErrors.partnerEmail;
       if (hasContactErrors) {
         setStep(2);
@@ -356,48 +360,79 @@ export default function Registration({ initialPreference, clearInitialPreference
   };
 
   return (
-    <div className="bg-[#020617] text-slate-100 min-h-screen py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden" style={{ backgroundImage: "radial-gradient(circle at 50% -20%, #1e293b 0%, #020617 80%)" }}>
+    <div className="bg-[#04060a] text-slate-100 min-h-screen py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Orionix Cosmic Ambient Glows & Grid */}
+      <div 
+        className="pointer-events-none absolute inset-0 opacity-40"
+        style={{
+          backgroundImage: `
+            radial-gradient(ellipse 80% 50% at 50% -10%, rgba(6,182,212,0.18), transparent 70%),
+            radial-gradient(ellipse 60% 50% at 90% 40%, rgba(99,102,241,0.12), transparent 70%),
+            radial-gradient(ellipse 50% 50% at 10% 70%, rgba(168,85,247,0.1), transparent 70%)
+          `
+        }}
+      />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#ffffff04_1px,transparent_1px),linear-gradient(to_bottom,#ffffff04_1px,transparent_1px)] bg-[size:3.5rem_3.5rem]" />
+
       <motion.div 
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-100px" }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
+        initial={{ opacity: 0, y: 25 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
         className="relative z-10 mx-auto max-w-4xl"
       >
+        {/* Section Header */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-4 py-1.5 text-xs font-mono font-semibold tracking-wider text-cyan-300 uppercase shadow-[0_0_20px_rgba(6,182,212,0.15)] mb-3">
+            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            // ORBITAL DELEGATE PORTAL
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white font-sans">
+            Delegate Registration Matrix
+          </h1>
+          <p className="mt-2 text-xs sm:text-sm text-slate-400 max-w-xl mx-auto leading-relaxed font-sans">
+            Lock in your credentials, select target portfolios across the live diplomatic council matrix, and claim your cryptographic Boarding Pass.
+          </p>
+        </div>
+
         {authLoading ? (
-          <div className="text-center py-24">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-blue-500 border-t-transparent mx-auto" />
-            <p className="font-sans text-slate-400 text-xs mt-4 font-bold tracking-widest uppercase">// ALIGNING TELEMETRY SYSTEMS...</p>
+          <div className="text-center py-24 rounded-3xl border border-white/[0.08] bg-[#080d1a]/80 backdrop-blur-2xl">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent mx-auto" />
+            <p className="font-mono text-cyan-400 text-xs mt-4 font-bold tracking-widest uppercase">// ALIGNING TELEMETRY SYSTEMS...</p>
           </div>
         ) : !user ? (
-          <div className="text-center py-16 px-6 max-w-lg mx-auto bg-slate-900/40 border border-slate-800/40 rounded-3xl backdrop-blur-md shadow-2xl relative overflow-hidden animate-fade-in">
-            <div className="absolute -right-16 -top-16 h-32 w-32 rounded-full bg-blue-500/10 blur-2xl pointer-events-none" />
-            <div className="absolute -left-16 -bottom-16 h-32 w-32 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none" />
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 mb-6">
+          /* Sign-In Card matching Orionix */
+          <div className="text-center py-14 px-6 sm:px-10 max-w-lg mx-auto bg-[#080d1a]/85 border border-white/[0.08] rounded-3xl backdrop-blur-2xl shadow-[0_0_50px_rgba(0,0,0,0.6)] relative overflow-hidden animate-fade-in">
+            <div className="absolute -right-20 -top-20 h-44 w-44 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+            <div className="absolute -left-20 -bottom-20 h-44 w-44 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+            
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 mb-6 shadow-[0_0_25px_rgba(6,182,212,0.2)]">
               <Rocket className="h-8 w-8 animate-bounce-slow" />
             </div>
-            <span className="font-mono text-[9px] uppercase tracking-widest text-blue-400 font-bold">// UPLINK CONTEXT</span>
-            <h1 className="mt-2 font-sans text-2xl font-black text-white uppercase tracking-tight">Identity Uplink Required</h1>
+
+            <span className="font-mono text-[10px] uppercase tracking-widest text-cyan-400 font-bold">// SECURE UPLINK REQUIRED</span>
+            <h2 className="mt-2 font-sans text-2xl font-extrabold text-white tracking-tight">Identity Uplink Required</h2>
             <p className="mt-3 font-sans text-slate-400 text-xs leading-relaxed">
-              To request a delegate portfolio, register your country matrix choices, and lock in your boarding pass, you must establish a secure link with our cloud registry.
+              To request a delegate portfolio, register country matrix choices, and generate your orbital boarding pass, authenticate your identity with our registry.
             </p>
+            
             <button
               onClick={() => signInWithGoogle().catch(() => {})}
               disabled={isSigningIn}
-              className={`mt-8 w-full rounded-full px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-blue-900/25 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
+              className={`mt-8 w-full rounded-full px-6 py-3.5 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_30px_rgba(6,182,212,0.25)] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
                 isSigningIn 
-                  ? "bg-blue-850 opacity-75 cursor-not-allowed" 
-                  : "bg-blue-600 hover:bg-blue-500 active:scale-95"
+                  ? "bg-cyan-950/60 border border-cyan-500/30 opacity-75 cursor-not-allowed text-cyan-300" 
+                  : "bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 hover:shadow-[0_0_35px_rgba(6,182,212,0.45)] active:scale-95"
               }`}
               id="registration-login-btn"
             >
               {isSigningIn ? (
                 <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent animate-spin-slow" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   Uplinking Identity...
                 </>
               ) : (
                 <>
+                  <Sparkles className="h-4 w-4" />
                   Sign In with Google
                   <ChevronRight className="h-4 w-4" />
                 </>
@@ -408,22 +443,21 @@ export default function Registration({ initialPreference, clearInitialPreference
               <div className="mt-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-left animate-fade-in text-xs font-sans">
                 <div className="flex items-center gap-2 text-rose-400 font-bold mb-2">
                   <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>🔒 Connection Interrupted (Iframe Sandbox Restriction)</span>
+                  <span>Connection Interrupted (Popup Restriction)</span>
                 </div>
-                <p className="text-slate-300 leading-relaxed">
-                  Your browser blocked or closed the Google sign-in popup. Since this preview runs inside a sandboxed iframe, popups are frequently restricted by browser security policies.
+                <p className="text-slate-300 leading-relaxed text-[11px]">
+                  Your browser blocked or closed the Google sign-in popup. Since this preview runs in a sandboxed iframe, opening in a new tab resolves popup security restrictions instantly.
                 </p>
-                <div className="mt-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800 font-mono text-[10px] text-slate-400 break-words">
+                <div className="mt-3 bg-[#04060a] p-3 rounded-xl border border-white/[0.08] font-mono text-[10px] text-slate-400 break-words">
                   <strong>Telemetry trace:</strong> {authError.message || String(authError)}
                 </div>
                 <div className="mt-4 flex flex-col sm:flex-row gap-2">
                   <button
                     onClick={() => {
-                      // Retrieve the full development/preview URL
                       const devUrl = window.location.href;
                       window.open(devUrl, "_blank");
                     }}
-                    className="flex-1 rounded-full bg-blue-600 hover:bg-blue-50 px-4 py-2 font-mono text-[10px] uppercase font-bold tracking-wider text-white hover:text-blue-900 text-center cursor-pointer transition-all duration-200"
+                    className="flex-1 rounded-full bg-cyan-600 hover:bg-cyan-500 px-4 py-2 font-mono text-[10px] uppercase font-bold tracking-wider text-white text-center cursor-pointer transition-all duration-200"
                   >
                     🛰️ Open App in New Tab
                   </button>
@@ -432,122 +466,126 @@ export default function Registration({ initialPreference, clearInitialPreference
                       clearAuthError();
                       signInWithGoogle().catch(() => {});
                     }}
-                    className="rounded-full bg-slate-800 hover:bg-slate-700 px-4 py-2 font-mono text-[10px] uppercase font-bold tracking-wider text-slate-300 text-center cursor-pointer transition-colors"
+                    className="rounded-full bg-white/[0.06] hover:bg-white/[0.1] px-4 py-2 font-mono text-[10px] uppercase font-bold tracking-wider text-slate-300 text-center cursor-pointer transition-colors border border-white/[0.08]"
                   >
                     🔄 Retry
                   </button>
                 </div>
-                <p className="text-[9px] text-slate-500 mt-2.5 text-center italic leading-normal">
-                  Pro-Tip: Clicking "Open App in New Tab" runs the app as a top-level window, which permits popup authentication perfectly.
-                </p>
               </div>
             )}
           </div>
         ) : loading ? (
-          <div className="text-center py-24">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-blue-500 border-t-transparent mx-auto" />
-            <p className="font-sans text-slate-400 text-xs mt-4 font-bold tracking-widest uppercase">// RETRIEVING ORBITAL CLEARANCE...</p>
+          <div className="text-center py-24 rounded-3xl border border-white/[0.08] bg-[#080d1a]/80 backdrop-blur-2xl">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent mx-auto" />
+            <p className="font-mono text-cyan-400 text-xs mt-4 font-bold tracking-widest uppercase">// RETRIEVING ORBITAL CLEARANCE...</p>
           </div>
         ) : submittedPass ? (
+          /* Confirmed Boarding Pass */
           <div className="animate-fade-in space-y-6" id="boarding-pass-display">
-            {/* Success message */}
             <div className="text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-3 animate-bounce-slow">
-                <CheckCircle className="h-8 w-8" />
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 mb-3 shadow-[0_0_25px_rgba(6,182,212,0.25)]">
+                <CheckCircle2 className="h-8 w-8" />
               </div>
-              <h1 className="font-sans text-3xl font-extrabold text-white">Orbit Clearance Approved</h1>
-              <p className="font-sans text-sm text-slate-400 mt-2 max-w-xl mx-auto">
-                Your delegate registration is <strong className="text-emerald-400 font-semibold">CONFIRMED</strong>. A confirmation email has been dispatched to <span className="text-cyan-300 font-mono font-bold">{submittedPass.email}</span>. Your portfolio will be allotted shortly.
+              <h2 className="font-sans text-3xl font-extrabold text-white">Orbit Clearance Approved</h2>
+              <p className="font-sans text-xs sm:text-sm text-slate-400 mt-2 max-w-xl mx-auto leading-relaxed">
+                Your delegate registration is <strong className="text-cyan-400 font-semibold">CONFIRMED</strong>. Confirmation telemetry dispatched to <span className="text-cyan-300 font-mono font-bold">{submittedPass.email}</span>.
               </p>
             </div>
 
-            {/* Futuristic Boarding Pass Card */}
+            {/* Orionix Cyber Boarding Pass Card */}
             <div
               ref={boardingPassRef}
               id="mun-boarding-pass-card"
-              className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/95 shadow-2xl text-left"
+              className="relative overflow-hidden rounded-3xl border border-white/[0.1] bg-[#080d1a]/95 backdrop-blur-2xl shadow-[0_0_60px_rgba(0,0,0,0.8)] text-left"
             >
-              {/* Outer Glow Borders */}
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-blue-600" />
+              {/* Top Cyber Edge Beam */}
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600" />
               
-              {/* Card Watermark */}
-              <div className="absolute -right-20 -bottom-20 h-80 w-80 rounded-full bg-blue-500/5 blur-3xl pointer-events-none" />
-              <div className="absolute -left-20 -top-20 h-80 w-80 rounded-full bg-indigo-500/5 blur-3xl pointer-events-none" />
+              {/* Ambient glows inside card */}
+              <div className="absolute -right-24 -bottom-24 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+              <div className="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
 
-              <div className="p-6 md:p-10">
+              <div className="p-6 md:p-10 relative z-10">
                 {/* Boarding Pass Header */}
-                <div className="flex flex-col md:flex-row items-center justify-between border-b border-slate-800 pb-6 gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600 font-bold text-lg text-white border border-blue-450 shadow-[0_0_15px_rgba(37,99,235,0.25)]">
-                      I
+                <div className="flex flex-col md:flex-row items-center justify-between border-b border-white/[0.08] pb-6 gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 font-extrabold text-xl text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] border border-cyan-300/40">
+                      <Orbit className="h-6 w-6" />
                     </div>
                     <div className="text-left">
-                      <span className="block font-mono text-[9px] uppercase tracking-widest text-blue-450 font-bold">// DELEGATE BRIEFING BADGE</span>
-                      <h2 className="font-sans text-lg font-black text-white">IIST MUN 2026</h2>
+                      <span className="block font-mono text-[9px] uppercase tracking-widest text-cyan-400 font-bold">// DELEGATE BRIEFING BADGE</span>
+                      <h3 className="font-sans text-xl font-extrabold text-white">IIST MUN 2026</h3>
                     </div>
                   </div>
                   
-                  {/* Launch Code */}
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950 px-4 py-2 text-center">
-                    <span className="block font-mono text-[8px] uppercase tracking-wider text-slate-500 font-bold">Launch Reference</span>
-                    <span className="font-mono text-sm font-extrabold text-blue-400">{submittedPass.id}</span>
+                  {/* Launch Reference Code */}
+                  <div className="rounded-2xl border border-cyan-500/30 bg-[#04060a] px-5 py-2.5 text-center shadow-[0_0_20px_rgba(6,182,212,0.1)]">
+                    <span className="block font-mono text-[8px] uppercase tracking-wider text-slate-400 font-bold">Launch Reference</span>
+                    <span className="font-mono text-sm sm:text-base font-extrabold text-cyan-300 tracking-wider">{submittedPass.id}</span>
                   </div>
                 </div>
 
                 {/* Main Pass Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-8 items-center border-b border-slate-800">
-                  {/* Left Column: Delegate Credentials */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-8 items-center border-b border-white/[0.08]">
+                  {/* Credentials details */}
                   <div className="md:col-span-2 space-y-4 text-left">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-500 font-bold">Passenger / Delegate</span>
+                        <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 font-bold">Passenger / Delegate</span>
                         <span className="font-sans text-base font-extrabold text-white">{submittedPass.name}</span>
-                        <span className="block font-mono text-[9.5px] text-blue-400 font-bold mt-0.5">{submittedPass.id} ({submittedPass.role || "Delegate"})</span>
+                        <span className="block font-mono text-[10px] text-cyan-400 font-bold mt-0.5">{submittedPass.id} ({submittedPass.role || "Delegate"})</span>
                         
                         {submittedPass.regType === "double" && submittedPass.partnerName && (
-                          <div className="mt-3 pt-2 border-t border-slate-800/40">
-                            <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-500 font-bold">Partner Delegate</span>
+                          <div className="mt-3 pt-2 border-t border-white/[0.06]">
+                            <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 font-bold">Partner Delegate</span>
                             <span className="font-sans text-sm font-extrabold text-white">{submittedPass.partnerName}</span>
-                            <span className="block font-mono text-[9.5px] text-indigo-400 font-bold mt-0.5">{submittedPass.partnerId} ({submittedPass.partnerRole || "Delegate"})</span>
+                            <span className="block font-mono text-[10px] text-indigo-400 font-bold mt-0.5">{submittedPass.partnerId} ({submittedPass.partnerRole || "Delegate"})</span>
                           </div>
                         )}
                       </div>
                       <div>
-                        <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-500 font-bold">Registry Category</span>
-                        <span className="font-sans text-xs font-semibold text-blue-400 capitalize">{submittedPass.regType} Delegate</span>
+                        <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 font-bold">Registry Category</span>
+                        <span className="inline-block mt-0.5 font-mono text-[10px] uppercase font-bold text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20">
+                          {submittedPass.regType} Delegate
+                        </span>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-500 font-bold">Institution / College</span>
-                        <span className="font-sans text-xs text-slate-300 font-bold">{submittedPass.institution}</span>
+                        <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 font-bold">Institution / College</span>
+                        <span className="font-sans text-xs text-slate-200 font-bold">{submittedPass.institution}</span>
                       </div>
                       <div>
-                        <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-500 font-bold">Assigned Chamber (Pref)</span>
-                        <span className="font-sans text-xs text-white uppercase font-bold">{submittedPass.pref1Committee}</span>
+                        <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 font-bold">Assigned Chamber (Pref)</span>
+                        <span className="font-sans text-xs text-cyan-300 uppercase font-bold">{submittedPass.pref1Committee}</span>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-500 font-bold">Target Portfolio (Pref)</span>
-                        <span className="font-sans text-xs font-extrabold text-indigo-400">{submittedPass.pref1Country}</span>
+                        <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 font-bold">Target Portfolio (Pref)</span>
+                        <span className="font-sans text-xs font-extrabold text-indigo-300">{submittedPass.pref1Country}</span>
                       </div>
                       <div>
-                        <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-500 font-bold">Launch Date / Venue</span>
-                        <span className="font-sans text-[11px] text-slate-400">Sept 18, 2026 &bull; IIST Campus</span>
+                        <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 font-bold">Launch Date / Venue</span>
+                        <span className="font-sans text-[11px] text-slate-300">Sept 18, 2026 &bull; IIST Campus</span>
                       </div>
                     </div>
 
                     {/* Notice Callout */}
-                    <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-xs font-sans text-amber-400/90 leading-relaxed">
-                      ⚡ <strong>Portfolio Allotment Status:</strong> Your registration is confirmed. Committee and country portfolio will be allotted shortly by the Executive Secretariat.
+                    <div className="p-3.5 bg-cyan-950/20 rounded-2xl border border-cyan-500/20 text-xs font-sans text-cyan-200/90 leading-relaxed">
+                      ⚡ <strong>Portfolio Allotment Status:</strong> Your registration is recorded. Council chamber and country portfolio allotments are evaluated on an early-bird queue by the Executive Secretariat.
                     </div>
                   </div>
 
                   {/* Right Column: Scannable QR Code */}
-                  <div className="flex flex-col items-center justify-center bg-slate-950/80 rounded-2xl p-4 border border-slate-800">
+                  <div className="flex flex-col items-center justify-center bg-[#04060a] rounded-2xl p-5 border border-white/[0.08] shadow-inner relative group">
+                    <div className="absolute top-2 left-2 w-3 h-3 border-t-2 border-l-2 border-cyan-400" />
+                    <div className="absolute top-2 right-2 w-3 h-3 border-t-2 border-r-2 border-cyan-400" />
+                    <div className="absolute bottom-2 left-2 w-3 h-3 border-b-2 border-l-2 border-cyan-400" />
+                    <div className="absolute bottom-2 right-2 w-3 h-3 border-b-2 border-r-2 border-cyan-400" />
+                    
                     <QRCodeDisplay
                       uniqueId={submittedPass.id}
                       candidateName={submittedPass.name}
@@ -558,28 +596,28 @@ export default function Registration({ initialPreference, clearInitialPreference
                   </div>
                 </div>
 
-                {/* Sub Barcode Area */}
+                {/* Sub Barcode & Telemetry Area */}
                 <div className="flex flex-col sm:flex-row items-center justify-between pt-6 gap-4">
                   <div className="text-left">
-                    <span className="block font-mono text-[9px] text-slate-500">TIMESTAMP LOGGED</span>
-                    <span className="font-sans text-[11px] text-slate-400">{submittedPass.timestamp}</span>
+                    <span className="block font-mono text-[9px] text-slate-500 uppercase tracking-wider">TIMESTAMP LOGGED</span>
+                    <span className="font-mono text-[11px] text-slate-300 font-semibold">{submittedPass.timestamp}</span>
                   </div>
                   {/* Barcode representation */}
                   <div className="flex flex-col items-end">
-                    <div className="flex gap-0.5 h-8">
-                      <div className="w-1 bg-white"></div>
-                      <div className="w-0.5 bg-white"></div>
+                    <div className="flex gap-0.5 h-7">
+                      <div className="w-1 bg-cyan-400"></div>
+                      <div className="w-0.5 bg-slate-500"></div>
                       <div className="w-2 bg-white"></div>
-                      <div className="w-0.5 bg-white"></div>
+                      <div className="w-0.5 bg-cyan-400"></div>
                       <div className="w-1 bg-white"></div>
-                      <div className="w-1.5 bg-white"></div>
+                      <div className="w-1.5 bg-indigo-400"></div>
                       <div className="w-0.5 bg-white"></div>
-                      <div className="w-2 bg-white"></div>
+                      <div className="w-2 bg-cyan-400"></div>
                       <div className="w-1.5 bg-white"></div>
-                      <div className="w-0.5 bg-white"></div>
+                      <div className="w-0.5 bg-slate-500"></div>
                       <div className="w-1 bg-white"></div>
                     </div>
-                    <span className="font-mono text-[9px] text-slate-500 mt-1">SECURED BY TRIVANDRUM TELEMETRY</span>
+                    <span className="font-mono text-[8px] text-cyan-400/80 mt-1 uppercase tracking-widest">SECURED BY TRIVANDRUM TELEMETRY</span>
                   </div>
                 </div>
               </div>
@@ -591,7 +629,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                 onClick={handleDownloadReceipt}
                 disabled={isDownloading}
                 id="receipt-download-btn"
-                className="flex items-center gap-2 rounded-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all active:scale-95 cursor-pointer"
+                className="flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-50 px-7 py-3.5 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_25px_rgba(16,185,129,0.3)] transition-all active:scale-95 cursor-pointer"
               >
                 {isDownloading ? (
                   <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -604,7 +642,7 @@ export default function Registration({ initialPreference, clearInitialPreference
               <button
                 onClick={handleShare}
                 id="receipt-share-btn"
-                className="flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-500 px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all active:scale-95 shadow-blue-900/20 cursor-pointer"
+                className="flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 px-7 py-3.5 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_25px_rgba(6,182,212,0.3)] transition-all active:scale-95 cursor-pointer"
               >
                 <Share2 className="h-4 w-4" />
                 Share Orbit Status
@@ -615,51 +653,55 @@ export default function Registration({ initialPreference, clearInitialPreference
               <button
                 onClick={handleReset}
                 id="receipt-reset-btn"
-                className="text-slate-500 hover:text-slate-300 font-mono text-xs uppercase tracking-wider underline underline-offset-4 cursor-pointer"
+                className="text-slate-400 hover:text-cyan-300 font-mono text-xs uppercase tracking-wider underline underline-offset-4 cursor-pointer transition-colors"
               >
                 Register Another Delegate / Team
               </button>
             </div>
           </div>
         ) : (
-          <div className="rounded-3xl border border-slate-900 bg-slate-900/40 p-6 sm:p-10 backdrop-blur-md shadow-2xl">
-            {/* Step Indicators */}
-            <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-900">
+          /* Multi-Step Registration Form Panel */
+          <div className="rounded-3xl border border-white/[0.08] bg-[#080d1a]/85 p-6 sm:p-10 backdrop-blur-2xl shadow-[0_0_50px_rgba(0,0,0,0.6)] relative overflow-hidden">
+            
+            {/* Step Indicators Bar */}
+            <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/[0.06]">
               <div className="flex items-center gap-2 sm:gap-4">
                 {[1, 2, 3].map((num) => (
                   <div key={num} className="flex items-center">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold font-mono transition-all duration-300 ${
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-2xl text-xs font-bold font-mono transition-all duration-300 ${
                       step === num
-                        ? "bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]"
+                        ? "bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-[0_0_20px_rgba(6,182,212,0.4)] border border-cyan-300/40"
                         : step > num
-                        ? "bg-blue-950/40 text-blue-450 border border-blue-900/40"
-                        : "bg-slate-950 text-slate-500 border border-slate-850"
+                        ? "bg-cyan-950/40 text-cyan-300 border border-cyan-500/30"
+                        : "bg-[#04060a] text-slate-500 border border-white/[0.08]"
                     }`}>
-                      {num}
+                      {step > num ? <Check className="h-4 w-4 text-cyan-400" /> : num}
                     </div>
                     {num < 3 && (
-                      <div className={`w-6 sm:w-12 h-0.5 mx-1.5 sm:mx-2 ${
-                        step > num ? "bg-blue-900/30" : "bg-slate-900"
+                      <div className={`w-8 sm:w-16 h-0.5 mx-2 sm:mx-3 rounded-full transition-all duration-300 ${
+                        step > num ? "bg-gradient-to-r from-cyan-500 to-blue-600" : "bg-white/[0.06]"
                       }`} />
                     )}
                   </div>
                 ))}
               </div>
+              
               <div className="text-right">
-                <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-500 font-bold">Launch Sequence</span>
-                <span className="font-sans text-xs font-bold text-blue-400">Step {step} of 3</span>
+                <span className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 font-bold">// LAUNCH SEQUENCE</span>
+                <span className="font-sans text-xs font-extrabold text-cyan-400">Step {step} of 3</span>
               </div>
             </div>
 
             {/* Registration Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
+              
               {/* STEP 1: SELECT CATEGORY */}
               {step === 1 && (
                 <div className="space-y-6 animate-fade-in text-left">
                   <div>
                     <h2 className="font-sans text-xl font-bold text-white sm:text-2xl">Select Delegate Division</h2>
                     <p className="font-sans text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
-                      Choose the allocation framework for your participation.
+                      Choose the allocation framework matching your participation structure.
                     </p>
                   </div>
 
@@ -668,18 +710,25 @@ export default function Registration({ initialPreference, clearInitialPreference
                     <div
                       id="card-reg-individual"
                       onClick={() => setFormData({ ...formData, regType: "individual" })}
-                      className={`rounded-3xl border p-5 cursor-pointer transition-all duration-300 flex flex-col justify-between ${
+                      className={`rounded-3xl border p-5 sm:p-6 cursor-pointer transition-all duration-300 flex flex-col justify-between relative overflow-hidden group ${
                         formData.regType === "individual"
-                          ? "border-blue-500 bg-blue-950/20 shadow-[0_0_20px_rgba(37,99,235,0.15)] animate-pulse-slow"
-                          : "border-slate-800 bg-slate-950/50 hover:border-slate-700"
+                          ? "border-cyan-500 bg-gradient-to-b from-cyan-950/30 to-[#080d1a] shadow-[0_0_30px_rgba(6,182,212,0.2)]"
+                          : "border-white/[0.08] bg-[#04060a]/60 hover:border-cyan-500/30 hover:bg-[#080d1a]"
                       }`}
                     >
                       <div>
-                        <User className={`h-5 w-5 ${formData.regType === "individual" ? "text-blue-400" : "text-slate-400"}`} />
-                        <h3 className="mt-4 font-sans text-sm font-bold text-white uppercase tracking-wider">Individual</h3>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className={`p-3 rounded-2xl ${formData.regType === "individual" ? "bg-cyan-500/20 text-cyan-400" : "bg-white/[0.04] text-slate-400 group-hover:text-cyan-300"}`}>
+                            <User className="h-5 w-5" />
+                          </div>
+                          <div className={`h-5 w-5 rounded-full border flex items-center justify-center ${formData.regType === "individual" ? "border-cyan-400 bg-cyan-500 text-black" : "border-slate-700"}`}>
+                            {formData.regType === "individual" && <Check className="h-3 w-3 stroke-[3]" />}
+                          </div>
+                        </div>
+                        <h3 className="font-sans text-sm font-bold text-white uppercase tracking-wider">Individual</h3>
                       </div>
                       <p className="mt-2 font-sans text-xs text-slate-400 leading-relaxed">
-                        Register as a single delegate representing a specific country choice.
+                        Register as a solo delegate representing a specific country choice.
                       </p>
                     </div>
 
@@ -687,18 +736,25 @@ export default function Registration({ initialPreference, clearInitialPreference
                     <div
                       id="card-reg-double"
                       onClick={() => setFormData({ ...formData, regType: "double" })}
-                      className={`rounded-3xl border p-5 cursor-pointer transition-all duration-300 flex flex-col justify-between ${
+                      className={`rounded-3xl border p-5 sm:p-6 cursor-pointer transition-all duration-300 flex flex-col justify-between relative overflow-hidden group ${
                         formData.regType === "double"
-                          ? "border-indigo-500 bg-indigo-950/20 shadow-[0_0_20px_rgba(99,102,241,0.15)]"
-                          : "border-slate-800 bg-slate-950/50 hover:border-slate-700"
+                          ? "border-indigo-500 bg-gradient-to-b from-indigo-950/30 to-[#080d1a] shadow-[0_0_30px_rgba(99,102,241,0.2)]"
+                          : "border-white/[0.08] bg-[#04060a]/60 hover:border-indigo-500/30 hover:bg-[#080d1a]"
                       }`}
                     >
                       <div>
-                        <Users className={`h-5 w-5 ${formData.regType === "double" ? "text-indigo-400" : "text-slate-400"}`} />
-                        <h3 className="mt-4 font-sans text-sm font-bold text-white uppercase tracking-wider">Double Del</h3>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className={`p-3 rounded-2xl ${formData.regType === "double" ? "bg-indigo-500/20 text-indigo-400" : "bg-white/[0.04] text-slate-400 group-hover:text-indigo-300"}`}>
+                            <Users className="h-5 w-5" />
+                          </div>
+                          <div className={`h-5 w-5 rounded-full border flex items-center justify-center ${formData.regType === "double" ? "border-indigo-400 bg-indigo-500 text-white" : "border-slate-700"}`}>
+                            {formData.regType === "double" && <Check className="h-3 w-3 stroke-[3]" />}
+                          </div>
+                        </div>
+                        <h3 className="font-sans text-sm font-bold text-white uppercase tracking-wider">Double Del</h3>
                       </div>
                       <p className="mt-2 font-sans text-xs text-slate-400 leading-relaxed">
-                        Debate as a pair in COPUOS or UNGA DISEC chambers.
+                        Debate as a coordinated pair in COPUOS or UNGA DISEC chambers.
                       </p>
                     </div>
 
@@ -706,18 +762,25 @@ export default function Registration({ initialPreference, clearInitialPreference
                     <div
                       id="card-reg-contingent"
                       onClick={() => setFormData({ ...formData, regType: "contingent" })}
-                      className={`rounded-3xl border p-5 cursor-pointer transition-all duration-300 flex flex-col justify-between ${
+                      className={`rounded-3xl border p-5 sm:p-6 cursor-pointer transition-all duration-300 flex flex-col justify-between relative overflow-hidden group ${
                         formData.regType === "contingent"
-                          ? "border-amber-500 bg-amber-950/20 shadow-[0_0_20px_rgba(245,158,11,0.15)]"
-                          : "border-slate-800 bg-slate-950/50 hover:border-slate-700"
+                          ? "border-amber-500 bg-gradient-to-b from-amber-950/30 to-[#080d1a] shadow-[0_0_30px_rgba(245,158,11,0.2)]"
+                          : "border-white/[0.08] bg-[#04060a]/60 hover:border-amber-500/30 hover:bg-[#080d1a]"
                       }`}
                     >
                       <div>
-                        <Landmark className={`h-5 w-5 ${formData.regType === "contingent" ? "text-amber-400" : "text-slate-400"}`} />
-                        <h3 className="mt-4 font-sans text-sm font-bold text-white uppercase tracking-wider">Contingent</h3>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className={`p-3 rounded-2xl ${formData.regType === "contingent" ? "bg-amber-500/20 text-amber-400" : "bg-white/[0.04] text-slate-400 group-hover:text-amber-300"}`}>
+                            <Landmark className="h-5 w-5" />
+                          </div>
+                          <div className={`h-5 w-5 rounded-full border flex items-center justify-center ${formData.regType === "contingent" ? "border-amber-400 bg-amber-500 text-black" : "border-slate-700"}`}>
+                            {formData.regType === "contingent" && <Check className="h-3 w-3 stroke-[3]" />}
+                          </div>
+                        </div>
+                        <h3 className="font-sans text-sm font-bold text-white uppercase tracking-wider">Contingent</h3>
                       </div>
                       <p className="mt-2 font-sans text-xs text-slate-400 leading-relaxed">
-                        Submit institutional registrations for multiple delegates at once.
+                        Submit institutional registrations for multiple school or college delegates.
                       </p>
                     </div>
                   </div>
@@ -727,7 +790,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                       type="button"
                       onClick={handleNext}
                       id="step1-next-btn"
-                      className="flex items-center gap-1.5 rounded-full bg-blue-600 hover:bg-blue-500 px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-md active:scale-95 transition-all"
+                      className="flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 px-7 py-3 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_25px_rgba(6,182,212,0.25)] active:scale-95 transition-all cursor-pointer"
                     >
                       Next: Contact Dossier
                       <ChevronRight className="h-4 w-4" />
@@ -742,11 +805,11 @@ export default function Registration({ initialPreference, clearInitialPreference
                   <div>
                     <h2 className="font-sans text-xl font-bold text-white sm:text-2xl">Contact & Academic Dossier</h2>
                     <p className="font-sans text-xs sm:text-sm text-slate-400 mt-1">
-                      Let's record your delegate profile information.
+                      Enter your delegate profile credentials and academic affiliation.
                     </p>
                   </div>
 
-                  {/* Fields */}
+                  {/* Form fields */}
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
                       <label className="block font-mono text-[9px] uppercase tracking-wider text-slate-400 mb-1.5 font-bold">Full Name</label>
@@ -754,7 +817,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                         type="text"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium"
+                        className="w-full rounded-2xl border border-white/[0.08] bg-[#04060a]/90 px-4 py-3 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all font-medium"
                         placeholder="Aarav Nair"
                       />
                       {errors.name && <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold">{errors.name}</p>}
@@ -766,7 +829,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium"
+                        className="w-full rounded-2xl border border-white/[0.08] bg-[#04060a]/90 px-4 py-3 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all font-medium"
                         placeholder="name@university.edu"
                       />
                       {errors.email && <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold">{errors.email}</p>}
@@ -778,7 +841,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                         type="text"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium"
+                        className="w-full rounded-2xl border border-white/[0.08] bg-[#04060a]/90 px-4 py-3 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all font-medium"
                         placeholder="+91 XXXXX XXXXX"
                       />
                       {errors.phone && <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold">{errors.phone}</p>}
@@ -791,7 +854,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                         onChange={(val) => setFormData({ ...formData, institution: val })}
                         error={errors.institution}
                         placeholder="Select or type School / College in India..."
-                        accentColor="blue"
+                        accentColor="cyan"
                         id="reg-institution-select"
                       />
                     </div>
@@ -802,7 +865,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                         type="text"
                         value={formData.course}
                         onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                        className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium"
+                        className="w-full rounded-2xl border border-white/[0.08] bg-[#04060a]/90 px-4 py-3 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all font-medium"
                         placeholder="B.Tech Aerospace Engineering"
                       />
                       {errors.course && <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold">{errors.course}</p>}
@@ -813,12 +876,12 @@ export default function Registration({ initialPreference, clearInitialPreference
                       <select
                         value={formData.munExperience}
                         onChange={(e) => setFormData({ ...formData, munExperience: e.target.value })}
-                        className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-300 outline-none focus:border-blue-500/50 transition-all font-bold uppercase tracking-wider"
+                        className="w-full rounded-2xl border border-white/[0.08] bg-[#04060a]/90 px-4 py-3 text-xs text-slate-200 outline-none focus:border-cyan-500/50 transition-all font-bold uppercase tracking-wider"
                       >
-                        <option value="None" className="bg-slate-950">None (First Timer)</option>
-                        <option value="1-2" className="bg-slate-950">1-2 Conferences</option>
-                        <option value="3-5" className="bg-slate-950">3-5 Conferences</option>
-                        <option value="5+" className="bg-slate-950">5+ (Veteran Delegate)</option>
+                        <option value="None" className="bg-[#080d1a]">None (First Timer)</option>
+                        <option value="1-2" className="bg-[#080d1a]">1-2 Conferences</option>
+                        <option value="3-5" className="bg-[#080d1a]">3-5 Conferences</option>
+                        <option value="5+" className="bg-[#080d1a]">5+ (Veteran Delegate)</option>
                       </select>
                     </div>
 
@@ -827,81 +890,81 @@ export default function Registration({ initialPreference, clearInitialPreference
                       <select
                         value={formData.role}
                         onChange={(e) => setFormData({ ...formData, role: e.target.value as "Delegate" | "Photographer" })}
-                        className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-300 outline-none focus:border-blue-500/50 transition-all font-bold uppercase tracking-wider"
+                        className="w-full rounded-2xl border border-white/[0.08] bg-[#04060a]/90 px-4 py-3 text-xs text-slate-200 outline-none focus:border-cyan-500/50 transition-all font-bold uppercase tracking-wider"
                       >
-                        <option value="Delegate" className="bg-slate-950">Delegate</option>
-                        <option value="Photographer" className="bg-slate-950">Photographer</option>
+                        <option value="Delegate" className="bg-[#080d1a]">Delegate</option>
+                        <option value="Photographer" className="bg-[#080d1a]">Photographer</option>
                       </select>
                     </div>
                   </div>
 
-                  {/* Double Delegation Partner details if double selected */}
+                  {/* Double Delegation Partner details */}
                   {formData.regType === "double" && (
-                    <div className="rounded-3xl border border-indigo-500/20 bg-indigo-950/5 p-5 space-y-4">
-                      <span className="font-mono text-[9px] uppercase tracking-widest text-indigo-400 font-bold block">// DOUBLE DELEGATION: PARTNER DETAILS</span>
+                    <div className="rounded-3xl border border-indigo-500/30 bg-indigo-950/20 p-5 space-y-4">
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-indigo-300 font-bold block">// DOUBLE DELEGATION: PARTNER DETAILS</span>
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div>
-                          <label className="block font-mono text-[9px] uppercase text-slate-400 mb-1">Partner Full Name</label>
+                          <label className="block font-mono text-[9px] uppercase text-slate-400 mb-1 font-bold">Partner Full Name</label>
                           <input
                             type="text"
                             value={formData.partnerName}
                             onChange={(e) => setFormData({ ...formData, partnerName: e.target.value })}
-                            className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-200 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
+                            className="w-full rounded-2xl border border-white/[0.08] bg-[#04060a]/90 px-4 py-2.5 text-xs text-slate-100 outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20"
                             placeholder="Partner's full name"
                           />
                           {errors.partnerName && <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold">{errors.partnerName}</p>}
                         </div>
                         <div>
-                          <label className="block font-mono text-[9px] uppercase text-slate-400 mb-1">Partner Email</label>
+                          <label className="block font-mono text-[9px] uppercase text-slate-400 mb-1 font-bold">Partner Email</label>
                           <input
                             type="email"
                             value={formData.partnerEmail}
                             onChange={(e) => setFormData({ ...formData, partnerEmail: e.target.value })}
-                            className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-200 outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
+                            className="w-full rounded-2xl border border-white/[0.08] bg-[#04060a]/90 px-4 py-2.5 text-xs text-slate-100 outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20"
                             placeholder="partner@university.edu"
                           />
                           {errors.partnerEmail && <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold">{errors.partnerEmail}</p>}
                         </div>
                         <div>
-                          <label className="block font-mono text-[9px] uppercase text-slate-400 mb-1">Partner Role</label>
+                          <label className="block font-mono text-[9px] uppercase text-slate-400 mb-1 font-bold">Partner Role</label>
                           <select
                             value={formData.partnerRole}
                             onChange={(e) => setFormData({ ...formData, partnerRole: e.target.value as "Delegate" | "Photographer" })}
-                            className="w-full rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-300 outline-none focus:border-indigo-500/50 transition-all font-bold uppercase tracking-wider"
+                            className="w-full rounded-2xl border border-white/[0.08] bg-[#04060a]/90 px-4 py-2.5 text-xs text-slate-200 outline-none focus:border-indigo-500/50 transition-all font-bold uppercase tracking-wider"
                           >
-                            <option value="Delegate" className="bg-slate-950">Delegate</option>
-                            <option value="Photographer" className="bg-slate-950">Photographer</option>
+                            <option value="Delegate" className="bg-[#080d1a]">Delegate</option>
+                            <option value="Photographer" className="bg-[#080d1a]">Photographer</option>
                           </select>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Contingent size if contingent selected */}
+                  {/* Contingent size details */}
                   {formData.regType === "contingent" && (
-                    <div className="rounded-3xl border border-amber-500/20 bg-amber-950/5 p-5 space-y-2">
-                      <span className="font-mono text-[9px] uppercase tracking-widest text-amber-400 font-bold block">// CONTINGENT DETAILS</span>
+                    <div className="rounded-3xl border border-amber-500/30 bg-amber-950/20 p-5 space-y-2">
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-amber-300 font-bold block">// CONTINGENT DETAILS</span>
                       <div>
-                        <label className="block font-mono text-[9px] uppercase text-slate-400 mb-1">Expected Delegation Size</label>
+                        <label className="block font-mono text-[9px] uppercase text-slate-400 mb-1 font-bold">Expected Delegation Size</label>
                         <select
                            value={formData.contingentSize}
                            onChange={(e) => setFormData({ ...formData, contingentSize: e.target.value })}
-                           className="w-full max-w-xs rounded-full border border-slate-800 bg-slate-950 px-4 py-2.5 text-xs text-slate-300 outline-none font-bold uppercase tracking-wider"
+                           className="w-full max-w-xs rounded-2xl border border-white/[0.08] bg-[#04060a]/90 px-4 py-2.5 text-xs text-slate-200 outline-none font-bold uppercase tracking-wider"
                         >
-                          <option value="5-10" className="bg-slate-950">5 to 10 Delegates</option>
-                          <option value="11-20" className="bg-slate-950">11 to 20 Delegates</option>
-                          <option value="20+" className="bg-slate-950">More than 20 Delegates</option>
+                          <option value="5-10" className="bg-[#080d1a]">5 to 10 Delegates</option>
+                          <option value="11-20" className="bg-[#080d1a]">11 to 20 Delegates</option>
+                          <option value="20+" className="bg-[#080d1a]">More than 20 Delegates</option>
                         </select>
                       </div>
                     </div>
                   )}
 
                   {/* Navigation Buttons */}
-                  <div className="flex justify-between pt-4 border-t border-slate-900">
+                  <div className="flex justify-between pt-4 border-t border-white/[0.06]">
                     <button
                       type="button"
                       onClick={handleBack}
-                      className="flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-950 hover:bg-slate-900 px-5 py-2.5 font-sans text-xs font-bold uppercase tracking-wider text-slate-300"
+                      className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/20 px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider text-slate-300 cursor-pointer transition-all"
                     >
                       <ChevronLeft className="h-4 w-4" />
                       Back
@@ -910,7 +973,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                       type="button"
                       onClick={handleNext}
                       id="step2-next-btn"
-                      className="flex items-center gap-1.5 rounded-full bg-blue-600 hover:bg-blue-500 px-6 py-2.5 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-md active:scale-95 transition-all"
+                      className="flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 px-7 py-3 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_25px_rgba(6,182,212,0.25)] active:scale-95 transition-all cursor-pointer"
                     >
                       Next: Portfolios Choice
                       <ChevronRight className="h-4 w-4" />
@@ -925,42 +988,42 @@ export default function Registration({ initialPreference, clearInitialPreference
                   <div>
                     <h2 className="font-sans text-xl font-bold text-white sm:text-2xl">Portfolio & Motivation Dossier</h2>
                     <p className="font-sans text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
-                      Identify your target councils and country choices to complete registration.
+                      Select your target council country portfolios from the live matrix and provide your rationale.
                     </p>
                   </div>
 
-                  {/* Selected Preferences Visual Cards */}
+                  {/* Selected Preferences Summary Cards */}
                   <div className="space-y-2">
                     <label className="block font-mono text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                      Your Selected Preferences (Up to 3 in order of selection)
+                      Your Selected Preferences (Up to 3 in priority order)
                     </label>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                       {/* Preference 1 */}
                       <div className={`p-4 rounded-2xl border ${
                         formData.pref1Country 
-                          ? "border-blue-500/40 bg-blue-950/20 shadow-lg shadow-blue-500/5 text-white" 
-                          : "border-slate-800 bg-slate-950/20 border-dashed text-slate-500"
+                          ? "border-cyan-500/40 bg-cyan-950/30 shadow-[0_0_20px_rgba(6,182,212,0.1)] text-white" 
+                          : "border-white/[0.08] bg-[#04060a]/50 border-dashed text-slate-500"
                       } transition-all relative flex flex-col justify-between min-h-[90px]`}>
                         <div>
-                          <div className="font-mono text-[9px] uppercase tracking-wider text-blue-400 font-bold mb-1">
+                          <div className="font-mono text-[9px] uppercase tracking-wider text-cyan-400 font-bold mb-1">
                             1st Choice Portfolio
                           </div>
                           {formData.pref1Country ? (
                             <div className="font-sans text-xs font-bold leading-relaxed">
                               {formData.pref1Country}
-                              <div className="text-[10px] text-slate-400 font-medium font-mono uppercase mt-0.5">
+                              <div className="text-[10px] text-cyan-300 font-medium font-mono uppercase mt-0.5">
                                 {COMMITTEES.find(c => c.id === formData.pref1Committee)?.abbreviation || formData.pref1Committee}
                               </div>
                             </div>
                           ) : (
-                            <p className="font-sans text-[11px] leading-snug">Click an available portfolio below...</p>
+                            <p className="font-sans text-[11px] leading-snug">Click an available cell below...</p>
                           )}
                         </div>
                         {formData.pref1Country && (
                           <button
                             type="button"
                             onClick={() => handlePortfolioClick(formData.pref1Country, formData.pref1Committee)}
-                            className="absolute top-2 right-2 p-1 rounded-full hover:bg-slate-850 text-slate-400 hover:text-white transition-all"
+                            className="absolute top-2 right-2 p-1 rounded-full hover:bg-white/[0.1] text-slate-400 hover:text-white transition-all cursor-pointer"
                             title="Remove"
                           >
                             <X className="h-3.5 w-3.5" />
@@ -971,8 +1034,8 @@ export default function Registration({ initialPreference, clearInitialPreference
                       {/* Preference 2 */}
                       <div className={`p-4 rounded-2xl border ${
                         formData.pref2Country 
-                          ? "border-indigo-500/40 bg-indigo-950/20 shadow-lg shadow-indigo-500/5 text-white" 
-                          : "border-slate-800 bg-slate-950/20 border-dashed text-slate-500"
+                          ? "border-indigo-500/40 bg-indigo-950/30 shadow-[0_0_20px_rgba(99,102,241,0.1)] text-white" 
+                          : "border-white/[0.08] bg-[#04060a]/50 border-dashed text-slate-500"
                       } transition-all relative flex flex-col justify-between min-h-[90px]`}>
                         <div>
                           <div className="font-mono text-[9px] uppercase tracking-wider text-indigo-400 font-bold mb-1">
@@ -981,7 +1044,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                           {formData.pref2Country ? (
                             <div className="font-sans text-xs font-bold leading-relaxed">
                               {formData.pref2Country}
-                              <div className="text-[10px] text-slate-400 font-medium font-mono uppercase mt-0.5">
+                              <div className="text-[10px] text-indigo-300 font-medium font-mono uppercase mt-0.5">
                                 {COMMITTEES.find(c => c.id === formData.pref2Committee)?.abbreviation || formData.pref2Committee}
                               </div>
                             </div>
@@ -993,7 +1056,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                           <button
                             type="button"
                             onClick={() => handlePortfolioClick(formData.pref2Country, formData.pref2Committee)}
-                            className="absolute top-2 right-2 p-1 rounded-full hover:bg-slate-850 text-slate-400 hover:text-white transition-all"
+                            className="absolute top-2 right-2 p-1 rounded-full hover:bg-white/[0.1] text-slate-400 hover:text-white transition-all cursor-pointer"
                             title="Remove"
                           >
                             <X className="h-3.5 w-3.5" />
@@ -1004,8 +1067,8 @@ export default function Registration({ initialPreference, clearInitialPreference
                       {/* Preference 3 */}
                       <div className={`p-4 rounded-2xl border ${
                         formData.pref3Country 
-                          ? "border-purple-500/40 bg-purple-950/20 shadow-lg shadow-purple-500/5 text-white" 
-                          : "border-slate-800 bg-slate-950/20 border-dashed text-slate-500"
+                          ? "border-purple-500/40 bg-purple-950/30 shadow-[0_0_20px_rgba(168,85,247,0.1)] text-white" 
+                          : "border-white/[0.08] bg-[#04060a]/50 border-dashed text-slate-500"
                       } transition-all relative flex flex-col justify-between min-h-[90px]`}>
                         <div>
                           <div className="font-mono text-[9px] uppercase tracking-wider text-purple-400 font-bold mb-1">
@@ -1014,7 +1077,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                           {formData.pref3Country ? (
                             <div className="font-sans text-xs font-bold leading-relaxed">
                               {formData.pref3Country}
-                              <div className="text-[10px] text-slate-400 font-medium font-mono uppercase mt-0.5">
+                              <div className="text-[10px] text-purple-300 font-medium font-mono uppercase mt-0.5">
                                 {COMMITTEES.find(c => c.id === formData.pref3Committee)?.abbreviation || formData.pref3Committee}
                               </div>
                             </div>
@@ -1026,7 +1089,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                           <button
                             type="button"
                             onClick={() => handlePortfolioClick(formData.pref3Country, formData.pref3Committee)}
-                            className="absolute top-2 right-2 p-1 rounded-full hover:bg-slate-850 text-slate-400 hover:text-white transition-all"
+                            className="absolute top-2 right-2 p-1 rounded-full hover:bg-white/[0.1] text-slate-400 hover:text-white transition-all cursor-pointer"
                             title="Remove"
                           >
                             <X className="h-3.5 w-3.5" />
@@ -1044,11 +1107,11 @@ export default function Registration({ initialPreference, clearInitialPreference
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
                         <h3 className="font-sans text-sm font-bold text-white flex items-center gap-1.5">
-                          <Landmark className="h-4 w-4 text-blue-500" />
+                          <Landmark className="h-4 w-4 text-cyan-400" />
                           Live Available Portfolio Matrix
                         </h3>
                         <p className="font-sans text-[11px] text-slate-400">
-                          Click any available cell to select. Maximum of 3. Click again to deselect.
+                          Click any available cell to select (up to 3). Click again to deselect.
                         </p>
                       </div>
 
@@ -1060,7 +1123,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                           placeholder="Search Country / Portfolio..."
                           value={matrixSearchTerm}
                           onChange={(e) => setMatrixSearchTerm(e.target.value)}
-                          className="w-full rounded-full border border-slate-800 bg-slate-950 py-2 pl-9 pr-8 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-blue-500/50 transition-all font-medium"
+                          className="w-full rounded-full border border-white/[0.08] bg-[#04060a] py-2.5 pl-9 pr-8 text-xs text-white placeholder-slate-500 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all font-medium"
                         />
                         {matrixSearchTerm && (
                           <button
@@ -1075,24 +1138,23 @@ export default function Registration({ initialPreference, clearInitialPreference
                     </div>
 
                     {/* Matrix table container */}
-                    <div className="overflow-x-auto rounded-2xl border border-slate-900 bg-slate-950/40 shadow-xl max-h-[350px] scrollbar-thin">
+                    <div className="overflow-x-auto rounded-2xl border border-white/[0.08] bg-[#04060a]/60 shadow-xl max-h-[350px] scrollbar-thin">
                       <table className="w-full min-w-[650px] border-collapse text-left font-sans text-xs">
                         <thead>
-                          <tr className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950 font-mono text-[9px] uppercase tracking-wider text-slate-450">
-                            <th className="px-4 py-3 font-bold bg-slate-950">Nation / Character</th>
-                            <th className="px-4 py-3 font-bold bg-slate-950 text-center">COPUOS</th>
-                            <th className="px-4 py-3 font-bold bg-slate-950 text-center">UNGA DISEC</th>
-                            <th className="px-4 py-3 font-bold bg-slate-950 text-center">AIPPM</th>
-                            <th className="px-4 py-3 font-bold bg-slate-950 text-center">UNSC</th>
+                          <tr className="sticky top-0 z-10 border-b border-white/[0.08] bg-[#080d1a] font-mono text-[9px] uppercase tracking-wider text-slate-400">
+                            <th className="px-4 py-3 font-bold bg-[#080d1a]">Nation / Entity</th>
+                            <th className="px-4 py-3 font-bold bg-[#080d1a] text-center">COPUOS</th>
+                            <th className="px-4 py-3 font-bold bg-[#080d1a] text-center">UNGA DISEC</th>
+                            <th className="px-4 py-3 font-bold bg-[#080d1a] text-center">AIPPM</th>
+                            <th className="px-4 py-3 font-bold bg-[#080d1a] text-center">UNSC</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-900/60">
+                        <tbody className="divide-y divide-white/[0.04]">
                           {(() => {
                             const filtered = COUNTRY_MATRIX.filter((row) => {
                               const matchesSearch = row.country.toLowerCase().includes(matrixSearchTerm.toLowerCase());
                               if (!matchesSearch) return false;
 
-                              // Only show rows that contain at least one Available portfolio
                               return (
                                 getPortfolioStatus(row.country, "copuos") === "Available" ||
                                 getPortfolioStatus(row.country, "disec") === "Available" ||
@@ -1113,7 +1175,7 @@ export default function Registration({ initialPreference, clearInitialPreference
 
                             return filtered.map((row) => {
                               return (
-                                <tr key={row.country} className="hover:bg-slate-900/20 transition-all">
+                                <tr key={row.country} className="hover:bg-white/[0.02] transition-all">
                                   <td className="px-4 py-2.5 font-bold text-slate-200">{row.country}</td>
                                   
                                   {["copuos", "disec", "aippm", "unsc"].map((comm) => {
@@ -1123,7 +1185,7 @@ export default function Registration({ initialPreference, clearInitialPreference
 
                                     if (status !== "Available") {
                                       return (
-                                        <td key={comm} className="px-4 py-2.5 text-center text-slate-750 font-mono text-[10px]">
+                                        <td key={comm} className="px-4 py-2.5 text-center text-slate-700 font-mono text-[10px]">
                                           —
                                         </td>
                                       );
@@ -1135,12 +1197,12 @@ export default function Registration({ initialPreference, clearInitialPreference
                                           <button
                                             type="button"
                                             onClick={() => handlePortfolioClick(row.country, comm)}
-                                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all shadow-md ${
+                                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all shadow-md cursor-pointer ${
                                               selNum === 1
-                                                ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/10"
+                                                ? "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-cyan-500/20"
                                                 : selNum === 2
-                                                ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/10"
-                                                : "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/10"
+                                                ? "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white shadow-indigo-500/20"
+                                                : "bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-400 hover:to-pink-500 text-white shadow-purple-500/20"
                                             }`}
                                           >
                                             {selNum === 1 ? "1st Choice" : selNum === 2 ? "2nd Choice" : "3rd Choice"}
@@ -1150,8 +1212,8 @@ export default function Registration({ initialPreference, clearInitialPreference
                                             type="button"
                                             onClick={() => handlePortfolioClick(row.country, comm)}
                                             disabled={hasReachedMax}
-                                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider transition-all ${
-                                              hasReachedMax ? "opacity-40 cursor-not-allowed border-slate-850 bg-slate-900/10 text-slate-500" : ""
+                                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                                              hasReachedMax ? "opacity-30 cursor-not-allowed border-white/[0.08] bg-white/[0.02] text-slate-500" : ""
                                             }`}
                                           >
                                             Select
@@ -1176,26 +1238,35 @@ export default function Registration({ initialPreference, clearInitialPreference
                       rows={4}
                       value={formData.motivation}
                       onChange={(e) => setFormData({ ...formData, motivation: e.target.value })}
-                      className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-xs text-slate-200 placeholder-slate-600 outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 resize-none leading-relaxed font-medium"
-                      placeholder="Discuss your background, interest in space law, aerospace technology, or international diplomacy (minimum 20 characters)..."
+                      className="w-full rounded-2xl border border-white/[0.08] bg-[#04060a]/90 px-4 py-3 text-xs text-slate-100 placeholder-slate-500 outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 resize-none leading-relaxed font-medium transition-all"
+                      placeholder="Discuss your background, interest in space law, aerospace governance, or international diplomacy (minimum 20 characters)..."
                     />
-                    {errors.motivation && <p className="text-[10px] text-rose-400 mt-1 font-mono font-bold">{errors.motivation}</p>}
+                    <div className="flex items-center justify-between mt-1">
+                      {errors.motivation ? (
+                        <p className="text-[10px] text-rose-400 font-mono font-bold">{errors.motivation}</p>
+                      ) : (
+                        <span />
+                      )}
+                      <span className={`text-[10px] font-mono ${formData.motivation.length >= 20 ? "text-cyan-400" : "text-slate-500"}`}>
+                        {formData.motivation.length} / 20 min chars
+                      </span>
+                    </div>
                   </div>
 
                   {/* Warning label */}
-                  <div className="rounded-3xl border border-blue-900/30 bg-blue-950/20 p-5 flex gap-3 items-start">
-                    <AlertCircle className="h-5 w-5 text-blue-450 shrink-0 mt-0.5" />
-                    <p className="font-sans text-xs text-slate-400 leading-relaxed">
-                      <span className="text-white font-bold">Note:</span> Portfolio selection is processed on an early-bird basis. Submitting this form secures your entry queue and reserves your preferred profile slot for EB review.
+                  <div className="rounded-2xl border border-cyan-500/20 bg-cyan-950/20 p-4 flex gap-3 items-start">
+                    <AlertCircle className="h-5 w-5 text-cyan-400 shrink-0 mt-0.5" />
+                    <p className="font-sans text-xs text-slate-300 leading-relaxed">
+                      <span className="text-white font-bold">Note:</span> Portfolio selection is processed on an early-bird basis. Submitting this form reserves your priority queue position for EB review and allotment.
                     </p>
                   </div>
 
                   {/* Navigation Buttons */}
-                  <div className="flex justify-between pt-4 border-t border-slate-900">
+                  <div className="flex justify-between pt-4 border-t border-white/[0.06]">
                     <button
                       type="button"
                       onClick={handleBack}
-                      className="flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-950 hover:bg-slate-900 px-5 py-2.5 font-sans text-xs font-bold uppercase tracking-wider text-slate-300"
+                      className="flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] hover:border-white/20 px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider text-slate-300 cursor-pointer transition-all"
                     >
                       <ChevronLeft className="h-4 w-4" />
                       Back
@@ -1203,7 +1274,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                     <button
                       type="submit"
                       id="step3-submit-btn"
-                      className="flex items-center gap-2 rounded-full bg-blue-600 hover:bg-blue-500 px-8 py-3.5 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-xl shadow-blue-900/10 active:scale-95 transition-all"
+                      className="flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 px-8 py-3.5 font-sans text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_30px_rgba(6,182,212,0.3)] active:scale-95 transition-all cursor-pointer"
                     >
                       Submit & Board
                       <Rocket className="h-4 w-4" />
@@ -1218,4 +1289,3 @@ export default function Registration({ initialPreference, clearInitialPreference
     </div>
   );
 }
-
