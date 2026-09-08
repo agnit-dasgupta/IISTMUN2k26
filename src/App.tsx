@@ -23,6 +23,9 @@ export default function App() {
   const renderActiveContent = () => {
     switch (activeTab) {
       case "home":
+      case "contact":
+      case "secretariat":
+      case "how-to-reach":
         return <Home setActiveTab={setActiveTab} />;
       case "committees":
         return <Committees />;
@@ -33,8 +36,6 @@ export default function App() {
         }} />;
       case "schedule":
         return <Schedule />;
-      case "secretariat":
-        return <Secretariat />;
       case "faq":
         return <FAQs />;
       case "register":
@@ -53,6 +54,13 @@ export default function App() {
 
   const handleScrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const navigateToSection = (sectionId: string) => {
+    setActiveTab("home");
+    setTimeout(() => {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   };
 
   return (
@@ -78,10 +86,10 @@ export default function App() {
                 </div>
                 <div>
                   <span className="font-serif text-xl font-normal text-[#EDE6D3] tracking-wide block">
-                    IIST MUN <span className="text-[#C9A86A]">2026</span>
+                    IIST MUN <span className="text-[#C9A86A]">2027</span>
                   </span>
                   <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E] block">
-                    Save · Sustain · Safeguard
+                    14th Edition · Save · Sustain · Safeguard
                   </span>
                 </div>
               </div>
@@ -90,65 +98,57 @@ export default function App() {
               </p>
               <div className="flex gap-4 pt-1">
                 <a
-                  href="mailto:contact@iistmun.in"
+                  href="mailto:support@iistmun.org"
                   className="text-[#8A9A7E] hover:text-[#C9A86A] transition-colors text-xs flex items-center gap-1.5 font-mono"
                 >
                   <Mail className="h-3.5 w-3.5 text-[#C9A86A]" />
-                  contact@iistmun.in
+                  support@iistmun.org
                 </a>
               </div>
             </div>
 
-            {/* Quick Links */}
+            {/* Navigation Tabs */}
             <div className="text-left space-y-3">
-              <h4 className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-semibold">Committees</h4>
+              <h4 className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-semibold">Convocation Navigation</h4>
               <ul className="space-y-2 font-sans text-xs">
                 <li>
-                  <button onClick={() => setActiveTab("committees")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
-                    COPUOS Outer Space
+                  <button onClick={() => navigateToSection("hero-landing-section")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                    Home
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveTab("committees")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
-                    UNGA Disarmament (DISEC)
+                  <button onClick={() => navigateToSection("contact-section")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                    Contact Us
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveTab("committees")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
-                    AIPPM Political Assembly
+                  <button onClick={() => navigateToSection("secretariat-section")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                    Secretariat Board
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveTab("committees")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
-                    UN Security Council
+                  <button onClick={() => navigateToSection("how-to-reach-section")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                    How to Reach IIST
                   </button>
                 </li>
               </ul>
             </div>
 
-            {/* Resources / Portals */}
+            {/* Registrations & Fellowship */}
             <div className="text-left space-y-3">
-              <h4 className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-semibold">Dispatches & Portals</h4>
-              <ul className="space-y-2 font-sans text-xs">
+              <h4 className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-semibold">Registrations & Fellowship</h4>
+              <ul className="space-y-2 font-sans text-xs text-[#8A9A7E]">
                 <li>
-                  <button onClick={() => setActiveTab("matrix")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
-                    Country Matrix
-                  </button>
+                  <span className="text-[#C9A86A]">Executive Board (EB)</span>
+                  <span className="block text-[10px] text-[#8A9A7E]/70">Opening Soon &bull; Applications Launching</span>
                 </li>
                 <li>
-                  <button onClick={() => setActiveTab("register")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
-                    Delegate Registration
-                  </button>
+                  <span className="text-[#C9A86A]">Campus Ambassador</span>
+                  <span className="block text-[10px] text-[#8A9A7E]/70">Opening Soon &bull; Outreach Network</span>
                 </li>
                 <li>
-                  <button onClick={() => setActiveTab("schedule")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
-                    Conference Schedule
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => setActiveTab("faq")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
-                    Field Guide & FAQ
-                  </button>
+                  <span className="text-[#EDE6D3]/80">IIST Valiamala Campus</span>
+                  <span className="block text-[10px] text-[#8A9A7E]/70">Thiruvananthapuram, Kerala &bull; 695547</span>
                 </li>
               </ul>
             </div>
@@ -158,7 +158,7 @@ export default function App() {
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-left">
               <span className="block font-sans text-[10px] uppercase tracking-[0.15em] text-[#8A9A7E]/70 font-medium">
-                &copy; 2026 IIST MODEL UNITED NATIONS. ALL RIGHTS RESERVED.
+                &copy; 2027 IIST MODEL UNITED NATIONS. ALL RIGHTS RESERVED.
               </span>
               <span className="block font-sans text-[10px] text-[#8A9A7E]/50 mt-0.5">
                 Indian Institute of Space Science and Technology · Valiamala, Trivandrum

@@ -148,7 +148,7 @@ export default function FAQs() {
             </div>
           </div>
           <a
-            href="mailto:contact@iistmun.in"
+            href="mailto:support@iistmun.org"
             className="px-5 py-2.5 bg-[#C9A86A] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider hover:bg-[#dfbe7e] transition-all whitespace-nowrap"
           >
             Dispatch Query

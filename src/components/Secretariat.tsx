@@ -101,7 +101,7 @@ export default function Secretariat() {
                 {/* Action Buttons */}
                 <div className="mt-6 border-t border-white/[0.08] pt-4 flex items-center justify-between gap-2">
                   <button
-                    onClick={() => handleContactMember(member.name, member.email || "info@iistmun.in")}
+                    onClick={() => handleContactMember(member.name, member.email || "support@iistmun.org")}
                     id={`sec-msg-btn-${member.id}`}
                     className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-white font-sans transition-colors cursor-pointer"
                   >
@@ -151,7 +151,7 @@ export default function Secretariat() {
             </p>
             <div className="mt-6 flex justify-center">
               <a
-                href="mailto:secgen.iistmun@gmail.com"
+                href="mailto:support@iistmun.org"
                 className="rounded-full bg-white hover:bg-cyan-300 text-slate-950 px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider shadow-[0_0_20px_rgba(255,255,255,0.2)] active:scale-95 transition-all"
               >
                 Contact General Registry

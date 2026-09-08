@@ -79,3 +79,16 @@ export interface RegistrationDetails {
   contingentSize?: string;
   motivation: string;
 }
+
+export interface ContactQuery {
+  id?: string;
+  name: string;
+  email: string;
+  category: string;
+  message: string;
+  timestamp?: string;
+  createdAt?: any;
+  status?: "pending" | "resolved" | "archived";
+  destination?: string;
+  source?: string;
+}

@@ -3,21 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   LogIn, 
   LogOut, 
   ShieldCheck, 
   Menu, 
   X, 
-  ChevronRight, 
-  UserCheck,
-  Globe,
-  Award,
-  Calendar,
+  Globe, 
+  Mail,
   Users,
-  HelpCircle,
-  TableProperties
+  Compass
 } from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -31,22 +27,88 @@ interface NavbarProps {
 export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const { user, loading, signInWithGoogle, logout } = useFirebase();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<string>("home");
 
-  const isAdmin = user?.email === "agnit.dg@gmail.com";
+  const adminEmails = ["agnit.dg@gmail.com", "iist.mun.club@gmail.com"];
+  const isAdmin = Boolean(user?.email && adminEmails.includes(user.email.toLowerCase()));
 
+  // The 4 required tabs: Home, Contact Us, Secretariat, How to Reach
   const navItems = [
-    { id: "home", label: "Overview", number: "00", icon: Globe },
-    { id: "committees", label: "Committees", number: "01", icon: Award },
-    { id: "matrix", label: "Matrix", number: "02", icon: TableProperties },
-    { id: "schedule", label: "Agenda", number: "03", icon: Calendar },
-    { id: "secretariat", label: "Secretariat", number: "04", icon: Users },
-    { id: "faq", label: "Dispatches & FAQ", number: "05", icon: HelpCircle },
-    ...(isAdmin ? [{ id: "admin", label: "Admin Console", number: "06", icon: ShieldCheck }] : []),
+    { id: "home", label: "Home", number: "01", icon: Globe, sectionId: "hero-landing-section" },
+    { id: "contact", label: "Contact Us", number: "02", icon: Mail, sectionId: "contact-section" },
+    { id: "secretariat", label: "Secretariat", number: "03", icon: Users, sectionId: "secretariat-section" },
+    { id: "how-to-reach", label: "How to Reach", number: "04", icon: Compass, sectionId: "how-to-reach-section" },
+    ...(isAdmin ? [{ id: "admin", label: "Admin Console", number: "05", icon: ShieldCheck, sectionId: null }] : []),
   ];
 
-  const handleNavClick = (tabId: string) => {
-    setActiveTab(tabId);
+  // Observe scroll position to highlight active tab
+  useEffect(() => {
+    if (activeTab !== "home") {
+      setActiveSection(activeTab);
+      return;
+    }
+
+    const sections = [
+      { id: "hero-landing-section", tab: "home" },
+      { id: "contact-section", tab: "contact" },
+      { id: "secretariat-section", tab: "secretariat" },
+      { id: "how-to-reach-section", tab: "how-to-reach" },
+    ];
+
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY + 180;
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const el = document.getElementById(sections[i].id);
+        if (el && el.offsetTop <= scrollPosition) {
+          setActiveSection(sections[i].tab);
+          return;
+        }
+      }
+      setActiveSection("home");
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [activeTab]);
+
+  const handleNavClick = (tabId: string, sectionId?: string | null) => {
     setMobileMenuOpen(false);
+
+    if (tabId === "admin") {
+      setActiveTab("admin");
+      setActiveSection("admin");
+      return;
+    }
+
+    setActiveSection(tabId);
+
+    if (activeTab !== "home") {
+      setActiveTab("home");
+      setTimeout(() => {
+        if (sectionId) {
+          const el = document.getElementById(sectionId);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth" });
+          } else {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }
+        } else {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      }, 100);
+    } else {
+      if (sectionId) {
+        const el = document.getElementById(sectionId);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth" });
+        } else {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
   };
 
   return (
@@ -59,11 +121,10 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
           {/* Left Edge: Masthead / Brand Mark */}
           <div className="flex items-center justify-start shrink-0">
             <button
-              onClick={() => handleNavClick("home")}
+              onClick={() => handleNavClick("home", "hero-landing-section")}
               className="group flex items-center gap-3 sm:gap-3.5 text-left focus:outline-none cursor-pointer select-none py-1"
               id="navbar-brand-btn"
             >
-              {/* Emblem Mark from PDF Page 1 & 5 */}
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#C9A86A] bg-[#2E3B2F] text-[#C9A86A] font-serif text-sm tracking-widest transition-all duration-300 group-hover:bg-[#C9A86A] group-hover:text-[#1A1F1A] shadow-sm">
                 IM
               </div>
@@ -74,7 +135,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
                     IIST MUN
                   </span>
                   <span className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#C9A86A] border border-[#C9A86A]/30 px-1.5 py-0.5 rounded-none bg-[#2E3B2F]/60">
-                    2026
+                    2027 · 14th Ed.
                   </span>
                 </div>
                 <span className="text-[10px] font-sans tracking-[0.2em] text-[#8A9A7E] uppercase mt-1 whitespace-nowrap">
@@ -84,15 +145,15 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
             </button>
           </div>
 
-          {/* Middle: Desktop Centered Navigation Links with Gold Underline Draw Effect */}
+          {/* Middle: Desktop Centered Navigation Links */}
           <nav className="hidden lg:flex flex-1 items-center justify-center gap-5 xl:gap-8 mx-4">
             {navItems.map((item) => {
-              const isActive = activeTab === item.id;
+              const isActive = (activeTab === "home" ? activeSection === item.id : activeTab === item.id);
               return (
                 <button
                   key={item.id}
                   id={`nav-item-${item.id}`}
-                  onClick={() => handleNavClick(item.id)}
+                  onClick={() => handleNavClick(item.id, item.sectionId)}
                   className={`group relative py-2 text-xs font-sans uppercase tracking-[0.14em] whitespace-nowrap transition-colors cursor-pointer select-none ${
                     isActive ? "text-[#C9A86A] font-semibold" : "text-[#EDE6D3]/80 hover:text-[#EDE6D3]"
                   }`}
@@ -113,7 +174,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
             })}
           </nav>
 
-          {/* Right Edge: Account Information & Other Action Buttons */}
+          {/* Right Edge: Account Information & Contact CTA */}
           <div className="hidden lg:flex items-center justify-end gap-3.5 shrink-0">
             {loading ? (
               <div className="h-4 w-4 animate-spin rounded-full border border-[#C9A86A] border-t-transparent" />
@@ -156,24 +217,24 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
               </button>
             )}
 
-            {/* Registration CTA - Restrained Engraved Gold Button */}
+            {/* Direct Dispatch CTA */}
             <button
-              onClick={() => handleNavClick("register")}
-              id="navbar-register-cta-btn"
-              className="px-5 py-2 text-xs font-sans uppercase tracking-[0.18em] border border-[#C9A86A] text-[#EDE6D3] bg-[#2E3B2F]/60 hover:bg-[#C9A86A] hover:text-[#1A1F1A] transition-all duration-200 cursor-pointer"
+              onClick={() => handleNavClick("contact", "contact-section")}
+              id="navbar-contact-cta-btn"
+              className="px-4 py-2 text-xs font-sans uppercase tracking-[0.18em] border border-[#C9A86A] text-[#EDE6D3] bg-[#2E3B2F]/60 hover:bg-[#C9A86A] hover:text-[#1A1F1A] transition-all duration-200 cursor-pointer"
             >
-              Register Now
+              Contact Us
             </button>
           </div>
 
           {/* Mobile & Tablet Controls */}
           <div className="flex lg:hidden items-center gap-2 shrink-0">
             <button
-              onClick={() => handleNavClick("register")}
-              id="mobile-register-btn"
+              onClick={() => handleNavClick("contact", "contact-section")}
+              id="mobile-contact-btn"
               className="px-3 py-1.5 text-[11px] font-sans uppercase tracking-wider border border-[#C9A86A] bg-[#2E3B2F] text-[#EDE6D3]"
             >
-              Register
+              Contact
             </button>
 
             <button
@@ -190,12 +251,12 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
         {/* Mobile Horizontal Quick-Scroll Bar */}
         <div className="flex lg:hidden border-t border-[#8A9A7E]/15 bg-[#1A1F1A] px-3 py-2 overflow-x-auto scrollbar-none gap-2">
           {navItems.map((item) => {
-            const isActive = activeTab === item.id;
+            const isActive = (activeTab === "home" ? activeSection === item.id : activeTab === item.id);
             return (
               <button
                 key={item.id}
                 id={`nav-mobile-${item.id}`}
-                onClick={() => handleNavClick(item.id)}
+                onClick={() => handleNavClick(item.id, item.sectionId)}
                 className={`px-3 py-1 text-[11px] font-sans uppercase tracking-wider whitespace-nowrap border shrink-0 transition-colors ${
                   isActive 
                     ? "border-[#C9A86A] bg-[#2E3B2F] text-[#C9A86A] font-semibold" 
@@ -250,38 +311,26 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
               )}
 
               <div className="space-y-1 pt-2">
-                {navItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNavClick(item.id)}
-                    className={`w-full flex items-center justify-between p-2.5 text-left text-xs uppercase tracking-wider border transition-colors ${
-                      activeTab === item.id
-                        ? "border-[#C9A86A]/40 bg-[#2E3B2F] text-[#C9A86A] font-semibold"
-                        : "border-transparent text-[#EDE6D3]/80 hover:bg-[#2E3B2F]/40 hover:text-[#EDE6D3]"
-                    }`}
-                  >
-                    <span>
-                      <span className="text-[#8A9A7E] mr-2 text-[10px]">{item.number}</span>
-                      {item.label}
-                    </span>
-                    <ChevronRight className="h-3.5 w-3.5 text-[#8A9A7E]" />
-                  </button>
-                ))}
-              </div>
-
-              <div className="pt-3 border-t border-[#8A9A7E]/20 space-y-2">
-                <button
-                  onClick={() => handleNavClick("register")}
-                  className="w-full py-3 bg-[#C9A86A] text-[#1A1F1A] text-xs font-semibold uppercase tracking-[0.18em] transition-all hover:bg-[#dfbe7e]"
-                >
-                  Register as Delegate
-                </button>
-                <button
-                  onClick={() => handleNavClick("workshop-register")}
-                  className="w-full py-2.5 border border-[#8A9A7E]/40 text-[#8A9A7E] hover:text-[#EDE6D3] text-xs uppercase tracking-wider transition-all hover:border-[#C9A86A]"
-                >
-                  Pre-MUN Training Workshop
-                </button>
+                {navItems.map((item) => {
+                  const isActive = (activeTab === "home" ? activeSection === item.id : activeTab === item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNavClick(item.id, item.sectionId)}
+                      className={`w-full flex items-center justify-between p-2.5 text-left text-xs uppercase tracking-wider border transition-colors ${
+                        isActive
+                          ? "border-[#C9A86A]/40 bg-[#2E3B2F] text-[#C9A86A] font-semibold"
+                          : "border-transparent text-[#EDE6D3]/80 hover:bg-[#2E3B2F]/40 hover:text-[#EDE6D3]"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <item.icon className="h-3.5 w-3.5 text-[#C9A86A]" />
+                        <span>{item.label}</span>
+                      </span>
+                      <span className="font-mono text-[9px] text-[#8A9A7E]">{item.number}</span>
+                    </button>
+                  );
+                })}
               </div>
             </motion.div>
           )}
@@ -290,5 +339,3 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
     </>
   );
 }
-
-

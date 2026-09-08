@@ -8,13 +8,13 @@ import { Orbit, Compass, Award, ShieldCheck, Globe2, BookOpen } from "lucide-rea
 
 export default function MarqueeTicker() {
   const items = [
-    { label: "IIST MUN 2026 // SAVE · SUSTAIN · SAFEGUARD", icon: Orbit },
-    { label: "FEBRUARY 21 – 23, 2026", icon: Compass },
+    { label: "IIST MUN 2027 // 14TH EDITION COMING SOON", icon: Orbit },
+    { label: "EB REGISTRATIONS OPENING SOON...", icon: Award },
+    { label: "CAMPUS AMBASSADOR REGISTRATIONS OPENING SOON", icon: ShieldCheck },
     { label: "ISRO VALIAMALA CAMPUS // THIRUVANANTHAPURAM", icon: Globe2 },
-    { label: "4 DIPLOMATIC CHAMBERS", icon: ShieldCheck },
-    { label: "120+ ALLOCATED PORTFOLIOS", icon: BookOpen },
-    { label: "₹50,000+ COMMENDATION & CASH AWARDS", icon: Award },
-    { label: "FIELD DIPLOMACY & ORBITAL LAW", icon: Orbit },
+    { label: "SAVE · SUSTAIN · SAFEGUARD", icon: Compass },
+    { label: "FIELD DIPLOMACY & ORBITAL STATECRAFT", icon: Orbit },
+    { label: "INDIAN INSTITUTE OF SPACE SCIENCE AND TECHNOLOGY", icon: BookOpen },
   ];
 
   // Repeat sequence so it seamlessly loops 50% shift

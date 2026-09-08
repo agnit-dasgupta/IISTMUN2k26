@@ -6,9 +6,10 @@ This specification outlines the data invariants, threat model, "Dirty Dozen" att
 
 1. **Identity Binding**: A delegate registration must be irrevocably bound to the Google Authenticated Firebase user who created it (`incoming().userId == request.auth.uid`).
 2. **Access Control**: Users can only `read` (get), `create`, or `update` their own registrations. Blanket listings of registrations are strictly forbidden for regular delegates.
-3. **Admin Privilege**: Admins (identified by verified email matching `agnit.dg@gmail.com`) have full override access to list and inspect all registrations.
+3. **Admin Privilege**: Admins (identified by verified email matching `agnit.dg@gmail.com` or `iist.mun.club@gmail.com`) have full override access to list and inspect all registrations.
 4. **Data Integrity**: Registrations must strictly conform to the expected schema (exact fields, bounded sizes, valid enumeration types).
 5. **Temporal Integrity**: Creation timestamps cannot be spoofed by the client and must use the server-generated request timestamp.
+6. **Inquiry Confidentiality**: Contact queries submitted via the portal can be created by visitors with bounded input sizes, but reading, listing, and deletion are restricted exclusively to administrators (`isAdmin()`).
 
 ---
 

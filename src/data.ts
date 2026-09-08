@@ -67,31 +67,31 @@ export const COMMITTEES: Committee[] = [
 export const SECRETARIAT: SecretariatMember[] = [
   {
     id: "sec-gen",
-    name: "Aarav Nair",
+    name: "Niranjan Patil",
     designation: "Secretary-General",
-    bio: "An aerospace engineering senior at IIST with over 15 MUN experiences. Aarav firmly believes that international law must evolve as rapidly as orbital engineering to prevent interstellar lawlessness.",
-    email: "secgen.iistmun@gmail.com"
+    bio: "Senior aerospace engineering scholar at IIST with extensive national MUN credentials. Leading academic chambers, strategic space law directives, and bilateral diplomacy for IISTMUN 2027.",
+    email: "support@iistmun.org"
   },
   {
     id: "dir-gen",
-    name: "Shreya Sharma",
-    designation: "Director-General",
-    bio: "An avionics scholar passionate about technology diplomacy and public policy. Shreya oversees logistics, academic research standards, and delegate hospitality for IIST MUN 2026.",
-    email: "dg.iistmun@gmail.com"
+    name: "Ananya Bhat",
+    designation: "Deputy Secretary General",
+    bio: "Aerospace engineering scholar with a passion for international relations and diplomacy. Committed to ensuring that IISTMUN 2027 provides a platform for meaningful dialogue and collaboration among future leaders.",
+    email: "support@iistmun.org"
   },
   {
     id: "usg-delegate",
-    name: "Vikram Aditya",
-    designation: "USG Delegate Affairs",
-    bio: "Pursuing Dual Degree in Astronomy and Earth System Sciences. Vikram manages the country matrix allocations, portfolio requests, and ensures delegates have a smooth registration process.",
-    email: "delegates.iistmun@gmail.com"
+    name: "Parth Ray",
+    designation: "Director General",
+    bio: "Pursuing Dual Degree in Astronomy & Earth System Sciences. Manages delegate onboarding, committee administration, Executive Board selection protocols, and country allocations.",
+    email: "support@iistmun.org"
   },
   {
-    id: "usg-press",
-    name: "Ananya Iyer",
-    designation: "USG International Press",
-    bio: "A physics major and literature enthusiast. Ananya leads the pool of journalists, caricature artists, and photographers to document and satirize committee deliberations.",
-    email: "press.iistmun@gmail.com"
+    id: "usg-website",
+    name: "Agnit Dasgupta",
+    designation: "USG Website",
+    bio: "Physics major and investigative editorialist. Directs the international press corps, committee dispatch journalism, satirical daily gazettes, and photography documentation.",
+    email: "support@iistmun.org"
   }
 ];
 

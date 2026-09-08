@@ -8,6 +8,7 @@ import { db, handleFirestoreError, OperationType } from "../firebase";
 import { collection, onSnapshot, query, deleteDoc, doc, setDoc } from "firebase/firestore";
 import { useFirebase } from "../FirebaseContext";
 import { COUNTRY_MATRIX } from "../data";
+import * as XLSX from "xlsx";
 import { 
   Users, 
   Search, 
@@ -24,9 +25,15 @@ import {
   Briefcase, 
   Check,
   AlertTriangle,
-  Globe
+  Globe,
+  Mail,
+  MessageSquare,
+  ExternalLink,
+  Eye,
+  Inbox,
+  FileSpreadsheet
 } from "lucide-react";
-import { RegistrationDetails, CountryMatrixRow, PortfolioStatus } from "../types";
+import { RegistrationDetails, CountryMatrixRow, PortfolioStatus, ContactQuery } from "../types";
 
 interface PortfolioStatusSelectorProps {
   country: string;
@@ -77,11 +84,91 @@ export default function AdminDashboard() {
   const [workshopSearch, setWorkshopSearch] = useState("");
 
   // New portfolio states
-  const [activeSubTab, setActiveSubTab] = useState<"registrations" | "workshop">("registrations");
+  const [activeSubTab, setActiveSubTab] = useState<"registrations" | "workshop" | "queries">("registrations");
   const [portfolioSearch, setPortfolioSearch] = useState("");
   const [portfolioOverrides, setPortfolioOverrides] = useState<Record<string, Partial<Record<"copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>>({});
 
-  const isAdmin = user?.email === "agnit.dg@gmail.com";
+  // Contact Queries state
+  const [contactQueries, setContactQueries] = useState<ContactQuery[]>([]);
+  const [queriesSearch, setQueriesSearch] = useState("");
+  const [filterQueryCategory, setFilterQueryCategory] = useState("all");
+  const [selectedQuery, setSelectedQuery] = useState<ContactQuery | null>(null);
+  const [confirmQueryDeleteId, setConfirmQueryDeleteId] = useState<string | null>(null);
+  const [isDeletingQuery, setIsDeletingQuery] = useState(false);
+
+  const adminEmails = ["agnit.dg@gmail.com", "iist.mun.club@gmail.com"];
+  const isAdmin = Boolean(user?.email && adminEmails.includes(user.email.toLowerCase()));
+
+  // Listener & sync for contact queries from server persistent storage and Firestore
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const fetchServerQueries = async () => {
+      try {
+        const res = await fetch("/api/queries");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.queries && Array.isArray(data.queries)) {
+            setContactQueries((prev) => {
+              const map = new Map<string, ContactQuery>();
+              data.queries.forEach((q: ContactQuery) => {
+                if (q.id) map.set(q.id, q);
+              });
+              prev.forEach((q) => {
+                if (q.id) map.set(q.id, q);
+              });
+              const merged = Array.from(map.values());
+              merged.sort((a, b) => {
+                const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
+                const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
+                return timeB - timeA;
+              });
+              return merged;
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching queries from server:", err);
+      }
+    };
+
+    fetchServerQueries();
+
+    // Also listen to Firestore contact_queries
+    const q = query(collection(db, "contact_queries"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: ContactQuery[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push({
+          id: docSnap.id,
+          ...docSnap.data()
+        } as ContactQuery);
+      });
+
+      if (list.length > 0) {
+        setContactQueries((prev) => {
+          const map = new Map<string, ContactQuery>();
+          prev.forEach((q) => {
+            if (q.id) map.set(q.id, q);
+          });
+          list.forEach((q) => {
+            if (q.id) map.set(q.id, q);
+          });
+          const merged = Array.from(map.values());
+          merged.sort((a, b) => {
+            const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
+            const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
+            return timeB - timeA;
+          });
+          return merged;
+        });
+      }
+    }, (error) => {
+      console.log("Firestore contact_queries subscription status:", error instanceof Error ? error.message : "Using server bridge");
+    });
+
+    return () => unsubscribe();
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -317,6 +404,133 @@ export default function AdminDashboard() {
     showToast("JSON Download started successfully!");
   };
 
+  // Contact queries filtering
+  const filteredQueries = contactQueries.filter((q) => {
+    const queryText = queriesSearch.toLowerCase();
+    const matchSearch =
+      (q.name?.toLowerCase() || "").includes(queryText) ||
+      (q.email?.toLowerCase() || "").includes(queryText) ||
+      (q.category?.toLowerCase() || "").includes(queryText) ||
+      (q.message?.toLowerCase() || "").includes(queryText) ||
+      (q.id?.toLowerCase() || "").includes(queryText);
+    const matchCategory = filterQueryCategory === "all" || q.category === filterQueryCategory;
+    return matchSearch && matchCategory;
+  });
+
+  const exportQueriesToExcel = () => {
+    if (contactQueries.length === 0) {
+      showToast("No contact queries available to export.");
+      return;
+    }
+
+    if (filteredQueries.length === 0) {
+      showToast("No queries match your filter criteria to export.");
+      return;
+    }
+
+    const exportRows = filteredQueries.map((q, idx) => ({
+      "Sl. No": idx + 1,
+      "Query Reference ID": q.id || "",
+      "Date & Time": q.timestamp || "",
+      "Sender Name": q.name || "",
+      "Sender Email": q.email || "",
+      "Inquiry Category": q.category || "",
+      "Status": q.status || "Pending",
+      "Message / Inquiry Dispatch": q.message || "",
+      "Destination": q.destination || "support@iistmun.org"
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+
+    // Auto-fit column widths
+    worksheet["!cols"] = [
+      { wch: 8 },   // Sl. No
+      { wch: 28 },  // Query Reference ID
+      { wch: 22 },  // Date & Time
+      { wch: 26 },  // Sender Name
+      { wch: 32 },  // Sender Email
+      { wch: 28 },  // Inquiry Category
+      { wch: 12 },  // Status
+      { wch: 65 },  // Message / Inquiry Dispatch
+      { wch: 24 },  // Destination
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Contact Queries");
+
+    const dateStr = new Date().toISOString().split("T")[0];
+    XLSX.writeFile(workbook, `IIST_MUN_2027_Contact_Queries_${dateStr}.xlsx`);
+    showToast(`Excel workbook downloaded (${filteredQueries.length} dispatches)!`);
+  };
+
+  const exportQueriesToCSV = () => {
+    if (contactQueries.length === 0) {
+      showToast("No contact queries available to export.");
+      return;
+    }
+
+    if (filteredQueries.length === 0) {
+      showToast("No queries match your filter criteria to export.");
+      return;
+    }
+
+    const headers = [
+      "Sl No", "Reference ID", "Date & Time", "Sender Name", 
+      "Sender Email", "Inquiry Category", "Status", "Message", "Destination"
+    ];
+
+    const rows = filteredQueries.map((q, idx) => [
+      String(idx + 1),
+      q.id || "",
+      q.timestamp || "",
+      q.name || "",
+      q.email || "",
+      q.category || "",
+      q.status || "Pending",
+      q.message || "",
+      q.destination || "support@iistmun.org"
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `IIST_MUN_2027_Contact_Queries_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast("CSV Download started!");
+  };
+
+  const handleDeleteQuery = async (id: string) => {
+    try {
+      setIsDeletingQuery(true);
+      // Delete from server storage
+      await fetch(`/api/queries/${id}`, { method: "DELETE" });
+
+      // Delete from Firestore if exists
+      try {
+        await deleteDoc(doc(db, "contact_queries", id));
+      } catch {
+        // Handled via server
+      }
+
+      setContactQueries((prev) => prev.filter((q) => q.id !== id));
+      setConfirmQueryDeleteId(null);
+      if (selectedQuery?.id === id) {
+        setSelectedQuery(null);
+      }
+      showToast("Query dispatch successfully purged.");
+    } catch (err) {
+      console.error("Error deleting contact query:", err);
+      showToast("Failed to remove query.");
+    } finally {
+      setIsDeletingQuery(false);
+    }
+  };
+
   // Filter registrations
   const filtered = registrations.filter(r => {
     const queryLower = searchQuery.toLowerCase();
@@ -392,7 +606,18 @@ export default function AdminDashboard() {
               Archival monitoring of registered candidates, delegations, portfolios, and workshop cohorts.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setActiveSubTab("queries")}
+              className={`flex items-center gap-2 px-4 py-2 border transition-all cursor-pointer text-xs font-sans font-semibold uppercase tracking-wider ${
+                activeSubTab === "queries"
+                  ? "border-[#C9A86A] bg-[#C9A86A] text-[#1A1F1A]"
+                  : "border-[#C9A86A]/40 bg-[#2E3B2F] text-[#EDE6D3] hover:bg-[#C9A86A] hover:text-[#1A1F1A]"
+              }`}
+            >
+              <Mail className="h-3.5 w-3.5" />
+              <span>Contact Queries ({contactQueries.length})</span>
+            </button>
             <button
               onClick={exportToCSV}
               disabled={registrations.length === 0}
@@ -413,8 +638,11 @@ export default function AdminDashboard() {
         </div>
 
         {/* Dashboard Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-10">
+          <div 
+            onClick={() => setActiveSubTab("registrations")}
+            className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm cursor-pointer hover:border-[#C9A86A] transition-all"
+          >
             <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium">TOTAL ACCREDITATIONS</span>
             <div className="flex justify-between items-end mt-2">
               <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{totalCount}</span>
@@ -423,7 +651,10 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm">
+          <div 
+            onClick={() => setActiveSubTab("registrations")}
+            className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm cursor-pointer hover:border-[#C9A86A] transition-all"
+          >
             <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium">INDIVIDUAL DELEGATES</span>
             <div className="flex justify-between items-end mt-2">
               <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{individualCount}</span>
@@ -432,7 +663,10 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm">
+          <div 
+            onClick={() => setActiveSubTab("registrations")}
+            className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm cursor-pointer hover:border-[#C9A86A] transition-all"
+          >
             <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium">DOUBLE DELEGATIONS</span>
             <div className="flex justify-between items-end mt-2">
               <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{doubleCount}</span>
@@ -441,12 +675,31 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm">
+          <div 
+            onClick={() => setActiveSubTab("registrations")}
+            className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm cursor-pointer hover:border-[#C9A86A] transition-all"
+          >
             <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium">INSTITUTION CONTINGENTS</span>
             <div className="flex justify-between items-end mt-2">
               <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{contingentCount}</span>
               <div className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#8A9A7E]">
                 <Building2 className="h-4 w-4" />
+              </div>
+            </div>
+          </div>
+          <div 
+            onClick={() => setActiveSubTab("queries")}
+            className={`border p-5 text-left shadow-sm cursor-pointer transition-all ${
+              activeSubTab === "queries"
+                ? "border-[#C9A86A] bg-[#2E3B2F] ring-1 ring-[#C9A86A]"
+                : "border-[#C9A86A]/40 bg-[#2E3B2F] hover:border-[#C9A86A]"
+            }`}
+          >
+            <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#C9A86A] font-bold">CONTACT INQUIRIES</span>
+            <div className="flex justify-between items-end mt-2">
+              <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{contactQueries.length}</span>
+              <div className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                <Mail className="h-4 w-4" />
               </div>
             </div>
           </div>
@@ -473,6 +726,22 @@ export default function AdminDashboard() {
             }`}
           >
             Diplomacy Workshop ({workshopRegistrations.length})
+          </button>
+          <button
+            onClick={() => setActiveSubTab("queries")}
+            className={`px-6 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+              activeSubTab === "queries"
+                ? "border-[#C9A86A] text-[#C9A86A] font-semibold"
+                : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
+            }`}
+          >
+            <Mail className="h-3.5 w-3.5" />
+            <span>Contact Inquiries ({contactQueries.length})</span>
+            {contactQueries.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-[#C9A86A] text-[#1A1F1A] text-[9px] font-bold">
+                {contactQueries.length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -889,6 +1158,223 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {activeSubTab === "queries" && (
+          <div className="space-y-8 animate-fade-in text-left">
+            {/* Header & Export Actions */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#C9A86A]/20 pb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                    // ARCHIVAL TELEMETRY
+                  </span>
+                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E]">
+                    Contact Desk
+                  </span>
+                </div>
+                <h2 className="font-serif text-2xl sm:text-3xl font-normal text-[#EDE6D3] tracking-wide">
+                  Secretariat Diplomatic Dispatches &amp; Inquiries
+                </h2>
+                <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                  Dispatches logged directly from the portal's Contact Us desk to support@iistmun.org and stored in Firebase.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={exportQueriesToExcel}
+                  disabled={contactQueries.length === 0}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  title="Download all filtered queries as an Excel spreadsheet (.xlsx)"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  <span>Download Excel (.xlsx)</span>
+                </button>
+                <button
+                  onClick={exportQueriesToCSV}
+                  disabled={contactQueries.length === 0}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 border border-[#C9A86A]/40 bg-[#2E3B2F] hover:bg-[#1A1F1A] text-[#EDE6D3] font-sans text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Export filtered queries as CSV"
+                >
+                  <Download className="h-3.5 w-3.5 text-[#C9A86A]" />
+                  <span>Export CSV</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Inquiries Category Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E]">TOTAL INQUIRIES</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl sm:text-3xl font-normal text-[#EDE6D3]">{contactQueries.length}</span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                    <Mail className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A]">EB APPLICATIONS</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl sm:text-3xl font-normal text-[#EDE6D3]">
+                    {contactQueries.filter(q => q.category === "EB Application").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                    <Users className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E]">CAMPUS AMBASSADOR</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl sm:text-3xl font-normal text-[#EDE6D3]">
+                    {contactQueries.filter(q => q.category === "Campus Ambassador Fellowship").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#8A9A7E]">
+                    <Compass className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E]">DELEGATIONS &amp; GENERAL</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl sm:text-3xl font-normal text-[#EDE6D3]">
+                    {contactQueries.filter(q => q.category !== "EB Application" && q.category !== "Campus Ambassador Fellowship").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#8A9A7E]">
+                    <Building2 className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="flex flex-col lg:flex-row gap-4 justify-between items-center bg-[#2E3B2F]/60 border border-[#C9A86A]/30 p-4">
+              <div className="relative w-full lg:max-w-md">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8A9A7E]" />
+                <input
+                  type="text"
+                  placeholder="Search inquiries by name, email, keyword, reference..."
+                  value={queriesSearch}
+                  onChange={(e) => setQueriesSearch(e.target.value)}
+                  className="w-full bg-[#1A1F1A] border border-[#C9A86A]/30 focus:border-[#C9A86A] pl-10 pr-4 py-2 font-sans text-xs text-[#EDE6D3] focus:outline-none transition-all placeholder-[#8A9A7E]/50"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-3 w-full lg:w-auto justify-end">
+                <div className="flex items-center gap-2 bg-[#1A1F1A] border border-[#C9A86A]/30 px-3 py-1.5">
+                  <Filter className="h-3 w-3 text-[#C9A86A]" />
+                  <select
+                    value={filterQueryCategory}
+                    onChange={(e) => setFilterQueryCategory(e.target.value)}
+                    className="bg-transparent text-[#EDE6D3] font-sans text-[11px] uppercase tracking-wider focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="bg-[#1A1F1A] text-[#EDE6D3]">ALL INQUIRY CATEGORIES</option>
+                    <option value="EB Application" className="bg-[#1A1F1A] text-[#EDE6D3]">EB APPLICATION</option>
+                    <option value="Campus Ambassador Fellowship" className="bg-[#1A1F1A] text-[#EDE6D3]">CAMPUS AMBASSADOR</option>
+                    <option value="School Delegation" className="bg-[#1A1F1A] text-[#EDE6D3]">SCHOOL DELEGATION</option>
+                    <option value="General Inquiry" className="bg-[#1A1F1A] text-[#EDE6D3]">GENERAL INQUIRY</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Queries Table */}
+            <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] overflow-hidden shadow-xl text-left">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[950px]">
+                  <thead>
+                    <tr className="border-b border-[#C9A86A]/20 bg-[#1A1F1A] font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">
+                      <th className="p-4 pl-6">Reference / Date</th>
+                      <th className="p-4">Sender Information</th>
+                      <th className="p-4">Inquiry Category</th>
+                      <th className="p-4">Message / Dispatch</th>
+                      <th className="p-4 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#C9A86A]/10 font-sans text-xs">
+                    {filteredQueries.map((query) => (
+                      <tr key={query.id} className="hover:bg-[#1A1F1A]/50 transition-colors">
+                        <td className="p-4 pl-6">
+                          <span className="font-mono text-[10px] text-[#C9A86A] block font-semibold">
+                            {query.id ? (query.id.length > 14 ? query.id.slice(0, 14) + "..." : query.id) : "Ref: Pending"}
+                          </span>
+                          <span className="font-mono text-[10px] text-[#8A9A7E] block mt-0.5">
+                            {query.timestamp || "Recent"}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className="font-semibold text-[#EDE6D3] block">{query.name}</span>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-xs text-[#8A9A7E] font-mono">{query.email}</span>
+                            <a
+                              href={`mailto:${query.email}?subject=Re: IISTMUN 2027 Inquiry [${encodeURIComponent(query.category)}]`}
+                              className="text-[#C9A86A] hover:text-[#EDE6D3] transition-colors"
+                              title="Direct Email Reply"
+                            >
+                              <ExternalLink className="h-3 w-3 inline" />
+                            </a>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <span className={`inline-block px-2.5 py-1 text-[9px] font-mono uppercase tracking-wider border ${
+                            query.category === "EB Application"
+                              ? "border-[#C9A86A]/60 bg-[#C9A86A]/15 text-[#C9A86A]"
+                              : query.category === "Campus Ambassador Fellowship"
+                              ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
+                              : query.category === "School Delegation"
+                              ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-300"
+                              : "border-[#8A9A7E]/40 bg-[#1A1F1A] text-[#EDE6D3]"
+                          }`}>
+                            {query.category}
+                          </span>
+                        </td>
+                        <td className="p-4 max-w-md">
+                          <p className="text-[#EDE6D3]/80 line-clamp-2 leading-relaxed text-xs">
+                            {query.message}
+                          </p>
+                        </td>
+                        <td className="p-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => setSelectedQuery(query)}
+                              className="px-3 py-1.5 border border-[#C9A86A]/40 bg-[#1A1F1A] text-[#C9A86A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] transition-all font-mono text-[10px] uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
+                              title="Inspect Full Query"
+                            >
+                              <Eye className="h-3 w-3" />
+                              <span>View</span>
+                            </button>
+                            <button
+                              onClick={() => setConfirmQueryDeleteId(query.id || null)}
+                              className="p-1.5 border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:border-red-500/40 transition-all cursor-pointer"
+                              title="Delete Query"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredQueries.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-12 text-center text-[#8A9A7E] font-sans text-xs">
+                          <Inbox className="h-8 w-8 text-[#8A9A7E]/50 mx-auto mb-2" />
+                          <p className="font-serif text-base text-[#EDE6D3]">No contact dispatches found</p>
+                          <p className="text-[11px] text-[#8A9A7E] mt-1">
+                            {queriesSearch || filterQueryCategory !== "all"
+                              ? "No queries match your current search/filter parameters."
+                              : "No dispatches have been submitted yet. Inquiries transmitted via the portal will appear here in real-time."}
+                          </p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Inspection Modal */}
         {selectedReg && (
           <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in" id="admin-inspector-modal">
@@ -1063,6 +1549,124 @@ export default function AdminDashboard() {
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     ) : (
                       "Revoke"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Contact Query Detail Inspection Modal */}
+        {selectedQuery && (
+          <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in">
+            <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
+              <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-2xl w-full p-6 sm:p-8 relative shadow-2xl my-8 text-left">
+                <div className="absolute right-4 top-4">
+                  <button
+                    onClick={() => setSelectedQuery(null)}
+                    className="p-1.5 border border-[#C9A86A]/40 bg-[#1A1F1A] hover:border-[#C9A86A] text-[#EDE6D3] hover:text-[#C9A86A] transition-all cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="border-b border-[#C9A86A]/30 pb-4 mb-6">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold block">
+                    // DIPLOMATIC INQUIRY DISPATCH
+                  </span>
+                  <h3 className="font-serif text-2xl font-normal text-[#EDE6D3] mt-1 flex items-center gap-3">
+                    {selectedQuery.name}
+                    <span className="px-2 py-0.5 text-[9px] font-bold font-sans uppercase border border-[#C9A86A]/40 bg-[#1A1F1A] text-[#C9A86A]">
+                      {selectedQuery.category}
+                    </span>
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-xs text-[#8A9A7E] mt-1">
+                    <span>Email: <strong className="text-[#EDE6D3] font-mono">{selectedQuery.email}</strong></span>
+                    <span>•</span>
+                    <span>Received: <strong className="text-[#EDE6D3] font-mono">{selectedQuery.timestamp || "Recent"}</strong></span>
+                  </div>
+                  {selectedQuery.id && (
+                    <div className="font-mono text-[10px] text-[#8A9A7E] mt-1">
+                      Firebase Reference ID: <span className="text-[#C9A86A]">{selectedQuery.id}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Message Body */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="font-mono text-[10px] uppercase tracking-wider text-[#8A9A7E] block mb-1.5">
+                      Full Dispatch Content:
+                    </label>
+                    <div className="bg-[#1A1F1A] border border-[#C9A86A]/30 p-5 font-sans text-xs sm:text-sm text-[#EDE6D3] whitespace-pre-wrap leading-relaxed max-h-[350px] overflow-y-auto selection:bg-[#C9A86A]/30">
+                      {selectedQuery.message}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-[#C9A86A]/20 flex flex-wrap items-center justify-between gap-3">
+                    <a
+                      href={`mailto:${selectedQuery.email}?subject=Re: IISTMUN 2027 Inquiry [${encodeURIComponent(selectedQuery.category)}]&body=Dear ${encodeURIComponent(selectedQuery.name)},\n\nThank you for contacting the IISTMUN 2027 Secretariat.\n\nRegarding your inquiry:\n\n\n---\nWarm regards,\nSecretariat Desk, IISTMUN 2027\nsupport@iistmun.org`}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider transition-colors shadow-sm"
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      <span>Reply via Email Client</span>
+                    </a>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (selectedQuery.id) {
+                            setConfirmQueryDeleteId(selectedQuery.id);
+                          }
+                        }}
+                        className="px-4 py-2 border border-red-500/30 hover:bg-red-500/10 text-red-400 font-sans text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                      >
+                        Delete Query
+                      </button>
+                      <button
+                        onClick={() => setSelectedQuery(null)}
+                        className="px-4 py-2 border border-[#C9A86A]/40 bg-[#1A1F1A] text-[#EDE6D3] hover:text-[#C9A86A] font-sans text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Query Delete Confirmation Modal */}
+        {confirmQueryDeleteId && (
+          <div className="fixed inset-0 z-[110] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in">
+            <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
+              <div className="bg-[#2E3B2F] border-2 border-rose-500/50 max-w-sm w-full p-6 text-center relative shadow-2xl my-8">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center bg-[#1A1F1A] border border-rose-500/40 text-rose-400 mb-4">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <h3 className="font-serif text-xl font-normal text-[#EDE6D3]">Purge Dispatch Record?</h3>
+                <p className="mt-2 font-sans text-[#8A9A7E] text-xs leading-relaxed">
+                  Are you absolutely certain you want to purge this contact inquiry from Firebase? This action cannot be reversed.
+                </p>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setConfirmQueryDeleteId(null)}
+                    disabled={isDeletingQuery}
+                    className="flex-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] hover:bg-[#1A1F1A]/80 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleDeleteQuery(confirmQueryDeleteId)}
+                    disabled={isDeletingQuery}
+                    className="flex-1 bg-rose-700 hover:bg-rose-600 py-2.5 text-xs font-semibold uppercase tracking-wider text-white shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {isDeletingQuery ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      "Purge"
                     )}
                   </button>
                 </div>

@@ -17,7 +17,7 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email == "agnit.dg@gmail.com";
+      return isSignedIn() && (request.auth.token.email == "agnit.dg@gmail.com" || request.auth.token.email == "iist.mun.club@gmail.com");
     }
     
     function isValidId(id) {
@@ -90,5 +90,26 @@ service cloud.firestore {
                        request.resource.data.userId == resource.data.userId;
       allow delete: if isAdmin() || (isEmailVerified() && resource.data.userId == request.auth.uid);
     }
+
+    // Phase 5: Contact Queries Blueprint
+    function isValidContactQuery(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 254 &&
+             data.category is string && data.category.size() > 0 && data.category.size() <= 128 &&
+             data.message is string && data.message.size() > 0 && data.message.size() <= 5000 &&
+             (!('timestamp' in data) || (data.timestamp is string && data.timestamp.size() <= 128)) &&
+             (!('status' in data) || (data.status is string && data.status.size() <= 32)) &&
+             (!('destination' in data) || (data.destination is string && data.destination.size() <= 254)) &&
+             (!('source' in data) || (data.source is string && data.source.size() <= 128)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    // Match block for contact queries
+    match /contact_queries/{queryId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidContactQuery(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
   }
 }
+
