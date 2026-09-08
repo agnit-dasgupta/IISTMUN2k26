@@ -4,7 +4,6 @@
  */
 
 import React, { useRef, useState } from "react";
-import { motion } from "motion/react";
 
 interface SpotlightCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
@@ -17,7 +16,7 @@ interface SpotlightCardProps extends React.HTMLAttributes<HTMLDivElement> {
 export default function SpotlightCard({
   children,
   className = "",
-  spotlightColor = "rgba(56, 189, 248, 0.12)",
+  spotlightColor = "rgba(201, 168, 106, 0.08)",
   onClick,
   id,
   ...props
@@ -32,21 +31,10 @@ export default function SpotlightCard({
     setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
 
-  const handleFocus = () => {
-    setOpacity(1);
-  };
-
-  const handleBlur = () => {
-    setOpacity(0);
-  };
-
-  const handleMouseEnter = () => {
-    setOpacity(1);
-  };
-
-  const handleMouseLeave = () => {
-    setOpacity(0);
-  };
+  const handleFocus = () => setOpacity(1);
+  const handleBlur = () => setOpacity(0);
+  const handleMouseEnter = () => setOpacity(1);
+  const handleMouseLeave = () => setOpacity(0);
 
   return (
     <div
@@ -58,10 +46,10 @@ export default function SpotlightCard({
       onBlur={handleBlur}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`relative overflow-hidden rounded-3xl border border-white/[0.08] bg-[#070a12]/80 backdrop-blur-xl transition-all duration-300 hover:border-white/[0.18] hover:shadow-[0_8px_30px_rgba(0,0,0,0.5)] ${className}`}
+      className={`relative overflow-hidden border border-[#C9A86A]/25 bg-[#2E3B2F]/60 backdrop-blur-sm transition-all duration-300 hover:border-[#C9A86A]/60 ${className}`}
       {...props}
     >
-      {/* Dynamic Cursor Spotlight Radial Overlay */}
+      {/* Subtle Warm Gold Sheen */}
       <div
         className="pointer-events-none absolute -inset-px transition-opacity duration-300"
         style={{
@@ -69,15 +57,8 @@ export default function SpotlightCard({
           background: `radial-gradient(400px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 70%)`
         }}
       />
-      {/* Subtle border sheen highlight */}
-      <div
-        className="pointer-events-none absolute -inset-px rounded-3xl transition-opacity duration-300"
-        style={{
-          opacity: opacity * 0.7,
-          background: `radial-gradient(300px circle at ${position.x}px ${position.y}px, rgba(255, 255, 255, 0.15), transparent 60%)`
-        }}
-      />
       <div className="relative z-10">{children}</div>
     </div>
   );
 }
+

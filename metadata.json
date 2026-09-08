@@ -1,6 +1,6 @@
 {
   "name": "IIST MUN 2026",
-  "description": "Indian Institute of Space Science and Technology Model United Nations (IIST MUN) - The premier conference blending space technology, orbital research, and global diplomacy.",
+  "description": "IIST MUN 2026: Save · Sustain · Safeguard. An identity built for a conference that plays diplomat in the field with deep forest and aged parchment, gold accents, and sustainability brief.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -40,23 +40,23 @@ function PortfolioStatusSelector({ country, committee, currentStatus, onUpdate }
     <select
       value={currentStatus}
       onChange={(e) => onUpdate(country, committee, e.target.value as any)}
-      className={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold border outline-none cursor-pointer transition-all ${
+      className={`px-2 py-1 text-[10px] uppercase tracking-wider font-semibold border outline-none cursor-pointer transition-all ${
         currentStatus === "Available"
-          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
+          ? "bg-[#2E3B2F] text-[#C9A86A] border-[#C9A86A]/40 hover:border-[#C9A86A]"
           : currentStatus === "Assigned"
-          ? "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"
+          ? "bg-rose-950/40 text-rose-300 border-rose-500/30 hover:bg-rose-950/60"
           : currentStatus === "Reserved"
-          ? "bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
+          ? "bg-amber-950/40 text-amber-300 border-amber-500/30 hover:bg-amber-950/60"
           : currentStatus === "Pending"
-          ? "bg-violet-500/10 text-violet-400 border-violet-500/20 hover:bg-violet-500/20"
-          : "bg-slate-500/10 text-slate-400 border-slate-500/20 hover:bg-slate-500/20"
+          ? "bg-[#1A1F1A] text-[#8A9A7E] border-[#8A9A7E]/40 hover:border-[#8A9A7E]"
+          : "bg-[#1A1F1A] text-[#8A9A7E]/60 border-[#8A9A7E]/20"
       }`}
     >
-      <option value="Available" className="bg-slate-950 text-emerald-400">Available</option>
-      <option value="Assigned" className="bg-slate-950 text-rose-400">Assigned</option>
-      <option value="Reserved" className="bg-slate-950 text-amber-400">Special EB</option>
-      <option value="Pending" className="bg-slate-950 text-violet-400">Pending</option>
-      <option value="N/A" className="bg-slate-950 text-slate-400">N/A</option>
+      <option value="Available" className="bg-[#1A1F1A] text-[#C9A86A]">Available</option>
+      <option value="Assigned" className="bg-[#1A1F1A] text-rose-300">Assigned</option>
+      <option value="Reserved" className="bg-[#1A1F1A] text-amber-300">Special EB</option>
+      <option value="Pending" className="bg-[#1A1F1A] text-[#8A9A7E]">Pending</option>
+      <option value="N/A" className="bg-[#1A1F1A] text-[#8A9A7E]/60">N/A</option>
     </select>
   );
 }
@@ -360,16 +360,14 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="bg-[#020617] text-slate-100 min-h-screen py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden" style={{ backgroundImage: "radial-gradient(circle at 50% -20%, #1e293b 0%, #020617 80%)" }}>
-      {/* Background grids */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none opacity-30" />
-
+    <div className="bg-[#1A1F1A] text-[#EDE6D3] min-h-screen py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans paper-grain newsprint-overlay selection:bg-[#C9A86A]/30 selection:text-[#EDE6D3]">
+      
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 rounded-full border border-blue-500/30 bg-slate-900/95 px-5 py-3 shadow-[0_0_20px_rgba(37,99,235,0.3)] backdrop-blur-md animate-fade-in">
-          <Check className="h-4 w-4 text-emerald-400 shrink-0" />
-          <span className="font-sans text-xs font-bold text-slate-200">{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="text-slate-500 hover:text-slate-300 ml-1">
+        <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 border border-[#C9A86A]/40 bg-[#2E3B2F] px-5 py-3 shadow-2xl backdrop-blur-md animate-fade-in">
+          <Check className="h-4 w-4 text-[#C9A86A] shrink-0" />
+          <span className="font-sans text-xs font-medium text-[#EDE6D3]">{toastMessage}</span>
+          <button onClick={() => setToastMessage(null)} className="text-[#8A9A7E] hover:text-[#EDE6D3] ml-1">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -377,31 +375,38 @@ export default function AdminDashboard() {
 
       <div className="relative z-10 mx-auto max-w-7xl">
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-          <div className="text-left">
-            <span className="font-mono text-[9px] uppercase tracking-widest text-cyan-400 font-bold">// ORGANIZER PANEL</span>
-            <h1 className="mt-2 font-sans text-3xl font-black tracking-tight text-white sm:text-4xl uppercase">
-              Registries Telemetry
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 border-b border-[#C9A86A]/20 pb-8 text-left">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="emblem-seal px-3 py-0.5 text-[11px] uppercase tracking-[0.2em] bg-[#2E3B2F]">
+                Command Telemetry
+              </span>
+              <span className="font-sans text-xs uppercase tracking-[0.2em] text-[#8A9A7E] font-medium">
+                Secretariat Desk
+              </span>
+            </div>
+            <h1 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide mt-2">
+              Diplomatic Registries Ledger
             </h1>
-            <p className="mt-1 font-sans text-slate-400 text-sm">
-              Live orbital monitoring of registered candidates, delegations, and preferred country vectors.
+            <p className="mt-2 font-sans text-xs sm:text-sm text-[#8A9A7E]">
+              Archival monitoring of registered candidates, delegations, portfolios, and workshop cohorts.
             </p>
           </div>
           <div className="flex gap-3">
             <button
               onClick={exportToCSV}
               disabled={registrations.length === 0}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-slate-800 bg-slate-950/60 hover:bg-slate-900 text-xs font-bold uppercase tracking-wider text-slate-300 transition-all hover:border-blue-500/30 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 border border-[#C9A86A]/40 bg-[#2E3B2F] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-xs font-sans font-semibold uppercase tracking-wider text-[#EDE6D3] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Download className="h-3.5 w-3.5 text-blue-400" />
+              <Download className="h-3.5 w-3.5" />
               Export CSV
             </button>
             <button
               onClick={exportToJSON}
               disabled={registrations.length === 0}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-slate-800 bg-slate-950/60 hover:bg-slate-900 text-xs font-bold uppercase tracking-wider text-slate-300 transition-all hover:border-purple-500/30 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 border border-[#C9A86A]/40 bg-[#2E3B2F] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-xs font-sans font-semibold uppercase tracking-wider text-[#EDE6D3] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <FileText className="h-3.5 w-3.5 text-purple-400" />
+              <FileText className="h-3.5 w-3.5" />
               Export JSON
             </button>
           </div>
@@ -409,38 +414,38 @@ export default function AdminDashboard() {
 
         {/* Dashboard Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-          <div className="rounded-2xl border border-slate-900 bg-slate-950/30 p-5 backdrop-blur-sm text-left">
-            <span className="font-mono text-[8px] uppercase tracking-widest text-slate-500 font-bold">TOTAL REGISTRATIONS</span>
+          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm">
+            <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium">TOTAL ACCREDITATIONS</span>
             <div className="flex justify-between items-end mt-2">
-              <span className="font-sans text-3xl font-black text-white">{totalCount}</span>
-              <div className="p-2 bg-blue-500/5 rounded-full border border-blue-500/10 text-blue-400">
+              <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{totalCount}</span>
+              <div className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
                 <Users className="h-4 w-4" />
               </div>
             </div>
           </div>
-          <div className="rounded-2xl border border-slate-900 bg-slate-950/30 p-5 backdrop-blur-sm text-left">
-            <span className="font-mono text-[8px] uppercase tracking-widest text-slate-500 font-bold">INDIVIDUAL</span>
+          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm">
+            <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium">INDIVIDUAL DELEGATES</span>
             <div className="flex justify-between items-end mt-2">
-              <span className="font-sans text-3xl font-black text-white">{individualCount}</span>
-              <div className="p-2 bg-emerald-500/5 rounded-full border border-emerald-500/10 text-emerald-400">
+              <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{individualCount}</span>
+              <div className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#8A9A7E]">
                 <User className="h-4 w-4" />
               </div>
             </div>
           </div>
-          <div className="rounded-2xl border border-slate-900 bg-slate-950/30 p-5 backdrop-blur-sm text-left">
-            <span className="font-mono text-[8px] uppercase tracking-widest text-slate-500 font-bold">DOUBLE DELEGATIONS</span>
+          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm">
+            <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium">DOUBLE DELEGATIONS</span>
             <div className="flex justify-between items-end mt-2">
-              <span className="font-sans text-3xl font-black text-white">{doubleCount}</span>
-              <div className="p-2 bg-purple-500/5 rounded-full border border-purple-500/10 text-purple-400">
+              <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{doubleCount}</span>
+              <div className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
                 <Compass className="h-4 w-4" />
               </div>
             </div>
           </div>
-          <div className="rounded-2xl border border-slate-900 bg-slate-950/30 p-5 backdrop-blur-sm text-left">
-            <span className="font-mono text-[8px] uppercase tracking-widest text-slate-500 font-bold">CONTINGENTS</span>
+          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm">
+            <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium">INSTITUTION CONTINGENTS</span>
             <div className="flex justify-between items-end mt-2">
-              <span className="font-sans text-3xl font-black text-white">{contingentCount}</span>
-              <div className="p-2 bg-amber-500/5 rounded-full border border-amber-500/10 text-amber-400">
+              <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{contingentCount}</span>
+              <div className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#8A9A7E]">
                 <Building2 className="h-4 w-4" />
               </div>
             </div>
@@ -448,26 +453,26 @@ export default function AdminDashboard() {
         </div>
 
         {/* Admin Navigation Sub-Tabs */}
-        <div className="flex border-b border-slate-900 mb-8">
+        <div className="flex border-b border-[#C9A86A]/25 mb-8">
           <button
             onClick={() => setActiveSubTab("registrations")}
-            className={`px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            className={`px-6 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer ${
               activeSubTab === "registrations"
-                ? "border-cyan-500 text-cyan-400 font-bold"
-                : "border-transparent text-slate-400 hover:text-slate-200"
+                ? "border-[#C9A86A] text-[#C9A86A] font-semibold"
+                : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
             }`}
           >
             Delegate Registrations ({filtered.length})
           </button>
           <button
             onClick={() => setActiveSubTab("workshop")}
-            className={`px-6 py-3 font-sans text-xs font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            className={`px-6 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer ${
               activeSubTab === "workshop"
-                ? "border-cyan-500 text-cyan-400 font-bold"
-                : "border-transparent text-slate-400 hover:text-slate-200"
+                ? "border-[#C9A86A] text-[#C9A86A] font-semibold"
+                : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
             }`}
           >
-            Workshop ({workshopRegistrations.length})
+            Diplomacy Workshop ({workshopRegistrations.length})
           </button>
         </div>
 
@@ -886,101 +891,99 @@ export default function AdminDashboard() {
 
         {/* Inspection Modal */}
         {selectedReg && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in" id="admin-inspector-modal">
             <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 relative overflow-hidden shadow-2xl my-8 text-left">
+              <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-2xl w-full p-6 sm:p-8 relative shadow-2xl my-8 text-left">
                 <div className="absolute right-4 top-4">
                   <button
                     onClick={() => setSelectedReg(null)}
-                    className="p-1.5 rounded-full border border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white transition-all cursor-pointer"
+                    className="p-1.5 border border-[#C9A86A]/40 bg-[#1A1F1A] hover:border-[#C9A86A] text-[#EDE6D3] hover:text-[#C9A86A] transition-all cursor-pointer"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
 
                 {/* Modal Header */}
-                <div className="text-left border-b border-slate-800 pb-4 mb-6">
-                  <span className="font-mono text-[8px] uppercase tracking-widest text-cyan-400 font-bold">// INSPECTOR LOG: {selectedReg.id}</span>
-                  <h3 className="font-sans text-xl font-bold text-white mt-1 flex items-center gap-2">
+                <div className="text-left border-b border-[#C9A86A]/30 pb-4 mb-6">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold block">// SECRETARIAT DOSSIER: {selectedReg.id}</span>
+                  <h3 className="font-serif text-2xl font-normal text-[#EDE6D3] mt-1 flex items-center gap-3">
                     {selectedReg.name}
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase ${
-                      selectedReg.role === "Photographer" ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                    }`}>
+                    <span className="px-2 py-0.5 text-[9px] font-bold font-sans uppercase border border-[#C9A86A]/40 bg-[#1A1F1A] text-[#C9A86A]">
                       {selectedReg.role || "Delegate"}
                     </span>
                   </h3>
-                  <p className="font-sans text-xs text-slate-400 mt-0.5">{selectedReg.email} • {selectedReg.phone}</p>
+                  <p className="font-sans text-xs text-[#8A9A7E] mt-0.5">{selectedReg.email} • {selectedReg.phone}</p>
                 </div>
 
                 {/* Profile details */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-                  <div>
-                    <span className="font-mono text-[9px] text-slate-500 uppercase tracking-wider block">Academic Institution</span>
-                    <p className="font-sans text-sm text-slate-200 font-semibold mt-0.5">{selectedReg.institution}</p>
+                  <div className="bg-[#1A1F1A] p-3.5 border border-[#8A9A7E]/20">
+                    <span className="font-sans text-[8.5px] text-[#8A9A7E] uppercase tracking-wider block font-semibold">Academic Institution</span>
+                    <p className="font-sans text-xs text-[#EDE6D3] font-medium mt-0.5">{selectedReg.institution}</p>
                   </div>
-                  <div>
-                    <span className="font-mono text-[9px] text-slate-500 uppercase tracking-wider block">Course / Class / Dept</span>
-                    <p className="font-sans text-sm text-slate-200 font-semibold mt-0.5">{selectedReg.course}</p>
+                  <div className="bg-[#1A1F1A] p-3.5 border border-[#8A9A7E]/20">
+                    <span className="font-sans text-[8.5px] text-[#8A9A7E] uppercase tracking-wider block font-semibold">Course / Class / Dept</span>
+                    <p className="font-sans text-xs text-[#EDE6D3] font-medium mt-0.5">{selectedReg.course}</p>
                   </div>
-                  <div>
-                    <span className="font-mono text-[9px] text-slate-500 uppercase tracking-wider block">MUN Experience Level</span>
-                    <p className="font-sans text-sm text-slate-200 font-semibold mt-0.5">{selectedReg.munExperience}</p>
+                  <div className="bg-[#1A1F1A] p-3.5 border border-[#8A9A7E]/20">
+                    <span className="font-sans text-[8.5px] text-[#8A9A7E] uppercase tracking-wider block font-semibold">MUN Experience Level</span>
+                    <p className="font-sans text-xs text-[#EDE6D3] font-medium mt-0.5">{selectedReg.munExperience}</p>
                   </div>
-                  <div>
-                    <span className="font-mono text-[9px] text-slate-500 uppercase tracking-wider block">Registration Type</span>
-                    <p className="font-sans text-sm text-slate-200 font-semibold mt-0.5 uppercase">{selectedReg.regType}</p>
+                  <div className="bg-[#1A1F1A] p-3.5 border border-[#8A9A7E]/20">
+                    <span className="font-sans text-[8.5px] text-[#8A9A7E] uppercase tracking-wider block font-semibold">Registration Mode</span>
+                    <p className="font-sans text-xs text-[#C9A86A] font-bold mt-0.5 uppercase tracking-wider">{selectedReg.regType}</p>
                   </div>
 
                   {selectedReg.regType === "double" && (
                     <>
-                      <div className="p-3 rounded-2xl bg-slate-950/40 border border-slate-800">
-                        <span className="font-mono text-[9px] text-indigo-400 uppercase tracking-wider block font-bold">Partner Details</span>
-                        <p className="font-sans text-sm text-slate-200 font-semibold mt-1">{selectedReg.partnerName || "N/A"}</p>
-                        <p className="font-sans text-[11px] text-slate-400 mt-0.5">{selectedReg.partnerEmail || "N/A"}</p>
+                      <div className="p-3.5 bg-[#1A1F1A] border border-[#C9A86A]/30">
+                        <span className="font-sans text-[8.5px] text-[#C9A86A] uppercase tracking-wider block font-semibold">Partner Delegate</span>
+                        <p className="font-sans text-xs text-[#EDE6D3] font-bold mt-0.5">{selectedReg.partnerName || "N/A"}</p>
+                        <p className="font-mono text-[10px] text-[#8A9A7E] mt-0.5">{selectedReg.partnerEmail || "N/A"}</p>
                       </div>
-                      <div className="p-3 rounded-2xl bg-slate-950/40 border border-slate-800">
-                        <span className="font-mono text-[9px] text-indigo-400 uppercase tracking-wider block font-bold">Partner Role & ID</span>
-                        <p className="font-sans text-sm text-slate-200 font-semibold mt-1">{selectedReg.partnerRole || "Delegate"}</p>
-                        <p className="font-mono text-[10px] text-slate-400 mt-0.5 font-bold">ID: {selectedReg.partnerId || "TBD"}</p>
+                      <div className="p-3.5 bg-[#1A1F1A] border border-[#C9A86A]/30">
+                        <span className="font-sans text-[8.5px] text-[#C9A86A] uppercase tracking-wider block font-semibold">Partner Role & ID</span>
+                        <p className="font-sans text-xs text-[#EDE6D3] font-bold mt-0.5">{selectedReg.partnerRole || "Delegate"}</p>
+                        <p className="font-mono text-[10px] text-[#8A9A7E] mt-0.5">ID: {selectedReg.partnerId || "TBD"}</p>
                       </div>
                     </>
                   )}
 
                   {selectedReg.regType === "contingent" && (
-                    <div>
-                      <span className="font-mono text-[9px] text-slate-500 uppercase tracking-wider block">Estimated Contingent Size</span>
-                      <p className="font-sans text-sm text-slate-200 font-semibold mt-0.5">{selectedReg.contingentSize || "N/A"}</p>
+                    <div className="bg-[#1A1F1A] p-3.5 border border-[#8A9A7E]/20 md:col-span-2">
+                      <span className="font-sans text-[8.5px] text-[#8A9A7E] uppercase tracking-wider block font-semibold">Estimated Contingent Size</span>
+                      <p className="font-sans text-xs text-[#EDE6D3] font-bold mt-0.5">{selectedReg.contingentSize || "N/A"}</p>
                     </div>
                   )}
                 </div>
 
                 {/* Committee Matrix choices */}
-                <div className="text-left border-t border-slate-800 pt-4 mt-6">
-                  <span className="font-mono text-[9px] text-slate-500 uppercase tracking-wider block mb-2">Committee Matrix Preferences</span>
+                <div className="text-left border-t border-[#C9A86A]/20 pt-4 mt-6">
+                  <span className="font-sans text-[9px] text-[#8A9A7E] uppercase tracking-wider block font-semibold mb-2">Council & Portfolio Preferences</span>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="bg-slate-950/60 border border-slate-800 p-3 rounded-xl">
-                      <span className="font-mono text-[8px] text-cyan-400 block font-bold">PREFERENCE 1</span>
-                      <span className="font-sans text-xs text-white uppercase font-bold block mt-1">{selectedReg.pref1Committee}</span>
-                      <span className="font-sans text-[11px] text-slate-400 mt-0.5 block">{selectedReg.pref1Country || "Unassigned"}</span>
+                    <div className="bg-[#1A1F1A] border border-[#C9A86A]/40 p-3">
+                      <span className="font-mono text-[8px] text-[#C9A86A] block font-bold">PREFERENCE 1</span>
+                      <span className="font-serif text-sm text-[#EDE6D3] font-bold block mt-1">{selectedReg.pref1Committee}</span>
+                      <span className="font-sans text-xs text-[#8A9A7E] mt-0.5 block">{selectedReg.pref1Country || "Unassigned"}</span>
                     </div>
-                    <div className="bg-slate-950/60 border border-slate-800 p-3 rounded-xl">
-                      <span className="font-mono text-[8px] text-slate-500 block">PREFERENCE 2</span>
-                      <span className="font-sans text-xs text-slate-300 uppercase font-bold block mt-1">{selectedReg.pref2Committee || "N/A"}</span>
-                      <span className="font-sans text-[11px] text-slate-400 mt-0.5 block">{selectedReg.pref2Country || "Unassigned"}</span>
+                    <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-3">
+                      <span className="font-mono text-[8px] text-[#8A9A7E] block">PREFERENCE 2</span>
+                      <span className="font-serif text-sm text-[#EDE6D3]/80 font-bold block mt-1">{selectedReg.pref2Committee || "N/A"}</span>
+                      <span className="font-sans text-xs text-[#8A9A7E] mt-0.5 block">{selectedReg.pref2Country || "Unassigned"}</span>
                     </div>
-                    <div className="bg-slate-950/60 border border-slate-800 p-3 rounded-xl">
-                      <span className="font-mono text-[8px] text-slate-500 block">PREFERENCE 3</span>
-                      <span className="font-sans text-xs text-slate-300 uppercase font-bold block mt-1">{selectedReg.pref3Committee || "N/A"}</span>
-                      <span className="font-sans text-[11px] text-slate-400 mt-0.5 block">{selectedReg.pref3Country || "Unassigned"}</span>
+                    <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-3">
+                      <span className="font-mono text-[8px] text-[#8A9A7E] block">PREFERENCE 3</span>
+                      <span className="font-serif text-sm text-[#EDE6D3]/80 font-bold block mt-1">{selectedReg.pref3Committee || "N/A"}</span>
+                      <span className="font-sans text-xs text-[#8A9A7E] mt-0.5 block">{selectedReg.pref3Country || "Unassigned"}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Motivation Statement */}
-                <div className="text-left border-t border-slate-800 pt-4 mt-6">
-                  <span className="font-mono text-[9px] text-slate-500 uppercase tracking-wider block">Statement of Motivation</span>
-                  <div className="mt-2 p-3.5 bg-slate-950 rounded-xl border border-slate-800 font-sans text-xs text-slate-300 leading-relaxed max-h-[160px] overflow-y-auto whitespace-pre-wrap">
-                    {selectedReg.motivation || "No statement compiled."}
+                <div className="text-left border-t border-[#C9A86A]/20 pt-4 mt-6">
+                  <span className="font-sans text-[9px] text-[#8A9A7E] uppercase tracking-wider block font-semibold">Statement of Academic Intent</span>
+                  <div className="mt-2 p-3.5 bg-[#1A1F1A] border border-[#8A9A7E]/20 font-sans text-xs text-[#EDE6D3]/90 leading-relaxed max-h-[160px] overflow-y-auto whitespace-pre-wrap italic">
+                    "{selectedReg.motivation || "No statement compiled."}"
                   </div>
                 </div>
               </div>
@@ -990,21 +993,21 @@ export default function AdminDashboard() {
 
         {/* Delete Confirmation Modal */}
         {confirmDeleteId && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in">
             <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 text-center relative overflow-hidden shadow-2xl my-8">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 border border-red-500/20 text-red-400 mb-4">
+              <div className="bg-[#2E3B2F] border-2 border-rose-500/50 max-w-sm w-full p-6 text-center relative shadow-2xl my-8">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center bg-[#1A1F1A] border border-rose-500/40 text-rose-400 mb-4">
                   <AlertTriangle className="h-6 w-6" />
                 </div>
-                <h3 className="font-sans text-lg font-bold text-white">Deport Candidate?</h3>
-                <p className="mt-2 font-sans text-slate-400 text-xs leading-relaxed">
-                  Are you absolutely sure you want to delete this candidate's registration record? This action cannot be undone.
+                <h3 className="font-serif text-xl font-normal text-[#EDE6D3]">Revoke Accreditation Record?</h3>
+                <p className="mt-2 font-sans text-[#8A9A7E] text-xs leading-relaxed">
+                  Are you absolutely certain you want to purge this delegate's accreditation dossier from the Secretariat registry?
                 </p>
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={() => setConfirmDeleteId(null)}
                     disabled={actionLoading}
-                    className="flex-1 rounded-full border border-slate-800 hover:bg-slate-800/50 py-2 text-xs font-bold uppercase tracking-wider text-slate-300 transition-all cursor-pointer disabled:opacity-50"
+                    className="flex-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] hover:bg-[#1A1F1A]/80 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] transition-all cursor-pointer disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -1014,12 +1017,12 @@ export default function AdminDashboard() {
                       if (reg) handleDelete(confirmDeleteId, reg.name || "Delegate");
                     }}
                     disabled={actionLoading}
-                    className="flex-1 rounded-full bg-red-600 hover:bg-red-500 py-2 text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                    className="flex-1 bg-rose-700 hover:bg-rose-600 py-2.5 text-xs font-semibold uppercase tracking-wider text-white shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center"
                   >
                     {actionLoading ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     ) : (
-                      "Deport"
+                      "Revoke"
                     )}
                   </button>
                 </div>
@@ -1030,21 +1033,21 @@ export default function AdminDashboard() {
 
         {/* Workshop Delete Confirmation Modal */}
         {confirmWorkshopDeleteId && (
-          <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in">
             <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 text-center relative overflow-hidden shadow-2xl my-8">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 border border-red-500/20 text-red-400 mb-4">
+              <div className="bg-[#2E3B2F] border-2 border-rose-500/50 max-w-sm w-full p-6 text-center relative shadow-2xl my-8">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center bg-[#1A1F1A] border border-rose-500/40 text-rose-400 mb-4">
                   <AlertTriangle className="h-6 w-6" />
                 </div>
-                <h3 className="font-sans text-lg font-bold text-white">Deport Workshop Candidate?</h3>
-                <p className="mt-2 font-sans text-slate-400 text-xs leading-relaxed">
-                  Are you absolutely sure you want to delete this candidate's workshop registration record? This action cannot be undone.
+                <h3 className="font-serif text-xl font-normal text-[#EDE6D3]">Revoke Workshop Record?</h3>
+                <p className="mt-2 font-sans text-[#8A9A7E] text-xs leading-relaxed">
+                  Are you absolutely certain you want to purge this candidate's workshop accreditation record?
                 </p>
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={() => setConfirmWorkshopDeleteId(null)}
                     disabled={actionLoading}
-                    className="flex-1 rounded-full border border-slate-800 hover:bg-slate-800/50 py-2 text-xs font-bold uppercase tracking-wider text-slate-300 transition-all cursor-pointer disabled:opacity-50"
+                    className="flex-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] hover:bg-[#1A1F1A]/80 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] transition-all cursor-pointer disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -1054,12 +1057,12 @@ export default function AdminDashboard() {
                       if (reg) handleWorkshopDelete(confirmWorkshopDeleteId, reg.name || "Participant");
                     }}
                     disabled={actionLoading}
-                    className="flex-1 rounded-full bg-red-600 hover:bg-red-500 py-2 text-xs font-bold uppercase tracking-wider text-white shadow-lg transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                    className="flex-1 bg-rose-700 hover:bg-rose-600 py-2.5 text-xs font-semibold uppercase tracking-wider text-white shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center"
                   >
                     {actionLoading ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     ) : (
-                      "Deport"
+                      "Revoke"
                     )}
                   </button>
                 </div>

@@ -98,10 +98,10 @@ export const SECRETARIAT: SecretariatMember[] = [
 export const SCHEDULE: { day1: TimelineEvent[]; day2: TimelineEvent[]; day3: TimelineEvent[] } = {
   day1: [
     { time: "08:30 AM - 10:00 AM", title: "Registration & Kit Distribution", description: "Collect your delegate kits, placards, and ID badges at the main IIST foyer.", location: "IIST Main Entrance Foyer", category: "other" },
-    { time: "10:30 AM - 12:00 PM", title: "Opening Ceremony", description: "Keynote speeches by prominent ISRO scientists, directors, and the Secretary-General.", location: "D3 Seminar Hall / Main Auditorium", category: "ceremony" },
+    { time: "10:30 AM - 12:00 PM", title: "Opening Ceremony", description: "Keynote speeches by prominent ISRO scientists, directors, and the Secretary-General on Save · Sustain · Safeguard directives.", location: "D3 Seminar Hall / Main Auditorium", category: "ceremony" },
     { time: "12:00 PM - 01:30 PM", title: "Lunch Break", description: "Networking lunch for delegates, executive board, and organizing committee.", location: "Central Dining Hall", category: "other" },
     { time: "01:30 PM - 05:00 PM", title: "Committee Session I", description: "Establishment of agenda, roll-call, and initiation of General Speakers List (GSL).", location: "Respective Committee Halls", category: "session" },
-    { time: "05:30 PM - 07:00 PM", title: "High Tea & Campus Tour", description: "Optional guided tour of IIST's state-of-the-art space labs, observatory dome, and research centers.", location: "IIST Campus Grounds", category: "other" }
+    { time: "05:30 PM - 07:00 PM", title: "High Tea & Campus Tour", description: "Guided tour of IIST's state-of-the-art space labs, observatory dome, and research centers.", location: "IIST Campus Grounds", category: "other" }
   ],
   day2: [
     { time: "09:00 AM - 11:30 AM", title: "Committee Session II", description: "Debate intensifies with moderated caucuses focusing on core agenda directives.", location: "Respective Committee Halls", category: "session" },
@@ -109,7 +109,7 @@ export const SCHEDULE: { day1: TimelineEvent[]; day2: TimelineEvent[]; day3: Tim
     { time: "12:00 PM - 01:30 PM", title: "Committee Session III", description: "Introduction of working papers and crisis developments for UNSC/COPUOS.", location: "Respective Committee Halls", category: "session" },
     { time: "01:30 PM - 02:30 PM", title: "Lunch Break", description: "Fueling up for a high-intensity afternoon.", location: "Central Dining Hall", category: "other" },
     { time: "02:30 PM - 05:30 PM", title: "Committee Session IV", description: "Merging working papers into draft resolutions and voting on amendments.", location: "Respective Committee Halls", category: "session" },
-    { time: "07:00 PM - 09:30 PM", title: "IIST Delegate Socials & Star Gazing", description: "A magical starry night featuring acoustic music, dinner, and astronomical star gazing through the IIST observatory telescope.", location: "IIST Observatory Lawn", category: "social" }
+    { time: "07:00 PM - 09:30 PM", title: "IIST Delegate Socials & Star Gazing", description: "A starry night featuring acoustic music, dinner, and astronomical star gazing through the IIST observatory telescope.", location: "IIST Observatory Lawn", category: "social" }
   ],
   day3: [
     { time: "09:00 AM - 11:30 AM", title: "Committee Session V", description: "Final resolution readings, defense, and crucial voting blocks.", location: "Respective Committee Halls", category: "session" },

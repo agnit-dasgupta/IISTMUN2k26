@@ -16,10 +16,10 @@ interface SatelliteCarouselProps {
 }
 
 const COMMITTEES = [
-  { id: "copuos" as const, label: "COPUOS", fullName: "Committee on the Peaceful Uses of Outer Space", color: "#38bdf8", glowColor: "rgba(56, 189, 248, 0.4)", secondaryColor: "#0284c7" },
-  { id: "disec" as const, label: "UNGA DISEC", fullName: "Disarmament & International Security Committee", color: "#818cf8", glowColor: "rgba(129, 140, 248, 0.4)", secondaryColor: "#4f46e5" },
-  { id: "aippm" as const, label: "AIPPM", fullName: "All India Political Parties Meet", color: "#fbbf24", glowColor: "rgba(251, 191, 36, 0.4)", secondaryColor: "#d97706" },
-  { id: "unsc" as const, label: "UNSC", fullName: "United Nations Security Council", color: "#34d399", glowColor: "rgba(52, 211, 153, 0.4)", secondaryColor: "#059669" }
+  { id: "copuos" as const, label: "COPUOS", fullName: "Committee on the Peaceful Uses of Outer Space", color: "#C9A86A", glowColor: "rgba(201, 168, 106, 0.4)", secondaryColor: "#586841" },
+  { id: "disec" as const, label: "UNGA DISEC", fullName: "Disarmament & International Security Committee", color: "#8A9A7E", glowColor: "rgba(138, 154, 126, 0.4)", secondaryColor: "#2E3B2F" },
+  { id: "aippm" as const, label: "AIPPM", fullName: "All India Political Parties Meet", color: "#dfbe7e", glowColor: "rgba(223, 190, 126, 0.4)", secondaryColor: "#586841" },
+  { id: "unsc" as const, label: "UNSC", fullName: "United Nations Security Council", color: "#EDE6D3", glowColor: "rgba(237, 230, 211, 0.4)", secondaryColor: "#1A1F1A" }
 ];
 
 export default function SatelliteCarousel({ portfolioOverrides, getPortfolioStatus, onSelectPreference }: SatelliteCarouselProps) {
@@ -165,38 +165,37 @@ export default function SatelliteCarousel({ portfolioOverrides, getPortfolioStat
   });
 
   return (
-    <div className="relative w-full rounded-3xl border border-white/[0.08] bg-[#070a12]/90 shadow-2xl overflow-hidden h-[630px] flex flex-col select-none backdrop-blur-2xl">
+    <div className="relative w-full border border-[#C9A86A]/30 bg-[#2E3B2F] shadow-xl overflow-hidden h-[630px] flex flex-col select-none font-sans">
       
       {/* Background Live Particle Stream */}
       <div className="absolute inset-0 pointer-events-none">
         <canvas ref={canvasRef} className="w-full h-full block" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#070a12] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1A1F1A] via-transparent to-transparent" />
       </div>
 
       {/* TOP HEADER CONTROLS */}
-      <div className="p-5 border-b border-white/[0.08] bg-white/[0.02] backdrop-blur-xl z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="p-5 border-b border-[#C9A86A]/20 bg-[#1A1F1A]/80 z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="text-left">
           <div className="flex items-center gap-2">
             <Compass className="h-4 w-4 animate-spin-slow" style={{ color: activeComm.color }} />
-            <span className="font-mono text-[9px] uppercase tracking-widest text-slate-400 font-bold">
-              // SATELLITE RADAR & CONSTELLATION
+            <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E] font-medium">
+              Interactive Allocation Radar
             </span>
           </div>
-          <h2 className="font-sans text-base font-black text-white mt-0.5 tracking-tight flex items-center gap-1.5">
+          <h2 className="font-serif text-lg text-[#EDE6D3] font-normal tracking-wide mt-0.5 flex items-center gap-1.5">
             Satellite Portfolio Carousel
-            <Sparkles className="h-3.5 w-3.5 animate-pulse" style={{ color: activeComm.color }} />
           </h2>
         </div>
 
         {/* Dynamic Telescope Search */}
-        <div className="relative max-w-xs w-full sm:w-48 pointer-events-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 text-slate-400" />
+        <div className="relative max-w-xs w-full sm:w-56 pointer-events-auto">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 text-[#8A9A7E]" />
           <input
             type="text"
-            placeholder="Search orbit..."
+            placeholder="Search nation or portfolio..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-full border border-white/[0.1] bg-black/50 py-1.5 pl-9 pr-3 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-cyan-500/50 transition-all font-medium"
+            className="w-full border border-[#C9A86A]/30 bg-[#1A1F1A] py-1.5 pl-9 pr-3 text-xs text-[#EDE6D3] placeholder-[#8A9A7E] outline-none focus:border-[#C9A86A]"
           />
         </div>
       </div>
@@ -355,66 +354,70 @@ export default function SatelliteCarousel({ portfolioOverrides, getPortfolioStat
 
       {/* SCREEN EXPANDING OVERLAY WINDOW */}
       {selectedCountry && (
-        <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/80 backdrop-blur-xl animate-fade-in" id="portfolio-overlay-modal">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in" id="portfolio-overlay-modal">
           <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
-            <div className="relative w-full max-w-2xl rounded-3xl border border-white/[0.12] bg-[#070a12]/95 p-6 md:p-8 shadow-2xl my-8 text-left backdrop-blur-2xl">
+            <div className="relative w-full max-w-2xl border-2 border-[#C9A86A] bg-[#2E3B2F] p-6 sm:p-8 shadow-2xl my-8 text-left">
               
-              <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <div className="flex items-center justify-between border-b border-[#C9A86A]/30 pb-3">
                 <div className="flex items-center gap-2">
                   <ChevronLeft 
-                    className="h-5 w-5 text-slate-400 hover:text-white cursor-pointer active:scale-90 transition-all" 
+                    className="h-4 w-4 text-[#8A9A7E] hover:text-[#EDE6D3] cursor-pointer transition-colors" 
                     onClick={() => setSelectedCountry(null)}
                   />
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-cyan-400 font-bold">
-                    // DEPLOYED PORTFOLIO OVERLAY
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                    // DIPLOMATIC PORTFOLIO DOSSIER
                   </span>
                 </div>
                 <button 
                   onClick={() => setSelectedCountry(null)}
-                  className="font-mono text-[9px] uppercase tracking-wider font-bold bg-white/[0.04] border border-white/[0.08] text-slate-400 hover:text-white px-3 py-1 rounded-full cursor-pointer transition-all"
+                  className="font-sans text-[10px] uppercase tracking-wider font-semibold border border-[#C9A86A]/40 bg-[#1A1F1A] text-[#EDE6D3] hover:text-[#C9A86A] px-3 py-1 cursor-pointer transition-all"
                 >
-                  CLOSE [ESC]
+                  Close [ESC]
                 </button>
               </div>
 
-              <div className="mt-8">
-                <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500 font-bold block mb-1">SELECTED STELLAR UNIT</span>
-                <h1 className="font-sans text-2xl font-black text-white tracking-tight flex items-center gap-2">
+              <div className="mt-6">
+                <span className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#8A9A7E] font-semibold block mb-1">
+                  Selected State / Delegation
+                </span>
+                <h1 className="font-serif text-2xl sm:text-3xl text-[#EDE6D3] font-normal tracking-wide flex items-center gap-3">
                   {selectedCountry.country}
-                  <Target className="h-5 w-5" style={{ color: activeComm.color }} />
+                  <span className="font-mono text-xs text-[#C9A86A] px-2 py-0.5 border border-[#C9A86A]/40 bg-[#1A1F1A]">
+                    {activeComm.label}
+                  </span>
                 </h1>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-                <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.08] flex items-start gap-3">
-                  <Cpu className="h-4.5 w-4.5 text-slate-400 mt-0.5 shrink-0" style={{ color: activeComm.color }} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div className="p-4 bg-[#1A1F1A] border border-[#8A9A7E]/20 flex items-start gap-3">
+                  <Compass className="h-5 w-5 text-[#C9A86A] mt-0.5 shrink-0" />
                   <div>
-                    <span className="font-mono text-[8px] text-slate-500 uppercase tracking-wider block font-bold">Orbit Committee</span>
-                    <span className="font-sans text-xs font-black text-slate-200 mt-0.5 block text-left">{activeComm.fullName}</span>
+                    <span className="font-sans text-[9px] text-[#8A9A7E] uppercase tracking-wider block font-semibold">Council Chamber</span>
+                    <span className="font-serif text-sm text-[#EDE6D3] mt-0.5 block">{activeComm.fullName}</span>
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.08] flex items-start gap-3">
-                  <Radio className="h-4.5 w-4.5 text-slate-400 mt-0.5 shrink-0" style={{ color: activeComm.color }} />
+                <div className="p-4 bg-[#1A1F1A] border border-[#8A9A7E]/20 flex items-start gap-3">
+                  <Target className="h-5 w-5 text-[#C9A86A] mt-0.5 shrink-0" />
                   <div>
-                    <span className="font-mono text-[8px] text-slate-500 uppercase tracking-wider block font-bold">Trajectory Status</span>
-                    <span className="inline-flex rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-[9px] font-black uppercase text-emerald-400 mt-1 animate-pulse tracking-widest text-left">
-                      Available for Allocation
+                    <span className="font-sans text-[9px] text-[#8A9A7E] uppercase tracking-wider block font-semibold">Seat Status</span>
+                    <span className="inline-flex bg-[#2E3B2F] border border-[#C9A86A]/40 px-2.5 py-0.5 text-[9px] font-sans font-bold uppercase text-[#C9A86A] mt-1 tracking-widest">
+                      Available for Registration Preference
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6 p-4 rounded-2xl bg-black/60 border border-white/[0.06] font-mono text-[9.5px] leading-relaxed text-slate-400">
-                <p className="text-emerald-400 font-bold mb-1">// COCKPIT PRE-FLIGHT DIAGNOSTICS:</p>
-                <p>&gt; ALLOCATION NODE INJECTION: READY</p>
-                <p>&gt; SECURE COUPLING SYSTEM: ACTIVE</p>
-                <p>&gt; PORTFOLIO LOCK TRAJECTORY STATUS: RECEPTIVE</p>
+              <div className="mt-5 p-4 bg-[#1A1F1A] border border-[#8A9A7E]/20 font-mono text-[10px] leading-relaxed text-[#EDE6D3]/80">
+                <p className="text-[#C9A86A] font-bold mb-1">// DIPLOMATIC ALLOCATION BRIEF:</p>
+                <p>&gt; Secretariat verification status: ACTIVE</p>
+                <p>&gt; Matrix allocation channel: OPEN</p>
+                <p>&gt; Preference priority slot: PREF 1 AUTOMATIC LOCK</p>
               </div>
 
-              <div className="mt-8 pt-6 border-t border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <p className="font-sans text-[11px] text-slate-400 max-w-sm text-left">
-                  Lock your MUN boarding trajectory and secure <strong>{selectedCountry.country}</strong> in your final allocation request slot.
+              <div className="mt-6 pt-6 border-t border-[#C9A86A]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <p className="font-sans text-xs text-[#8A9A7E] max-w-sm text-left leading-relaxed">
+                  Lock <strong>{selectedCountry.country}</strong> as your primary preference in your IIST MUN 2026 accreditation dossier.
                 </p>
 
                 <button
@@ -424,10 +427,10 @@ export default function SatelliteCarousel({ portfolioOverrides, getPortfolioStat
                     }
                     setSelectedCountry(null);
                   }}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-cyan-300 px-6 py-3 text-xs font-mono uppercase tracking-widest font-black text-slate-950 shadow-[0_0_20px_rgba(255,255,255,0.25)] transition-all active:scale-95 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-2 bg-[#C9A86A] hover:bg-[#dfbe7e] px-6 py-3 font-sans text-xs uppercase tracking-[0.16em] font-semibold text-[#1A1F1A] shadow-md transition-all cursor-pointer"
                 >
-                  Insert Trajectory Key & Register
-                  <ArrowRight className="h-4 w-4" />
+                  Select & Apply Portfolio
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               </div>
 

@@ -56,7 +56,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-[#04060a] text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-[#1A1F1A] text-[#EDE6D3] selection:bg-[#C9A86A]/30 selection:text-[#EDE6D3] paper-grain font-sans">
       
       {/* Navbar Component */}
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -66,29 +66,34 @@ export default function App() {
         {renderActiveContent()}
       </main>
 
-      {/* Orionix Dark Footer */}
-      <footer className="relative z-10 border-t border-white/[0.06] bg-[#04060a] py-14 px-4 sm:px-6 lg:px-8">
+      {/* Archival Diplomatic Footer */}
+      <footer className="relative z-10 border-t border-[#C9A86A]/20 bg-[#141814] py-14 px-4 sm:px-6 lg:px-8 text-left">
         <div className="mx-auto max-w-7xl">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-white/[0.06]">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-[#8A9A7E]/20">
             {/* Branding */}
             <div className="md:col-span-2 space-y-4 text-left">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-indigo-600 font-black text-xs text-white shadow-[0_0_15px_rgba(56,189,248,0.3)]">
-                  I
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[#C9A86A] bg-[#2E3B2F] text-[#C9A86A] font-serif text-sm">
+                  IM
                 </div>
-                <span className="font-sans text-base font-black text-white tracking-wider uppercase">
-                  IIST <span className="bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">MUN 2026</span>
-                </span>
+                <div>
+                  <span className="font-serif text-xl font-normal text-[#EDE6D3] tracking-wide block">
+                    IIST MUN <span className="text-[#C9A86A]">2026</span>
+                  </span>
+                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E] block">
+                    Save · Sustain · Safeguard
+                  </span>
+                </div>
               </div>
-              <p className="font-sans text-xs text-slate-400 leading-relaxed max-w-md">
-                Organized by the students of the Indian Institute of Space Science and Technology (IIST), Valiamala, Thiruvananthapuram. Bringing together the brightest minds across India to solve international challenges at the interface of technology and celestial governance.
+              <p className="font-sans text-xs text-[#8A9A7E] leading-relaxed max-w-md">
+                The premier diplomatic convocation organized by the Indian Institute of Space Science and Technology (IIST), Valiamala, Thiruvananthapuram. Convening future leaders to debate environmental resilience, sustainable exploration, and global diplomacy.
               </p>
               <div className="flex gap-4 pt-1">
                 <a
-                  href="mailto:secgen.iistmun@gmail.com"
-                  className="text-slate-400 hover:text-cyan-400 transition-colors text-xs flex items-center gap-1.5 font-mono"
+                  href="mailto:contact@iistmun.in"
+                  className="text-[#8A9A7E] hover:text-[#C9A86A] transition-colors text-xs flex items-center gap-1.5 font-mono"
                 >
-                  <Mail className="h-3.5 w-3.5 text-cyan-400" />
+                  <Mail className="h-3.5 w-3.5 text-[#C9A86A]" />
                   contact@iistmun.in
                 </a>
               </div>
@@ -96,25 +101,25 @@ export default function App() {
 
             {/* Quick Links */}
             <div className="text-left space-y-3">
-              <h4 className="font-mono text-[10px] uppercase tracking-widest text-slate-400 font-bold">// CHAMBERS DOSSIER</h4>
+              <h4 className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-semibold">Committees</h4>
               <ul className="space-y-2 font-sans text-xs">
                 <li>
-                  <button onClick={() => setActiveTab("committees")} className="text-slate-400 hover:text-white transition-colors cursor-pointer">
+                  <button onClick={() => setActiveTab("committees")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
                     COPUOS Outer Space
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveTab("committees")} className="text-slate-400 hover:text-white transition-colors cursor-pointer">
+                  <button onClick={() => setActiveTab("committees")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
                     UNGA Disarmament (DISEC)
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveTab("committees")} className="text-slate-400 hover:text-white transition-colors cursor-pointer">
-                    AIPPM Political Meet
+                  <button onClick={() => setActiveTab("committees")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                    AIPPM Political Assembly
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveTab("committees")} className="text-slate-400 hover:text-white transition-colors cursor-pointer">
+                  <button onClick={() => setActiveTab("committees")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
                     UN Security Council
                   </button>
                 </li>
@@ -123,26 +128,26 @@ export default function App() {
 
             {/* Resources / Portals */}
             <div className="text-left space-y-3">
-              <h4 className="font-mono text-[10px] uppercase tracking-widest text-slate-400 font-bold">// TELEMETRY PORTALS</h4>
+              <h4 className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-semibold">Dispatches & Portals</h4>
               <ul className="space-y-2 font-sans text-xs">
                 <li>
-                  <button onClick={() => setActiveTab("matrix")} className="text-slate-400 hover:text-white transition-colors cursor-pointer">
-                    Portfolio Allocation Matrix
+                  <button onClick={() => setActiveTab("matrix")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                    Country Matrix
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveTab("register")} className="text-slate-400 hover:text-white transition-colors cursor-pointer">
-                    Delegate Launch Portal
+                  <button onClick={() => setActiveTab("register")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                    Delegate Registration
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveTab("schedule")} className="text-slate-400 hover:text-white transition-colors cursor-pointer">
-                    Chronos Timetable
+                  <button onClick={() => setActiveTab("schedule")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                    Conference Schedule
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => setActiveTab("faq")} className="text-slate-400 hover:text-white transition-colors cursor-pointer">
-                    Intelligence Dossiers (FAQ)
+                  <button onClick={() => setActiveTab("faq")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                    Field Guide & FAQ
                   </button>
                 </li>
               </ul>
@@ -152,21 +157,21 @@ export default function App() {
           {/* Subfooter */}
           <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-left">
-              <span className="block font-mono text-[10px] uppercase tracking-widest text-slate-500 font-semibold">
+              <span className="block font-sans text-[10px] uppercase tracking-[0.15em] text-[#8A9A7E]/70 font-medium">
                 &copy; 2026 IIST MODEL UNITED NATIONS. ALL RIGHTS RESERVED.
               </span>
-              <span className="block font-sans text-[10px] text-slate-600 mt-0.5">
-                Affiliated with the Indian Space Research Organisation (ISRO).
+              <span className="block font-sans text-[10px] text-[#8A9A7E]/50 mt-0.5">
+                Indian Institute of Space Science and Technology · Valiamala, Trivandrum
               </span>
             </div>
             
             <button
               onClick={handleScrollToTop}
-              className="group flex items-center gap-1.5 font-sans text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-white transition-all border border-white/[0.08] hover:border-cyan-500/30 rounded-full px-4 py-2 bg-white/[0.02] cursor-pointer"
+              className="group flex items-center gap-1.5 font-sans text-[10px] font-medium uppercase tracking-[0.18em] text-[#8A9A7E] hover:text-[#EDE6D3] transition-all border border-[#C9A86A]/30 hover:border-[#C9A86A] px-4 py-2 bg-[#2E3B2F]/40 cursor-pointer"
               id="back-to-orbit-btn"
             >
-              Back to Orbit
-              <ArrowUpRight className="h-3.5 w-3.5 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform text-cyan-400" />
+              Return to Top
+              <ArrowUpRight className="h-3.5 w-3.5 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform text-[#C9A86A]" />
             </button>
           </div>
         </div>

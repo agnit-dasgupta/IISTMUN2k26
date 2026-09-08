@@ -6,9 +6,8 @@
 import React, { useState } from "react";
 import { SCHEDULE } from "../data";
 import { TimelineEvent } from "../types";
-import { CalendarRange, MapPin, Clock, Star, Landmark, ChevronRight, Sparkles } from "lucide-react";
+import { CalendarRange, MapPin, Clock, Star, Landmark, ChevronRight, Compass } from "lucide-react";
 import { motion } from "motion/react";
-import SpotlightCard from "./SpotlightCard";
 
 export default function Schedule() {
   const [activeDay, setActiveDay] = useState<"day1" | "day2" | "day3">("day1");
@@ -17,25 +16,25 @@ export default function Schedule() {
     switch (category) {
       case "ceremony":
         return (
-          <span className="inline-flex items-center rounded-full bg-indigo-500/10 px-2.5 py-0.5 font-mono text-[9px] font-bold text-indigo-400 border border-indigo-500/30 uppercase tracking-widest">
-            Ceremony
+          <span className="font-mono text-[9px] font-semibold text-[#1A1F1A] bg-[#C9A86A] px-2 py-0.5 uppercase tracking-wider">
+            Ceremonial
           </span>
         );
       case "session":
         return (
-          <span className="inline-flex items-center rounded-full bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[9px] font-bold text-cyan-400 border border-cyan-500/30 uppercase tracking-widest animate-pulse">
-            In Session
+          <span className="font-mono text-[9px] font-semibold text-[#C9A86A] border border-[#C9A86A]/40 px-2 py-0.5 uppercase tracking-wider bg-[#1A1F1A]">
+            Committee Session
           </span>
         );
       case "social":
         return (
-          <span className="inline-flex items-center rounded-full bg-pink-500/10 px-2.5 py-0.5 font-mono text-[9px] font-bold text-pink-400 border border-pink-500/30 uppercase tracking-widest">
-            Star Socials
+          <span className="font-mono text-[9px] font-semibold text-[#EDE6D3] bg-[#586841] px-2 py-0.5 uppercase tracking-wider">
+            Stargazing Social
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center rounded-full bg-white/[0.05] px-2.5 py-0.5 font-mono text-[9px] font-bold text-slate-400 border border-white/[0.1] uppercase tracking-widest">
+          <span className="font-mono text-[9px] font-semibold text-[#8A9A7E] border border-[#8A9A7E]/30 px-2 py-0.5 uppercase tracking-wider">
             Operational
           </span>
         );
@@ -45,117 +44,111 @@ export default function Schedule() {
   const getActiveDayLabel = () => {
     switch (activeDay) {
       case "day1":
-        return "Friday, September 18, 2026";
+        return "Friday, February 21, 2026";
       case "day2":
-        return "Saturday, September 19, 2026";
+        return "Saturday, February 22, 2026";
       case "day3":
-        return "Sunday, September 20, 2026";
+        return "Sunday, February 23, 2026";
     }
   };
 
   return (
-    <div className="bg-[#04060a] text-slate-100 min-h-screen py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden selection:bg-cyan-500/30 selection:text-cyan-200">
+    <div className="bg-[#1A1F1A] text-[#EDE6D3] min-h-screen py-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden font-sans paper-grain newsprint-overlay selection:bg-[#C9A86A]/30 selection:text-[#EDE6D3]">
       
-      {/* Orionix Ambient Glow */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-cyan-500/10 via-indigo-500/5 to-transparent blur-[140px] rounded-full" />
-
       <div className="relative z-10 mx-auto max-w-4xl">
         {/* Section Header */}
         <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="text-center mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="text-left mb-12 border-b border-[#C9A86A]/20 pb-8"
         >
-          <span className="font-mono text-[10px] uppercase tracking-widest text-cyan-400 font-bold px-3 py-1 rounded-full border border-cyan-500/20 bg-cyan-500/5">
-            // CHRONOS TIMELINE
-          </span>
-          <h1 className="mt-4 font-sans text-3xl sm:text-5xl font-black tracking-tight text-white">
-            Conference Timeline
+          <div className="flex items-center gap-2 mb-2">
+            <span className="emblem-seal px-3 py-0.5 text-[11px] uppercase tracking-[0.2em] bg-[#2E3B2F]">
+              Field Itinerary
+            </span>
+            <span className="font-sans text-xs uppercase tracking-[0.2em] text-[#8A9A7E] font-medium">
+              Three-Day Convocation
+            </span>
+          </div>
+          <h1 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide mt-2">
+            Conference Timeline & Sessions
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl font-sans text-slate-400 text-xs sm:text-sm leading-relaxed">
-            Check the official schedules for three days of rigorous diplomacy, crisis escalation rounds, and evening stargazing socials.
+          <p className="mt-3 max-w-2xl font-sans text-xs sm:text-sm text-[#8A9A7E] leading-relaxed font-light">
+            Review the complete three-day schedule encompassing inaugural addresses, intensive moderated caucuses, resolution voting, and the signature IIST Observatory stargazing fellowship.
           </p>
         </motion.div>
 
         {/* Day Selectors */}
-        <div className="flex justify-center mb-10">
-          <div className="flex bg-black/60 backdrop-blur-xl p-1.5 rounded-full border border-white/[0.1] shadow-2xl">
-            {(["day1", "day2", "day3"] as const).map((day, idx) => {
-              const dates = ["Sept 18", "Sept 19", "Sept 20"];
-              const labels = ["Day 1", "Day 2", "Day 3"];
-              const isActive = activeDay === day;
-              return (
-                <button
-                  key={day}
-                  onClick={() => setActiveDay(day)}
-                  id={`schedule-tab-${day}`}
-                  className={`rounded-full px-6 py-2.5 font-sans text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-white text-slate-950 shadow-[0_0_20px_rgba(255,255,255,0.25)]"
-                      : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <span>{labels[idx]}</span>{" "}
-                  <span className={`text-[9px] font-mono tracking-widest ${isActive ? "text-slate-600" : "text-slate-500"}`}>
-                    // {dates[idx]}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+        <div className="flex justify-start mb-8 border-b border-[#C9A86A]/30 pb-4 gap-2">
+          {(["day1", "day2", "day3"] as const).map((day, idx) => {
+            const dates = ["Feb 21", "Feb 22", "Feb 23"];
+            const labels = ["Day 1 (Friday)", "Day 2 (Saturday)", "Day 3 (Sunday)"];
+            const isActive = activeDay === day;
+            return (
+              <button
+                key={day}
+                onClick={() => setActiveDay(day)}
+                id={`schedule-tab-${day}`}
+                className={`px-4 py-2 font-sans text-xs uppercase tracking-[0.15em] transition-all cursor-pointer border ${
+                  isActive
+                    ? "bg-[#C9A86A] text-[#1A1F1A] border-[#C9A86A] font-semibold"
+                    : "border-[#C9A86A]/25 text-[#EDE6D3]/70 hover:border-[#C9A86A] hover:text-[#EDE6D3] bg-[#2E3B2F]/40"
+                }`}
+              >
+                <span>{labels[idx]}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Selected Day Header */}
-        <div className="text-center mb-8 bg-[#070a12]/60 rounded-2xl border border-white/[0.08] p-4 backdrop-blur-xl">
-          <div className="flex items-center justify-center gap-2 text-cyan-400 font-mono text-xs uppercase tracking-widest font-bold">
-            <CalendarRange className="h-4 w-4" />
+        <div className="mb-8 border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left flex items-center justify-between">
+          <div className="flex items-center gap-2 text-[#C9A86A] font-sans text-xs uppercase tracking-[0.2em] font-medium">
+            <Compass className="h-4 w-4" />
             <span>{getActiveDayLabel()}</span>
           </div>
+          <span className="font-mono text-[10px] text-[#8A9A7E]">SCHEDULE ACTIVE</span>
         </div>
 
         {/* Timeline list */}
-        <div className="relative border-l border-white/[0.1] ml-4 sm:ml-6 space-y-6 pb-8" id="timeline-list">
+        <div className="relative border-l border-[#C9A86A]/30 ml-4 sm:ml-6 space-y-6 pb-8 text-left" id="timeline-list">
           {SCHEDULE[activeDay].map((event, index) => (
             <motion.div 
               key={index} 
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.4, ease: "easeOut", delay: index * 0.06 }}
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut", delay: index * 0.05 }}
               className="relative pl-8 group"
             >
-              {/* Timeline bubble bullet */}
-              <div className="absolute -left-3 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#04060a] border-2 border-white/[0.15] group-hover:border-cyan-400 transition-colors duration-300">
-                <div className="h-2 w-2 rounded-full bg-cyan-400" />
-              </div>
+              {/* Hairline square pin */}
+              <div className="absolute -left-2 top-3 h-3.5 w-3.5 border border-[#C9A86A] bg-[#1A1F1A] group-hover:bg-[#C9A86A] transition-colors" />
 
-              {/* Card Container */}
-              <SpotlightCard className="p-5" spotlightColor="rgba(56, 189, 248, 0.1)">
+              {/* Event Card */}
+              <div className="border border-[#C9A86A]/25 bg-[#2E3B2F] p-6 hover:border-[#C9A86A] transition-all shadow-md">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-cyan-400 shrink-0" />
-                    <span className="font-mono text-xs text-cyan-400 font-bold">{event.time}</span>
+                    <Clock className="h-3.5 w-3.5 text-[#C9A86A] shrink-0" />
+                    <span className="font-mono text-xs text-[#C9A86A] font-semibold">{event.time}</span>
                   </div>
                   <div>
                     {getCategoryBadge(event.category)}
                   </div>
                 </div>
 
-                <h3 className="font-sans text-lg font-bold text-white group-hover:text-cyan-300 transition-colors duration-200 text-left">
+                <h3 className="font-serif text-xl text-[#EDE6D3] font-normal group-hover:text-[#C9A86A] transition-colors text-left">
                   {event.title}
                 </h3>
                 
-                <p className="mt-2 font-sans text-xs sm:text-sm text-slate-400 leading-relaxed text-left">
+                <p className="mt-2 font-sans text-xs sm:text-sm text-[#EDE6D3]/80 leading-relaxed font-light text-left">
                   {event.description}
                 </p>
 
-                <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center gap-1.5 text-xs text-slate-400">
-                  <MapPin className="h-3.5 w-3.5 text-slate-500" />
-                  <span>Venue: <span className="text-white font-medium">{event.location}</span></span>
+                <div className="mt-4 pt-3 border-t border-[#C9A86A]/15 flex items-center gap-1.5 font-sans text-xs text-[#8A9A7E]">
+                  <MapPin className="h-3.5 w-3.5 text-[#C9A86A]" />
+                  <span>Chamber Location: <strong className="text-[#EDE6D3] font-normal">{event.location}</strong></span>
                 </div>
-              </SpotlightCard>
+              </div>
             </motion.div>
           ))}
         </div>

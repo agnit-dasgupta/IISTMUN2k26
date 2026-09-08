@@ -1,20 +1,143 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600;1,700&family=Jost:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", "Syne", sans-serif;
+  --color-forest: #2E3B2F;
+  --color-charcoal: #1A1F1A;
+  --color-olive: #5B6B4F;
+  --color-sage: #8A9A7E;
+  --color-parchment: #EDE6D3;
+  --color-gold: #C9A86A;
+  --color-rust: #8B5A3C;
+
+  --font-display: "Cormorant Garamond", "Cormorant", Georgia, serif;
+  --font-serif: "Cormorant Garamond", "Cormorant", Georgia, serif;
+  --font-sans: "Jost", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  --font-heading: "Syne", "Space Grotesk", sans-serif;
+}
+
+:root {
+  --bg-forest: #2E3B2F;
+  --bg-charcoal: #1A1F1A;
+  --bg-olive: #5B6B4F;
+  --text-sage: #8A9A7E;
+  --text-parchment: #EDE6D3;
+  --accent-gold: #C9A86A;
+  --accent-rust: #8B5A3C;
 }
 
 html {
   scroll-behavior: smooth;
-  background-color: #04060a;
-  color: #f1f5f9;
+  background-color: #1A1F1A;
+  color: #EDE6D3;
+  font-family: "Jost", sans-serif;
 }
 
-/* Custom Orionix micro animations & Marquee */
+/* Subtle Newsprint Paper Grain Background */
+.paper-grain {
+  background-image: radial-gradient(rgba(201, 168, 106, 0.05) 1px, transparent 0);
+  background-size: 24px 24px;
+}
+
+.newsprint-overlay {
+  position: relative;
+}
+
+.newsprint-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+/* Hairline borders - restrained & engraved as per brand guide */
+.hairline-gold {
+  border: 1px solid rgba(201, 168, 106, 0.3);
+}
+
+.hairline-gold-hover:hover {
+  border-color: rgba(201, 168, 106, 0.6);
+}
+
+.hairline-cream {
+  border: 1px solid rgba(237, 230, 211, 0.15);
+}
+
+.hairline-sage {
+  border: 1px solid rgba(138, 154, 126, 0.25);
+}
+
+/* Diplomatic Seal & Emblem */
+.emblem-seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid #C9A86A;
+  color: #C9A86A;
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+}
+
+/* Custom Field Ticket & Perforation */
+.ticket-stub {
+  position: relative;
+  background-color: #2E3B2F;
+  border: 1px solid rgba(201, 168, 106, 0.3);
+}
+
+.perforated-edge {
+  border-top: 1px dashed rgba(201, 168, 106, 0.4);
+}
+
+/* Gold CTA Buttons */
+.btn-gold {
+  background-color: transparent;
+  border: 1px solid #C9A86A;
+  color: #EDE6D3;
+  font-family: "Jost", sans-serif;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+}
+
+.btn-gold:hover {
+  background-color: #C9A86A;
+  color: #1A1F1A;
+}
+
+.btn-gold-solid {
+  background-color: #C9A86A;
+  border: 1px solid #C9A86A;
+  color: #1A1F1A;
+  font-family: "Jost", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+}
+
+.btn-gold-solid:hover {
+  background-color: #dfbe7e;
+  border-color: #dfbe7e;
+}
+
+/* Urgency Tag */
+.tag-rust {
+  background-color: #8B5A3C;
+  color: #EDE6D3;
+  font-family: "Jost", sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* Animations */
 @keyframes marquee {
   0% {
     transform: translateX(0%);
@@ -24,39 +147,21 @@ html {
   }
 }
 
-@keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 40s linear infinite;
+  will-change: transform;
 }
 
-@keyframes pulse-glow {
-  0%, 100% {
-    opacity: 0.4;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
+.animate-marquee:hover {
+  animation-play-state: paused;
 }
 
-@keyframes float-slow {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-8px) rotate(1deg);
-  }
-}
-
-@keyframes fade-in {
+@keyframes fade-in-up {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -64,76 +169,32 @@ html {
   }
 }
 
-.animate-marquee {
-  display: flex;
-  width: max-content;
-  animation: marquee 35s linear infinite;
+.animate-fade-up {
+  animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.animate-marquee:hover {
-  animation-play-state: paused;
-}
-
-.animate-spin-slow {
-  animation: spin-slow 24s linear infinite;
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 4s ease-in-out infinite;
-}
-
-.animate-float-slow {
-  animation: float-slow 6s ease-in-out infinite;
-}
-
-.animate-fade-in {
-  animation: fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Glassmorphic Cyber Surfaces */
-.glass-panel {
-  background: rgba(10, 14, 23, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glass-panel-hover:hover {
-  background: rgba(15, 23, 42, 0.75);
-  border-color: rgba(56, 189, 248, 0.25);
-}
-
-/* Scrollbar customizations */
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Global custom sleek scrollbar */
+/* Custom Sleek Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #04060a;
+  background: #1A1F1A;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.2);
-  border-radius: 9999px;
+  background: #5B6B4F;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 189, 248, 0.5);
+  background: #C9A86A;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.2) #04060a;
+  scrollbar-color: #5B6B4F #1A1F1A;
 }
 
 

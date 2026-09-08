@@ -76,8 +76,8 @@ export default function QRCodeDisplay({
 
         {/* Small center logo badge */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-slate-950 text-cyan-400 font-mono text-[8px] font-black px-1.5 py-0.5 rounded border border-cyan-500/50 shadow-md">
-            IIST
+          <div className="bg-[#1A1F1A] text-[#C9A86A] font-serif text-[9px] font-bold px-1.5 py-0.5 border border-[#C9A86A] shadow-sm">
+            IM
           </div>
         </div>
       </div>
@@ -85,20 +85,20 @@ export default function QRCodeDisplay({
       {/* ID Label & Verification Badges */}
       <div className="mt-3 space-y-1">
         <div className="flex items-center justify-center gap-1.5">
-          <span className="font-mono text-xs font-extrabold text-cyan-400 tracking-wider">
+          <span className="font-mono text-xs font-bold text-[#C9A86A] tracking-wider">
             {uniqueId}
           </span>
           <button
             type="button"
             onClick={handleCopyId}
             title="Copy Unique ID"
-            className="text-slate-400 hover:text-white transition-colors p-0.5 cursor-pointer"
+            className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors p-0.5 cursor-pointer"
           >
             {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
           </button>
         </div>
 
-        <p className="font-mono text-[9px] uppercase tracking-wider text-slate-400 font-semibold">
+        <p className="font-sans text-[9px] uppercase tracking-[0.16em] text-[#8A9A7E]">
           {subtitle}
         </p>
 
@@ -106,9 +106,9 @@ export default function QRCodeDisplay({
           <button
             type="button"
             onClick={() => setShowScannerModal(true)}
-            className="mt-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-300 font-mono text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer"
+            className="mt-2 inline-flex items-center gap-1 px-2.5 py-1 bg-[#2E3B2F] hover:bg-[#3d4d3e] border border-[#C9A86A]/30 text-[#C9A86A] font-sans text-[9px] font-medium uppercase tracking-wider transition-all cursor-pointer"
           >
-            <QrCode className="h-3 w-3 text-cyan-400" />
+            <QrCode className="h-3 w-3 text-[#C9A86A]" />
             Test Scanner Display
           </button>
         )}
@@ -116,47 +116,47 @@ export default function QRCodeDisplay({
 
       {/* Simulated QR Scanner Readout Modal */}
       {showScannerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fade-in">
-          <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl text-left space-y-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#141814]/90 backdrop-blur-md p-4 animate-fade-in" id="qr-scanner-test-modal">
+          <div className="relative w-full max-w-md bg-[#2E3B2F] border-2 border-[#C9A86A] p-6 shadow-2xl text-left space-y-4">
             <button
               onClick={() => setShowScannerModal(false)}
-              className="absolute top-4 right-4 p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="absolute top-4 right-4 p-1 border border-[#C9A86A]/40 bg-[#1A1F1A] text-[#8A9A7E] hover:text-[#EDE6D3] hover:border-[#C9A86A] transition-colors cursor-pointer"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
 
-            <div className="flex items-center gap-2.5 text-cyan-400">
-              <ShieldCheck className="h-6 w-6 text-cyan-400" />
+            <div className="flex items-center gap-2.5 text-[#C9A86A]">
+              <ShieldCheck className="h-6 w-6 text-[#C9A86A]" />
               <div>
-                <h3 className="font-sans text-sm font-bold text-white uppercase tracking-wider">
+                <h3 className="font-serif text-lg font-normal text-[#EDE6D3] tracking-wide">
                   QR Scanner Decoded Payload
                 </h3>
-                <p className="font-mono text-[10px] text-slate-400">
+                <p className="font-sans text-[10px] text-[#8A9A7E] tracking-wider uppercase">
                   Simulating Camera / Smartphone Scanner Readout
                 </p>
               </div>
             </div>
 
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 font-mono text-xs text-slate-200 space-y-2 whitespace-pre-wrap">
-              <div className="flex items-center justify-between border-b border-slate-850 pb-2 mb-2">
-                <span className="text-[10px] uppercase text-emerald-400 font-bold flex items-center gap-1">
+            <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4 font-mono text-xs text-[#EDE6D3] space-y-2 whitespace-pre-wrap">
+              <div className="flex items-center justify-between border-b border-[#8A9A7E]/20 pb-2 mb-2">
+                <span className="text-[10px] uppercase text-[#C9A86A] font-bold flex items-center gap-1 font-sans tracking-wider">
                   <CheckCircle2 className="h-3.5 w-3.5" /> Scanned Valid ID
                 </span>
-                <span className="text-[10px] text-slate-500">{new Date().toLocaleTimeString()}</span>
+                <span className="text-[10px] text-[#8A9A7E]">{new Date().toLocaleTimeString()}</span>
               </div>
-              <p className="text-cyan-300 font-bold text-sm">UNIQUE ID: {uniqueId}</p>
-              <p className="text-slate-300">Candidate: {candidateName}</p>
-              <p className="text-amber-400 text-[11px] font-sans">
-                Notice: Registration Confirmed. Portfolio will be allotted shortly.
+              <p className="text-[#C9A86A] font-bold text-sm">UNIQUE ID: {uniqueId}</p>
+              <p className="text-[#EDE6D3]">Candidate: {candidateName}</p>
+              <p className="text-[#EDE6D3]/80 text-[11px] font-sans">
+                Notice: Registration Confirmed. Council portfolio allotment pending EB review.
               </p>
             </div>
 
-            <div className="flex items-center justify-between text-slate-400 font-mono text-[10px]">
-              <span>Verified by IIST MUN Telemetry</span>
+            <div className="flex items-center justify-between text-[#8A9A7E] font-sans text-[10px]">
+              <span>Verified by IIST MUN Secretariat</span>
               <button
                 type="button"
                 onClick={() => setShowScannerModal(false)}
-                className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-sans text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                className="px-4 py-2 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
               >
                 Close Verification
               </button>
