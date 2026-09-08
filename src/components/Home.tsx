@@ -143,7 +143,7 @@ export default function Home({ setActiveTab }: HomeProps) {
       initials: "AD",
       designation: "USG Website",
       roleBadge: "Communications & Media",
-      bio: "Physics major and investigative editorialist. Directs the international press corps, committee dispatch journalism, satirical daily gazettes, and photography documentation.",
+      bio: "Website and Aerospace guy LOL",
       email: "support@iistmun.org"
     }
   ];
