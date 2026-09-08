@@ -10,6 +10,19 @@
   --color-gold: #C9A86A;
   --color-rust: #8B5A3C;
 
+  /* Japanese Sustainable Palette */
+  --color-sakura: #F8C8DC;
+  --color-sakura-light: #FDF2F6;
+  --color-sakura-deep: #E8829B;
+  --color-matcha: #6A7B52;
+  --color-matcha-light: #8BA06F;
+  --color-bamboo: #4A6048;
+  --color-moss: #889C73;
+  --color-washi: #F4EFEA;
+  --color-hinoki: #B39274;
+  --color-vermilion: #C14937;
+  --color-sumi: #141815;
+
   --font-display: "Cormorant Garamond", "Cormorant", Georgia, serif;
   --font-serif: "Cormorant Garamond", "Cormorant", Georgia, serif;
   --font-sans: "Jost", ui-sans-serif, system-ui, sans-serif;
@@ -24,6 +37,16 @@
   --text-parchment: #EDE6D3;
   --accent-gold: #C9A86A;
   --accent-rust: #8B5A3C;
+
+  /* Japanese Sustainable Theme Variables */
+  --accent-sakura: #F8C8DC;
+  --accent-sakura-deep: #E8829B;
+  --accent-matcha: #6A7B52;
+  --accent-moss: #889C73;
+  --accent-bamboo: #4A6048;
+  --accent-washi: #F4EFEA;
+  --accent-hinoki: #B39274;
+  --accent-vermilion: #C14937;
 }
 
 html {
@@ -68,6 +91,60 @@ html {
 
 .hairline-sage {
   border: 1px solid rgba(138, 154, 126, 0.25);
+}
+
+.hairline-sakura {
+  border: 1px solid rgba(248, 200, 220, 0.35);
+}
+
+.hairline-sakura-hover:hover {
+  border-color: rgba(248, 200, 220, 0.7);
+}
+
+.hairline-matcha {
+  border: 1px solid rgba(106, 123, 82, 0.4);
+}
+
+/* Japanese Sustainable Badge & Tags */
+.badge-sustainable {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid rgba(138, 160, 111, 0.45);
+  background-color: rgba(46, 59, 47, 0.65);
+  color: #EDE6D3;
+  font-family: "Jost", sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+}
+
+.tag-sakura {
+  background-color: rgba(232, 130, 155, 0.18);
+  border: 1px solid rgba(248, 200, 220, 0.4);
+  color: #F8C8DC;
+  font-family: "Jost", sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.tag-vermilion {
+  background-color: rgba(193, 73, 55, 0.2);
+  border: 1px solid rgba(193, 73, 55, 0.45);
+  color: #EDE6D3;
+  font-family: "Jost", sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.glow-sakura {
+  box-shadow: 0 0 25px rgba(248, 200, 220, 0.18);
 }
 
 /* Diplomatic Seal & Emblem */
@@ -173,6 +250,77 @@ html {
   animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Cherry Blossom Branch Ambient Sway Animations */
+@keyframes branch-sway-top-right {
+  0%, 100% {
+    transform: rotate(0deg) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: rotate(1.4deg) translate3d(-3px, 4px, 0);
+  }
+}
+
+@keyframes branch-sway-top-left {
+  0%, 100% {
+    transform: rotate(0deg) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: rotate(-1.3deg) translate3d(3px, 4px, 0);
+  }
+}
+
+@keyframes branch-sway-bottom-left {
+  0%, 100% {
+    transform: rotate(0deg) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: rotate(1.1deg) translate3d(2px, -3px, 0);
+  }
+}
+
+.animate-branch-tr {
+  transform-origin: top right;
+  animation: branch-sway-top-right 10s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-branch-tl {
+  transform-origin: top left;
+  animation: branch-sway-top-left 12s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-branch-bl {
+  transform-origin: bottom left;
+  animation: branch-sway-bottom-left 11s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Floating Sakura Petals Animation */
+@keyframes petal-fall-and-drift {
+  0% {
+    transform: translate3d(0, -10vh, 0) rotate(0deg) rotateY(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  85% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate3d(var(--drift-x, 80px), 115vh, 0) rotate(var(--rot-z, 360deg)) rotateY(var(--rot-y, 180deg));
+    opacity: 0;
+  }
+}
+
+.animate-petal {
+  animation-name: petal-fall-and-drift;
+  animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
 /* Custom Sleek Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
@@ -195,6 +343,16 @@ html {
 * {
   scrollbar-width: thin;
   scrollbar-color: #5B6B4F #1A1F1A;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-branch-tr,
+  .animate-branch-tl,
+  .animate-branch-bl,
+  .animate-petal,
+  .animate-marquee {
+    animation: none !important;
+  }
 }
 
 

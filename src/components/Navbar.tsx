@@ -115,7 +115,13 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
     <>
       <ScrollProgressBar />
 
-      <header className="sticky top-0 z-50 w-full border-b border-[#C9A86A]/20 bg-[#233124]/90 backdrop-blur-md transition-all duration-300" id="main-header-nav">
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 1.5, ease: [0.16, 1, 0.3, 1] }}
+        className="sticky top-0 z-50 w-full border-b border-[#C9A86A]/20 bg-[#233124]/90 backdrop-blur-md transition-all duration-300"
+        id="main-header-nav"
+      >
         <div className="w-full flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-10 gap-4">
           
           {/* Left Edge: Masthead / Brand Mark */}
@@ -335,7 +341,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
             </motion.div>
           )}
         </AnimatePresence>
-      </header>
+      </motion.header>
     </>
   );
 }

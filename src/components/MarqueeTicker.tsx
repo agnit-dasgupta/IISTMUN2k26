@@ -5,15 +5,17 @@
 
 import React from "react";
 import { Orbit, Compass, Award, ShieldCheck, Globe2, BookOpen } from "lucide-react";
+import { motion } from "motion/react";
 
 export default function MarqueeTicker() {
   const items = [
     { label: "IIST MUN 2027 // 14TH EDITION COMING SOON", icon: Orbit },
     { label: "EB REGISTRATIONS OPENING SOON...", icon: Award },
+    { label: "🌸 和 · HARMONY & GLOBAL SUSTAINABILITY", icon: Compass },
     { label: "CAMPUS AMBASSADOR REGISTRATIONS OPENING SOON", icon: ShieldCheck },
     { label: "ISRO VALIAMALA CAMPUS // THIRUVANANTHAPURAM", icon: Globe2 },
     { label: "SAVE · SUSTAIN · SAFEGUARD", icon: Compass },
-    { label: "FIELD DIPLOMACY & ORBITAL STATECRAFT", icon: Orbit },
+    { label: "🌱 持続可能性 · ORBITAL RESILIENCE & SPACE ECOLOGY", icon: Orbit },
     { label: "INDIAN INSTITUTE OF SPACE SCIENCE AND TECHNOLOGY", icon: BookOpen },
   ];
 
@@ -21,7 +23,13 @@ export default function MarqueeTicker() {
   const sequence = [...items, ...items];
 
   return (
-    <div className="relative w-full overflow-hidden border-y border-[#C9A86A]/20 bg-[#1D261E] py-3.5 select-none font-sans" id="live-marquee-ticker">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.9, delay: 2.2, ease: "easeOut" }}
+      className="relative w-full overflow-hidden border-y border-[#C9A86A]/20 bg-[#1D261E] py-3.5 select-none font-sans"
+      id="live-marquee-ticker"
+    >
       {/* Left/Right Edge Gradient Fades to blend with background */}
       <div className="pointer-events-none absolute inset-y-0 left-0 w-20 sm:w-28 bg-gradient-to-r from-[#1D261E] to-transparent z-10" />
       <div className="pointer-events-none absolute inset-y-0 right-0 w-20 sm:w-28 bg-gradient-to-l from-[#1D261E] to-transparent z-10" />
@@ -43,7 +51,7 @@ export default function MarqueeTicker() {
           );
         })}
       </div>
-    </div>
+    </motion.div>
   );
 }
 

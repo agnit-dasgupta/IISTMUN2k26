@@ -14,6 +14,8 @@ import FAQs from "./components/FAQs";
 import Registration from "./components/Registration";
 import AdminDashboard from "./components/AdminDashboard";
 import WorkshopRegistration from "./components/WorkshopRegistration";
+import CherryBlossomBackground from "./components/CherryBlossomBackground";
+import { motion } from "motion/react";
 import { Compass, Globe, Star, ShieldCheck, Mail, ArrowUpRight, Orbit, Sparkles } from "lucide-react";
 
 export default function App() {
@@ -64,15 +66,23 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-[#1A1F1A] text-[#EDE6D3] selection:bg-[#C9A86A]/30 selection:text-[#EDE6D3] paper-grain font-sans">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-[#1A1F1A] text-[#EDE6D3] selection:bg-[#F8C8DC]/30 selection:text-[#EDE6D3] paper-grain font-sans relative">
       
+      {/* Growing Cherry Blossom Background Branches & Cascading Petals */}
+      <CherryBlossomBackground />
+
       {/* Navbar Component */}
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Tabbed Layout Content */}
-      <main className="flex-grow relative">
+      <motion.main
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.0, delay: 1.6, ease: "easeOut" }}
+        className="flex-grow relative z-10"
+      >
         {renderActiveContent()}
-      </main>
+      </motion.main>
 
       {/* Archival Diplomatic Footer */}
       <footer className="relative z-10 border-t border-[#C9A86A]/20 bg-[#141814] py-14 px-4 sm:px-6 lg:px-8 text-left">
@@ -81,14 +91,19 @@ export default function App() {
             {/* Branding */}
             <div className="md:col-span-2 space-y-4 text-left">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[#C9A86A] bg-[#2E3B2F] text-[#C9A86A] font-serif text-sm">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[#C9A86A] bg-[#2E3B2F] text-[#C9A86A] font-serif text-sm shadow-sm">
                   IM
                 </div>
                 <div>
-                  <span className="font-serif text-xl font-normal text-[#EDE6D3] tracking-wide block">
-                    IIST MUN <span className="text-[#C9A86A]">2027</span>
-                  </span>
-                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E] block">
+                  <div className="flex items-center gap-2">
+                    <span className="font-serif text-xl font-normal text-[#EDE6D3] tracking-wide block">
+                      IIST MUN <span className="text-[#C9A86A]">2027</span>
+                    </span>
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#CFD7D0]/30 bg-[#CFD7D0]/10 text-[9px] font-mono text-[#CFD7D0] uppercase tracking-wider">
+                      墨桜 SUMI-E EDITION
+                    </span>
+                  </div>
+                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E] block mt-0.5">
                     14th Edition · Save · Sustain · Safeguard
                   </span>
                 </div>

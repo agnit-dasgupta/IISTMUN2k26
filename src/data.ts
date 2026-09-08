@@ -90,7 +90,7 @@ export const SECRETARIAT: SecretariatMember[] = [
     id: "usg-website",
     name: "Agnit Dasgupta",
     designation: "USG Website",
-    bio: "Physics major and investigative editorialist. Directs the international press corps, committee dispatch journalism, satirical daily gazettes, and photography documentation.",
+    bio: "Aerospace and website guy LOL. Directs the international press corps, committee dispatch journalism, satirical daily gazettes, and photography documentation.",
     email: "support@iistmun.org"
   }
 ];

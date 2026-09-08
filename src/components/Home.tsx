@@ -149,7 +149,7 @@ export default function Home({ setActiveTab }: HomeProps) {
   ];
 
   return (
-    <div className="relative bg-[#233124] text-[#EDE6D3] min-h-screen overflow-hidden font-sans paper-grain newsprint-overlay selection:bg-[#C9A86A]/30 selection:text-[#EDE6D3]">
+    <div className="relative bg-transparent text-[#EDE6D3] min-h-screen overflow-hidden font-sans paper-grain newsprint-overlay selection:bg-[#F8C8DC]/30 selection:text-[#EDE6D3]">
 
       {/* ========================================================================= */}
       {/* 1. HERO SECTION - HOME                                                    */}
@@ -157,9 +157,9 @@ export default function Home({ setActiveTab }: HomeProps) {
       <section className="relative z-10 pt-16 sm:pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center" id="hero-landing-section">
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
+          transition={{ duration: 1.0, delay: 1.8, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-col items-center justify-center space-y-6 sm:space-y-8"
         >
 
@@ -169,6 +169,7 @@ export default function Home({ setActiveTab }: HomeProps) {
             <span className="font-serif text-xs sm:text-sm md:text-base tracking-[0.22em] uppercase font-medium">
               IISTMUN 2027 &middot; 14th Edition Coming Soon
             </span>
+            <span className="text-[#CFD7D0] text-xs font-serif font-light ml-1 select-none">桜</span>
             <Sparkles className="h-4 w-4 text-[#C9A86A] animate-pulse shrink-0" />
           </div>
 
@@ -184,6 +185,18 @@ export default function Home({ setActiveTab }: HomeProps) {
               </span>
               <span className="h-px w-8 sm:w-12 bg-[#C9A86A]/40" />
             </div>
+
+            {/* Japanese Sustainable Theme Badges */}
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+              <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#8BA06F] bg-[#4A6048]/25 border border-[#6A7B52]/40 px-3 py-0.5 rounded-full flex items-center gap-1.5 shadow-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#8BA06F] inline-block animate-pulse"></span>
+                持続可能性 &middot; Sustainable Space &amp; Earth Diplomacy
+              </span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#CFD7D0] bg-[#5A645D]/20 border border-[#8E9991]/35 px-3 py-0.5 rounded-full flex items-center gap-1.5 shadow-sm">
+                <span className="text-[10px]">墨桜</span>
+                和 &middot; Harmony, Peace &amp; Global Statecraft
+              </span>
+            </div>
           </div>
 
           {/* Concise Diplomatic Subtitle */}
@@ -196,32 +209,42 @@ export default function Home({ setActiveTab }: HomeProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
               {/* Notice 1: EB registrations opening soon */}
-              <div className="border border-[#C9A86A]/50 bg-[#1A1F1A]/85 p-5 text-left flex items-start gap-3.5 shadow-lg group hover:border-[#C9A86A] transition-all duration-300">
+              <div className="border border-[#C9A86A]/50 hover:border-[#8BA06F] bg-[#1A1F1A]/85 p-5 text-left flex items-start gap-3.5 shadow-lg group transition-all duration-300">
                 <span className="relative flex h-3 w-3 mt-1 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9A86A] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#C9A86A]"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8BA06F] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#8BA06F]"></span>
                 </span>
                 <div className="space-y-0.5">
-                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E] block font-medium">
-                    Executive Board
-                  </span>
-                  <span className="font-sans text-xs sm:text-sm text-[#EDE6D3] font-medium tracking-wide block">
+                  <div className="flex items-center justify-between">
+                    <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8BA06F] block font-medium">
+                      Executive Board
+                    </span>
+                    <span className="font-mono text-[9px] text-[#8A9A7E]/70 tracking-wider">
+                      EB RECRUITMENT
+                    </span>
+                  </div>
+                  <span className="font-sans text-xs sm:text-sm text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#EDE6D3] transition-colors">
                     EB registrations opening soon...
                   </span>
                 </div>
               </div>
 
               {/* Notice 2: Campus ambassador registrations opening soon */}
-              <div className="border border-[#C9A86A]/50 bg-[#1A1F1A]/85 p-5 text-left flex items-start gap-3.5 shadow-lg group hover:border-[#C9A86A] transition-all duration-300">
+              <div className="border border-[#C9A86A]/50 hover:border-[#CFD7D0] bg-[#1A1F1A]/85 p-5 text-left flex items-start gap-3.5 shadow-lg group transition-all duration-300">
                 <span className="relative flex h-3 w-3 mt-1 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9A86A] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#C9A86A]"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#CFD7D0] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#CFD7D0]"></span>
                 </span>
                 <div className="space-y-0.5">
-                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E] block font-medium">
-                    Outreach & Delegation
-                  </span>
-                  <span className="font-sans text-xs sm:text-sm text-[#EDE6D3] font-medium tracking-wide block">
+                  <div className="flex items-center justify-between">
+                    <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#CFD7D0] block font-medium">
+                      Outreach &amp; Delegation
+                    </span>
+                    <span className="font-mono text-[9px] text-[#CFD7D0]/70 tracking-wider">
+                      FELLOWSHIP
+                    </span>
+                  </div>
+                  <span className="font-sans text-xs sm:text-sm text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#EDE6D3] transition-colors">
                     campus ambassador registrations opening soon
                   </span>
                 </div>
