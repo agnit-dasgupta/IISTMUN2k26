@@ -11,11 +11,12 @@ export default function MarqueeTicker() {
   const items = [
     { label: "IIST MUN 2027 // 14TH EDITION COMING SOON", icon: Orbit },
     { label: "EB REGISTRATIONS OPENING SOON...", icon: Award },
-    { label: "🌸 和 · HARMONY & GLOBAL SUSTAINABILITY", icon: Compass },
+    { label: "🕊️ HARMONY & GLOBAL SUSTAINABILITY", icon: Compass },
     { label: "CAMPUS AMBASSADOR REGISTRATIONS OPENING SOON", icon: ShieldCheck },
     { label: "ISRO VALIAMALA CAMPUS // THIRUVANANTHAPURAM", icon: Globe2 },
     { label: "SAVE · SUSTAIN · SAFEGUARD", icon: Compass },
-    { label: "🌱 持続可能性 · ORBITAL RESILIENCE & SPACE ECOLOGY", icon: Orbit },
+    { label: "🌱 ORBITAL RESILIENCE & SPACE ECOLOGY", icon: Orbit },
+    { label: "🌐 ONE EARTH · ONE FAMILY · ONE FUTURE", icon: Globe2 },
     { label: "INDIAN INSTITUTE OF SPACE SCIENCE AND TECHNOLOGY", icon: BookOpen },
   ];
 

@@ -99,8 +99,8 @@ export default function App() {
                     <span className="font-serif text-xl font-normal text-[#EDE6D3] tracking-wide block">
                       IIST MUN <span className="text-[#C9A86A]">2027</span>
                     </span>
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#CFD7D0]/30 bg-[#CFD7D0]/10 text-[9px] font-mono text-[#CFD7D0] uppercase tracking-wider">
-                      墨桜 SUMI-E EDITION
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-[#C9A86A]/30 bg-[#C9A86A]/10 text-[9px] font-mono text-[#C9A86A] uppercase tracking-wider">
+                      14TH EDITION
                     </span>
                   </div>
                   <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E] block mt-0.5">

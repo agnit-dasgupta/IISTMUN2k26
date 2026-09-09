@@ -10,7 +10,7 @@
   --color-gold: #C9A86A;
   --color-rust: #8B5A3C;
 
-  /* Japanese Sustainable Palette */
+  /* Sustainable Diplomatic Palette */
   --color-sakura: #F8C8DC;
   --color-sakura-light: #FDF2F6;
   --color-sakura-deep: #E8829B;
@@ -38,7 +38,7 @@
   --accent-gold: #C9A86A;
   --accent-rust: #8B5A3C;
 
-  /* Japanese Sustainable Theme Variables */
+  /* Sustainable Diplomatic Theme Variables */
   --accent-sakura: #F8C8DC;
   --accent-sakura-deep: #E8829B;
   --accent-matcha: #6A7B52;
@@ -113,7 +113,7 @@ html {
   border: 1px solid rgba(106, 123, 82, 0.4);
 }
 
-/* Japanese Sustainable Badge & Tags */
+/* Diplomatic & Sustainable Badges */
 .badge-sustainable {
   display: inline-flex;
   align-items: center;

@@ -7,7 +7,7 @@ import React, { useId, useMemo } from "react";
 import { motion } from "motion/react";
 
 /**
- * Japanese Traditional Sakura Blossom SVG Component
+ * Botanical Blossom & Branch SVG Component
  */
 interface FlowerProps {
   x: number;
@@ -56,7 +56,7 @@ const SakuraBlossom: React.FC<FlowerProps> = ({
         </g>
       )}
 
-      {/* 5 Petals of Japanese Cherry Blossom (with heart notch at tips - Grey Tone Sumi-e) */}
+      {/* 5 Petals of Delicate Blossom (Grey Tone Botanical Motif) */}
       {[0, 72, 144, 216, 288].map((angle, i) => (
         <g key={i} transform={`rotate(${angle})`}>
           {/* Base petal body in grey tone gradient */}
@@ -188,7 +188,7 @@ export default function CherryBlossomBackground() {
       className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none"
       aria-hidden="true"
     >
-      {/* SVG Definitions for Japanese Sustainable Gradients */}
+      {/* SVG Definitions for Botanical & Sustainable Gradients */}
       <svg className="absolute w-0 h-0" aria-hidden="true">
         <defs>
           {/* Petal Radial Gradient: Deep mineral slate center to delicate silver/mist grey blush */}
@@ -214,7 +214,7 @@ export default function CherryBlossomBackground() {
             <stop offset="100%" stopColor="#8BA06F" />
           </linearGradient>
 
-          {/* Japanese Sumi & Bark Aged Wood Gradient for Top Right Branch */}
+          {/* Bark Aged Wood Gradient for Top Right Branch */}
           <linearGradient id="branchBarkGradTR" x1="100%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#1B140E" />
             <stop offset="40%" stopColor="#2D2118" />
@@ -506,7 +506,7 @@ export default function CherryBlossomBackground() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. FALLING DRIFTING CHERRY BLOSSOM PETALS (SMOOTH JAPANESE SPRING BREEZE) */}
+      {/* 4. FALLING DRIFTING PETALS (BOTANICAL BREEZE)                              */}
       {/* ========================================================================= */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {petals.map((petal) => (

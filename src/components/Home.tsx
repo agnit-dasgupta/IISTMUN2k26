@@ -169,7 +169,6 @@ export default function Home({ setActiveTab }: HomeProps) {
             <span className="font-serif text-xs sm:text-sm md:text-base tracking-[0.22em] uppercase font-medium">
               IISTMUN 2027 &middot; 14th Edition Coming Soon
             </span>
-            <span className="text-[#CFD7D0] text-xs font-serif font-light ml-1 select-none">桜</span>
             <Sparkles className="h-4 w-4 text-[#C9A86A] animate-pulse shrink-0" />
           </div>
 
@@ -186,15 +185,17 @@ export default function Home({ setActiveTab }: HomeProps) {
               <span className="h-px w-8 sm:w-12 bg-[#C9A86A]/40" />
             </div>
 
-            {/* Japanese Sustainable Theme Badges */}
+            {/* Diplomatic & Sustainable Theme Badges */}
             <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
               <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#8BA06F] bg-[#4A6048]/25 border border-[#6A7B52]/40 px-3 py-0.5 rounded-full flex items-center gap-1.5 shadow-sm">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#8BA06F] inline-block animate-pulse"></span>
-                持続可能性 &middot; Sustainable Space &amp; Earth Diplomacy
+                Sustainable Space &amp; Earth Diplomacy
+              </span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C9A86A] bg-[#C9A86A]/10 border border-[#C9A86A]/35 px-3 py-0.5 rounded-full flex items-center gap-1.5 shadow-sm">
+                Harmony, Peace &amp; Global Statecraft
               </span>
               <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#CFD7D0] bg-[#5A645D]/20 border border-[#8E9991]/35 px-3 py-0.5 rounded-full flex items-center gap-1.5 shadow-sm">
-                <span className="text-[10px]">墨桜</span>
-                和 &middot; Harmony, Peace &amp; Global Statecraft
+                One Earth &middot; One Family &middot; One Future
               </span>
             </div>
           </div>
