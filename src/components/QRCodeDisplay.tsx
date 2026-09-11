@@ -76,8 +76,12 @@ export default function QRCodeDisplay({
 
         {/* Small center logo badge */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-[#1A1F1A] text-[#C9A86A] font-serif text-[9px] font-bold px-1.5 py-0.5 border border-[#C9A86A] shadow-sm">
-            IM
+          <div className="bg-[#1A1F1A] border border-[#C9A86A] rounded-full p-0.5 shadow-md h-7 w-7 flex items-center justify-center overflow-hidden">
+            <img
+              src="/logo-emblem-transparent.png"
+              alt="IIST MUN"
+              className="h-full w-full object-contain"
+            />
           </div>
         </div>
       </div>

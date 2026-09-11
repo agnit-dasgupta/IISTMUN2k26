@@ -400,8 +400,12 @@ export default function Registration({ initialPreference, clearInitialPreference
         ) : !user ? (
           /* Sign-In Card matching Archival Theme */
           <div className="text-center py-12 px-6 sm:px-10 max-w-lg mx-auto bg-[#2E3B2F]/50 border border-[#C9A86A]/30 backdrop-blur-md shadow-2xl relative overflow-hidden animate-fade-in">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center border border-[#C9A86A] text-[#C9A86A] mb-6 font-serif text-2xl font-bold bg-[#1A1F1A]">
-              IM
+            <div className="mx-auto flex h-16 w-16 items-center justify-center border border-[#C9A86A]/70 bg-[#1A1F1A] rounded-full p-1.5 mb-6 shadow-md">
+              <img
+                src="/logo-emblem-transparent.png"
+                alt="IIST MUN 2027"
+                className="h-full w-full object-contain filter drop-shadow-sm"
+              />
             </div>
 
             <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-semibold">
@@ -503,8 +507,12 @@ export default function Registration({ initialPreference, clearInitialPreference
               {/* Header Banner */}
               <div className="bg-[#2E3B2F] text-[#EDE6D3] px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-b-2 border-[#C9A86A] gap-2">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 border border-[#C9A86A] flex items-center justify-center font-serif text-lg font-bold text-[#C9A86A] bg-[#1A1F1A]">
-                    IM
+                  <div className="w-10 h-10 border border-[#C9A86A] rounded-full flex items-center justify-center bg-[#1A1F1A] p-1 shrink-0 shadow-sm">
+                    <img
+                      src="/logo-emblem-transparent.png"
+                      alt="IIST MUN 2027"
+                      className="h-full w-full object-contain"
+                    />
                   </div>
                   <div>
                     <div className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#C9A86A]">

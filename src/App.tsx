@@ -26,9 +26,13 @@ export default function App() {
     switch (activeTab) {
       case "home":
       case "contact":
-      case "secretariat":
       case "how-to-reach":
+      case "map":
+      case "about-iist":
+      case "about-iistmun":
         return <Home setActiveTab={setActiveTab} />;
+      case "secretariat":
+        return <Secretariat />;
       case "committees":
         return <Committees />;
       case "matrix":
@@ -91,8 +95,12 @@ export default function App() {
             {/* Branding */}
             <div className="md:col-span-2 space-y-4 text-left">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[#C9A86A] bg-[#2E3B2F] text-[#C9A86A] font-serif text-sm shadow-sm">
-                  IM
+                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#C9A86A]/60 bg-[#1A1F1A] overflow-hidden p-0.5 shadow-sm">
+                  <img
+                    src="/logo-emblem-transparent.png"
+                    alt="IIST MUN 2027"
+                    className="h-full w-full object-contain filter drop-shadow-sm"
+                  />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -128,7 +136,22 @@ export default function App() {
               <ul className="space-y-2 font-sans text-xs">
                 <li>
                   <button onClick={() => navigateToSection("hero-landing-section")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
-                    Home
+                    Home &bull; Countdown
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => navigateToSection("about-iist-section")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                    About IIST
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => navigateToSection("about-iistmun-section")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                    About IISTMUN
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => navigateToSection("map-section")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                    Interactive Campus Map
                   </button>
                 </li>
                 <li>
@@ -137,13 +160,8 @@ export default function App() {
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => navigateToSection("secretariat-section")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                  <button onClick={() => { setActiveTab("secretariat"); handleScrollToTop(); }} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
                     Secretariat Board
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => navigateToSection("how-to-reach-section")} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
-                    How to Reach IIST
                   </button>
                 </li>
               </ul>

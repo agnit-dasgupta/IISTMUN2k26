@@ -13,7 +13,9 @@ import {
   Globe, 
   Mail,
   Users,
-  Compass
+  Compass,
+  Landmark,
+  Sparkles
 } from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -32,13 +34,15 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const adminEmails = ["agnit.dg@gmail.com", "iist.mun.club@gmail.com"];
   const isAdmin = Boolean(user?.email && adminEmails.includes(user.email.toLowerCase()));
 
-  // The 4 required tabs: Home, Contact Us, Secretariat, How to Reach
+  // Navigation Items matching the required hierarchy
   const navItems = [
     { id: "home", label: "Home", number: "01", icon: Globe, sectionId: "hero-landing-section" },
-    { id: "contact", label: "Contact Us", number: "02", icon: Mail, sectionId: "contact-section" },
-    { id: "secretariat", label: "Secretariat", number: "03", icon: Users, sectionId: "secretariat-section" },
-    { id: "how-to-reach", label: "How to Reach", number: "04", icon: Compass, sectionId: "how-to-reach-section" },
-    ...(isAdmin ? [{ id: "admin", label: "Admin Console", number: "05", icon: ShieldCheck, sectionId: null }] : []),
+    { id: "about-iist", label: "About IIST", number: "02", icon: Landmark, sectionId: "about-iist-section" },
+    { id: "about-iistmun", label: "About IISTMUN", number: "03", icon: Sparkles, sectionId: "about-iistmun-section" },
+    { id: "map", label: "Campus Map", number: "04", icon: Compass, sectionId: "map-section" },
+    { id: "contact", label: "Contact Us", number: "05", icon: Mail, sectionId: "contact-section" },
+    { id: "secretariat", label: "Secretariat", number: "06", icon: Users, sectionId: null },
+    ...(isAdmin ? [{ id: "admin", label: "Admin Console", number: "07", icon: ShieldCheck, sectionId: null }] : []),
   ];
 
   // Observe scroll position to highlight active tab
@@ -50,9 +54,10 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
 
     const sections = [
       { id: "hero-landing-section", tab: "home" },
+      { id: "about-iist-section", tab: "about-iist" },
+      { id: "about-iistmun-section", tab: "about-iistmun" },
+      { id: "map-section", tab: "map" },
       { id: "contact-section", tab: "contact" },
-      { id: "secretariat-section", tab: "secretariat" },
-      { id: "how-to-reach-section", tab: "how-to-reach" },
     ];
 
     const handleScroll = () => {
@@ -78,6 +83,13 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
     if (tabId === "admin") {
       setActiveTab("admin");
       setActiveSection("admin");
+      return;
+    }
+
+    if (tabId === "secretariat") {
+      setActiveTab("secretariat");
+      setActiveSection("secretariat");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
@@ -131,8 +143,12 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
               className="group flex items-center gap-3 sm:gap-3.5 text-left focus:outline-none cursor-pointer select-none py-1"
               id="navbar-brand-btn"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#C9A86A] bg-[#2E3B2F] text-[#C9A86A] font-serif text-sm tracking-widest transition-all duration-300 group-hover:bg-[#C9A86A] group-hover:text-[#1A1F1A] shadow-sm">
-                IM
+              <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#C9A86A]/70 bg-[#1A1F1A] overflow-hidden p-0.5 shadow-md transition-all duration-300 group-hover:border-[#C9A86A] group-hover:shadow-[0_0_12px_rgba(201,168,106,0.35)]">
+                <img
+                  src="/logo-emblem-transparent.png"
+                  alt="IIST MUN 2027"
+                  className="h-full w-full object-contain filter drop-shadow-sm transition-transform duration-300 group-hover:scale-105"
+                />
               </div>
               
               <div className="flex flex-col justify-center shrink-0">

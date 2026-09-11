@@ -240,8 +240,12 @@ export default function WorkshopRegistration({ setActiveTab }: WorkshopRegistrat
   if (authLoading || loadingReg) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 bg-[#1A1F1A]">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[#C9A86A] bg-[#2E3B2F] text-[#C9A86A] font-serif text-sm animate-pulse mb-4">
-          IM
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[#C9A86A]/70 bg-[#2E3B2F] p-1.5 shadow-md animate-pulse mb-4">
+          <img
+            src="/logo-emblem-transparent.png"
+            alt="IIST MUN 2027"
+            className="h-full w-full object-contain"
+          />
         </div>
         <p className="font-serif text-sm text-[#EDE6D3] tracking-wide">Accessing Diplomatic Archives...</p>
         <p className="font-sans text-[10px] text-[#8A9A7E] uppercase tracking-[0.2em] mt-1">Verifying Academic Credentials</p>
@@ -273,8 +277,12 @@ export default function WorkshopRegistration({ setActiveTab }: WorkshopRegistrat
       {/* Main Container */}
       {!user ? (
         <div className="bg-[#2E3B2F] border border-[#C9A86A]/30 p-8 md:p-12 text-center shadow-2xl relative">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[#C9A86A] bg-[#1A1F1A] text-[#C9A86A] font-serif text-xl mx-auto mb-6 shadow-sm">
-            IM
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-[#C9A86A]/70 bg-[#1A1F1A] p-2 mx-auto mb-6 shadow-md">
+            <img
+              src="/logo-emblem-transparent.png"
+              alt="IIST MUN 2027"
+              className="h-full w-full object-contain filter drop-shadow-sm"
+            />
           </div>
 
           <span className="font-sans text-[10px] uppercase tracking-[0.22em] text-[#C9A86A] font-bold block mb-2">
