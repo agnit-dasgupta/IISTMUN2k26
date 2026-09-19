@@ -15,7 +15,6 @@ export default function MarqueeTicker() {
     { label: "CAMPUS AMBASSADOR REGISTRATIONS OPENING SOON", icon: ShieldCheck },
     { label: "ISRO VALIAMALA CAMPUS // THIRUVANANTHAPURAM", icon: Globe2 },
     { label: "SAVE · SUSTAIN · SAFEGUARD", icon: Compass },
-    { label: "🌱 ORBITAL RESILIENCE & SPACE ECOLOGY", icon: Orbit },
     { label: "🌐 ONE EARTH · ONE FAMILY · ONE FUTURE", icon: Globe2 },
     { label: "INDIAN INSTITUTE OF SPACE SCIENCE AND TECHNOLOGY", icon: BookOpen },
   ];

@@ -12,7 +12,6 @@ import {
   X, 
   Globe, 
   Mail,
-  Users,
   Compass,
   Landmark,
   Sparkles
@@ -41,8 +40,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
     { id: "about-iistmun", label: "About IISTMUN", number: "03", icon: Sparkles, sectionId: "about-iistmun-section" },
     { id: "map", label: "Campus Map", number: "04", icon: Compass, sectionId: "map-section" },
     { id: "contact", label: "Contact Us", number: "05", icon: Mail, sectionId: "contact-section" },
-    { id: "secretariat", label: "Secretariat", number: "06", icon: Users, sectionId: null },
-    ...(isAdmin ? [{ id: "admin", label: "Admin Console", number: "07", icon: ShieldCheck, sectionId: null }] : []),
+    ...(isAdmin ? [{ id: "admin", label: "Admin Console", number: "06", icon: ShieldCheck, sectionId: null }] : []),
   ];
 
   // Observe scroll position to highlight active tab
@@ -83,13 +81,6 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
     if (tabId === "admin") {
       setActiveTab("admin");
       setActiveSection("admin");
-      return;
-    }
-
-    if (tabId === "secretariat") {
-      setActiveTab("secretariat");
-      setActiveSection("secretariat");
-      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
