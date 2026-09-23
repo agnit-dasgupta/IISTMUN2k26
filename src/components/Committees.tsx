@@ -3,25 +3,52 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { COMMITTEES } from "../data";
 import { Committee } from "../types";
+import { db } from "../firebase";
+import { collection, onSnapshot, query } from "firebase/firestore";
 import { 
   Orbit, ShieldCheck, Scale, Globe, ChevronRight, 
-  FileText, Download, X, HelpCircle, BookOpen, UserCheck
+  FileText, Download, X, HelpCircle, BookOpen, UserCheck,
+  ShieldAlert, Users, Landmark, Leaf, Newspaper
 } from "lucide-react";
 import { motion } from "motion/react";
 
 const SIGIL_MAP: Record<string, React.ComponentType<any>> = {
   Orbit: Orbit,
-  ShieldAlert: ShieldCheck,
-  Users: Scale,
-  Globe: Globe
+  Users: Users,
+  ShieldAlert: ShieldAlert,
+  Landmark: Landmark,
+  Globe: Globe,
+  Leaf: Leaf,
+  Newspaper: Newspaper,
+  Scale: Scale,
+  ShieldCheck: ShieldCheck
 };
 
 export default function Committees() {
+  const [committees, setCommittees] = useState<Committee[]>(COMMITTEES);
   const [selectedCommittee, setSelectedCommittee] = useState<Committee | null>(null);
   const [downloadingGuide, setDownloadingGuide] = useState<string | null>(null);
+
+  useEffect(() => {
+    const q = query(collection(db, "committees"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const list: Committee[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push({ id: docSnap.id, ...docSnap.data() } as Committee);
+        });
+        list.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+        setCommittees(list);
+      }
+    }, (err) => {
+      console.warn("Firestore committees subscription notice:", err);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleDownload = (id: string, name: string) => {
     setDownloadingGuide(id);
@@ -51,16 +78,16 @@ export default function Committees() {
             </span>
           </div>
           <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-normal text-[#EDE6D3] tracking-wide mt-2">
-            Four Arenas of Diplomatic Statecraft
+            Seven Arenas of Diplomatic Statecraft
           </h1>
           <p className="mt-4 max-w-2xl font-sans text-xs sm:text-sm text-[#8A9A7E] leading-relaxed font-light">
-            Examine the academic mandates, committee background guides, executive board profiles, and operational matrices for each of our four simulated chambers.
+            Explore committee agendas, background guides, and Executive Board profiles.
           </p>
         </motion.div>
 
         {/* Committees Grid with Archival Engraved Sigils */}
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2" id="committees-grid">
-          {COMMITTEES.map((com, idx) => {
+          {committees.map((com, idx) => {
             const SigilComponent = SIGIL_MAP[com.logo] || BookOpen;
 
             return (
@@ -184,7 +211,7 @@ export default function Committees() {
                 <h4 className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E] font-medium">// SCOPE & MANDATE</h4>
                 <p>{selectedCommittee.description}</p>
                 <p>
-                  Delegates assigned to this chamber will be judged on precision of treaty citation, diplomatic maneuvering, working paper clarity, and fidelity to their allocated national stance.
+                  Delegates will be evaluated on substantive debate, treaty application, working paper clarity, and national policy fidelity.
                 </p>
               </div>
 

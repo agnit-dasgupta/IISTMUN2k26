@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { COMMITTEES, COUNTRY_MATRIX } from "../data";
-import { RegistrationDetails, PortfolioStatus } from "../types";
+import { RegistrationDetails, PortfolioStatus, CommitteeId } from "../types";
 import { 
   User, Users, Landmark, ChevronRight, ChevronLeft, 
   Download, Share2, AlertCircle, Search, X, Check,
@@ -29,7 +29,7 @@ export default function Registration({ initialPreference, clearInitialPreference
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [matrixSearchTerm, setMatrixSearchTerm] = useState("");
-  const [portfolioOverrides, setPortfolioOverrides] = useState<Record<string, Partial<Record<"copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>>({});
+  const [portfolioOverrides, setPortfolioOverrides] = useState<Record<string, Partial<Record<CommitteeId | "copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>>({});
 
   const [formData, setFormData] = useState({
     regType: "individual" as "individual" | "double" | "contingent",
@@ -40,11 +40,11 @@ export default function Registration({ initialPreference, clearInitialPreference
     course: "",
     munExperience: "None",
     role: "Delegate" as "Delegate" | "Photographer",
-    pref1Committee: "copuos",
+    pref1Committee: "uncopuos",
     pref1Country: "",
-    pref2Committee: "disec",
+    pref2Committee: "unhrc",
     pref2Country: "",
-    pref3Committee: "unsc",
+    pref3Committee: "unodc",
     pref3Country: "",
     partnerName: "",
     partnerEmail: "",
@@ -129,8 +129,8 @@ export default function Registration({ initialPreference, clearInitialPreference
   const getPortfolioStatus = (country: string, committee: string): PortfolioStatus => {
     const row = COUNTRY_MATRIX.find(r => r.country === country);
     if (!row) return "Reserved";
-    const commKey = committee as "copuos" | "disec" | "aippm" | "unsc";
-    return portfolioOverrides[country]?.[commKey] ?? row[commKey];
+    const commKey = committee as CommitteeId;
+    return (portfolioOverrides[country]?.[commKey] ?? (row as any)[commKey]) || "Reserved";
   };
 
   const getSelectedPreferences = (): { country: string; committee: string }[] => {
@@ -256,8 +256,13 @@ export default function Registration({ initialPreference, clearInitialPreference
       setLoading(true);
       try {
         const commAbbr = 
-          formData.pref1Committee === "copuos" ? "COPUOS" :
-          formData.pref1Committee === "disec" ? "DISEC" :
+          formData.pref1Committee === "uncopuos" || formData.pref1Committee === "copuos" ? "UNCOPUOS" :
+          formData.pref1Committee === "unhrc" ? "UNHRC" :
+          formData.pref1Committee === "unodc" ? "UNODC" :
+          formData.pref1Committee === "nes75" ? "NES75" :
+          formData.pref1Committee === "unga" || formData.pref1Committee === "disec" ? "UNGA" :
+          formData.pref1Committee === "undp" ? "UNDP" :
+          formData.pref1Committee === "ip" ? "IP" :
           formData.pref1Committee === "aippm" ? "AIPPM" :
           formData.pref1Committee === "unsc" ? "UNSC" : "MUN";
 
@@ -334,11 +339,11 @@ export default function Registration({ initialPreference, clearInitialPreference
           course: "",
           munExperience: "None",
           role: "Delegate",
-          pref1Committee: "copuos",
+          pref1Committee: "uncopuos",
           pref1Country: "",
-          pref2Committee: "disec",
+          pref2Committee: "unhrc",
           pref2Country: "",
-          pref3Committee: "unsc",
+          pref3Committee: "unodc",
           pref3Country: "",
           partnerName: "",
           partnerEmail: "",
@@ -386,7 +391,7 @@ export default function Registration({ initialPreference, clearInitialPreference
             Delegate Registration Dossier
           </h1>
           <p className="mt-2 text-xs sm:text-sm text-[#8A9A7E] max-w-xl mx-auto leading-relaxed">
-            Select your participation division, submit academic credentials, choose preference portfolios from the live council matrix, and claim your Diplomatic Boarding Pass.
+            Register as a delegate, select your portfolio preferences, and receive your conference boarding pass.
           </p>
         </div>
 
@@ -415,7 +420,7 @@ export default function Registration({ initialPreference, clearInitialPreference
               Authentication Required
             </h2>
             <p className="mt-3 text-[#8A9A7E] text-xs leading-relaxed max-w-sm mx-auto">
-              Authenticate your identity to lock in country preferences, preserve your early-bird allocation priority, and generate your conference boarding pass.
+              Sign in with Google to select portfolio preferences and access your conference pass.
             </p>
             
             <button
@@ -816,7 +821,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                         </div>
                       </div>
                       <p className="mt-3 text-xs text-[#8A9A7E] leading-relaxed">
-                        Debate as a coordinated pair in COPUOS or UNGA DISEC councils.
+                        Debate as a coordinated pair in UNCOPUOS or UNGA councils.
                       </p>
                     </div>
 
@@ -1230,34 +1235,33 @@ export default function Registration({ initialPreference, clearInitialPreference
 
                     {/* Matrix table container */}
                     <div className="overflow-x-auto border border-[#8A9A7E]/30 bg-[#1A1F1A]/80 shadow-md max-h-[340px] scrollbar-thin">
-                      <table className="w-full min-w-[650px] border-collapse text-left font-sans text-xs">
+                      <table className="w-full min-w-[800px] border-collapse text-left font-sans text-xs">
                         <thead>
                           <tr className="sticky top-0 z-10 border-b border-[#8A9A7E]/30 bg-[#2E3B2F] text-[9px] uppercase tracking-wider text-[#C9A86A]">
-                            <th className="px-4 py-3 font-semibold bg-[#2E3B2F]">Nation / Entity</th>
-                            <th className="px-4 py-3 font-semibold bg-[#2E3B2F] text-center">COPUOS</th>
-                            <th className="px-4 py-3 font-semibold bg-[#2E3B2F] text-center">UNGA DISEC</th>
-                            <th className="px-4 py-3 font-semibold bg-[#2E3B2F] text-center">AIPPM</th>
-                            <th className="px-4 py-3 font-semibold bg-[#2E3B2F] text-center">UNSC</th>
+                            <th className="px-3 py-3 font-semibold bg-[#2E3B2F]">Nation / Entity</th>
+                            <th className="px-2 py-3 font-semibold bg-[#2E3B2F] text-center">UNCOPUOS</th>
+                            <th className="px-2 py-3 font-semibold bg-[#2E3B2F] text-center">UNHRC</th>
+                            <th className="px-2 py-3 font-semibold bg-[#2E3B2F] text-center">UNODC</th>
+                            <th className="px-2 py-3 font-semibold bg-[#2E3B2F] text-center">NES'75</th>
+                            <th className="px-2 py-3 font-semibold bg-[#2E3B2F] text-center">UNGA</th>
+                            <th className="px-2 py-3 font-semibold bg-[#2E3B2F] text-center">UNDP</th>
+                            <th className="px-2 py-3 font-semibold bg-[#2E3B2F] text-center">IP</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#8A9A7E]/15">
                           {(() => {
+                            const committeeKeys: CommitteeId[] = ["uncopuos", "unhrc", "unodc", "nes75", "unga", "undp", "ip"];
                             const filtered = COUNTRY_MATRIX.filter((row) => {
                               const matchesSearch = row.country.toLowerCase().includes(matrixSearchTerm.toLowerCase());
                               if (!matchesSearch) return false;
 
-                              return (
-                                getPortfolioStatus(row.country, "copuos") === "Available" ||
-                                getPortfolioStatus(row.country, "disec") === "Available" ||
-                                getPortfolioStatus(row.country, "aippm") === "Available" ||
-                                getPortfolioStatus(row.country, "unsc") === "Available"
-                              );
+                              return committeeKeys.some((comm) => getPortfolioStatus(row.country, comm) === "Available");
                             });
 
                             if (filtered.length === 0) {
                               return (
                                 <tr>
-                                  <td colSpan={5} className="px-4 py-8 text-center text-[#8A9A7E] font-sans text-xs">
+                                  <td colSpan={8} className="px-4 py-8 text-center text-[#8A9A7E] font-sans text-xs">
                                     No available portfolios found matching "{matrixSearchTerm}"
                                   </td>
                                 </tr>
@@ -1267,16 +1271,16 @@ export default function Registration({ initialPreference, clearInitialPreference
                             return filtered.map((row) => {
                               return (
                                 <tr key={row.country} className="hover:bg-[#2E3B2F]/40 transition-colors">
-                                  <td className="px-4 py-2.5 font-semibold text-[#EDE6D3]">{row.country}</td>
+                                  <td className="px-3 py-2.5 font-semibold text-[#EDE6D3] whitespace-nowrap">{row.country}</td>
                                   
-                                  {["copuos", "disec", "aippm", "unsc"].map((comm) => {
+                                  {committeeKeys.map((comm) => {
                                     const status = getPortfolioStatus(row.country, comm);
                                     const selNum = getSelectionNumber(row.country, comm);
                                     const hasReachedMax = getSelectedPreferences().length >= 3;
 
                                     if (status !== "Available") {
                                       return (
-                                        <td key={comm} className="px-4 py-2.5 text-center text-[#8A9A7E]/40 font-mono text-[10px]">
+                                        <td key={comm} className="px-2 py-2.5 text-center text-[#8A9A7E]/40 font-mono text-[10px]">
                                           —
                                         </td>
                                       );

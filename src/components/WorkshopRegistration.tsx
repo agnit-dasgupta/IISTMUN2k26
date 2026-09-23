@@ -292,7 +292,7 @@ export default function WorkshopRegistration({ setActiveTab }: WorkshopRegistrat
             Space Technology & Orbital Diplomacy
           </h2>
           <p className="font-sans text-sm text-[#EDE6D3]/80 max-w-xl mx-auto leading-relaxed mb-8">
-            Access the official workshop registration portal for the masterclass curated by IIST Faculty and ISRO researchers. Please sign in with Google to establish your verified academic accreditation profile.
+            Masterclass curated by IIST faculty and ISRO researchers. Sign in with Google to register.
           </p>
 
           <button

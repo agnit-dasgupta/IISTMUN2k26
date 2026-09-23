@@ -14,6 +14,8 @@ import FAQs from "./components/FAQs";
 import Registration from "./components/Registration";
 import AdminDashboard from "./components/AdminDashboard";
 import WorkshopRegistration from "./components/WorkshopRegistration";
+import RegisterPortal from "./components/RegisterPortal";
+import MarqueeTicker from "./components/MarqueeTicker";
 import CherryBlossomBackground from "./components/CherryBlossomBackground";
 import { motion } from "motion/react";
 import { Compass, Globe, Star, ShieldCheck, Mail, ArrowUpRight, Orbit, Sparkles } from "lucide-react";
@@ -44,6 +46,11 @@ export default function App() {
         return <Schedule />;
       case "faq":
         return <FAQs />;
+      case "register-portal":
+      case "register-portal-eb":
+        return <RegisterPortal initialPortalTab="eb" setActiveTab={setActiveTab} />;
+      case "register-portal-ca":
+        return <RegisterPortal initialPortalTab="campus-ambassador" setActiveTab={setActiveTab} />;
       case "register":
         return <Registration 
           initialPreference={initialPreference} 
@@ -77,6 +84,9 @@ export default function App() {
 
       {/* Navbar Component */}
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      {/* Marquee Announcement Ticker - Positioned Just Below Navbar */}
+      <MarqueeTicker setActiveTab={setActiveTab} />
 
       {/* Main Tabbed Layout Content */}
       <motion.main
@@ -117,7 +127,7 @@ export default function App() {
                 </div>
               </div>
               <p className="font-sans text-xs text-[#8A9A7E] leading-relaxed max-w-md">
-                The premier diplomatic convocation organized by the Indian Institute of Space Science and Technology (IIST), Valiamala, Thiruvananthapuram. Convening future leaders to debate environmental resilience, sustainable exploration, and global diplomacy.
+                India&apos;s premier space diplomacy conference hosted at the Indian Institute of Space Science and Technology (IIST), Valiamala, Thiruvananthapuram.
               </p>
               <div className="flex gap-4 pt-1">
                 <a
@@ -172,12 +182,16 @@ export default function App() {
               <h4 className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-semibold">Registrations & Fellowship</h4>
               <ul className="space-y-2 font-sans text-xs text-[#8A9A7E]">
                 <li>
-                  <span className="text-[#C9A86A]">Executive Board (EB)</span>
-                  <span className="block text-[10px] text-[#8A9A7E]/70">Opening Soon &bull; Applications Launching</span>
+                  <button onClick={() => { setActiveTab("register-portal-eb"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
+                    <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">Executive Board (EB)</span>
+                    <span className="block text-[10px] text-[#8A9A7E]/70">Apply Now &bull; Presidium Roles</span>
+                  </button>
                 </li>
                 <li>
-                  <span className="text-[#C9A86A]">Campus Ambassador</span>
-                  <span className="block text-[10px] text-[#8A9A7E]/70">Opening Soon &bull; Outreach Network</span>
+                  <button onClick={() => { setActiveTab("register-portal-ca"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
+                    <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">Campus Ambassador</span>
+                    <span className="block text-[10px] text-[#8A9A7E]/70">Register Now &bull; Outreach Network</span>
+                  </button>
                 </li>
                 <li>
                   <span className="text-[#EDE6D3]/80">IIST Valiamala Campus</span>

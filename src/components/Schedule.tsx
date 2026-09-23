@@ -3,14 +3,52 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { SCHEDULE } from "../data";
 import { TimelineEvent } from "../types";
+import { db } from "../firebase";
+import { collection, onSnapshot, query } from "firebase/firestore";
 import { CalendarRange, MapPin, Clock, Star, Landmark, ChevronRight, Compass } from "lucide-react";
 import { motion } from "motion/react";
 
 export default function Schedule() {
   const [activeDay, setActiveDay] = useState<"day1" | "day2" | "day3">("day1");
+  const [scheduleData, setScheduleData] = useState(SCHEDULE);
+  const [dateLabels, setDateLabels] = useState<Record<string, string>>({
+    day1: "Friday, January 29, 2027",
+    day2: "Saturday, January 30, 2027",
+    day3: "Sunday, January 31, 2027"
+  });
+
+  useEffect(() => {
+    const q = query(collection(db, "schedule"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const newSched = { ...SCHEDULE };
+        const newDates: Record<string, string> = {
+          day1: "Friday, January 29, 2027",
+          day2: "Saturday, January 30, 2027",
+          day3: "Sunday, January 31, 2027"
+        };
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const dayKey = docSnap.id as "day1" | "day2" | "day3";
+          if (data.events && Array.isArray(data.events)) {
+            newSched[dayKey] = data.events;
+          }
+          if (data.date) {
+            newDates[dayKey] = data.date;
+          }
+        });
+        setScheduleData(newSched);
+        setDateLabels(newDates);
+      }
+    }, (err) => {
+      console.warn("Firestore schedule subscription notice:", err);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const getCategoryBadge = (category: "ceremony" | "session" | "social" | "other") => {
     switch (category) {
@@ -42,14 +80,7 @@ export default function Schedule() {
   };
 
   const getActiveDayLabel = () => {
-    switch (activeDay) {
-      case "day1":
-        return "Friday, February 21, 2026";
-      case "day2":
-        return "Saturday, February 22, 2026";
-      case "day3":
-        return "Sunday, February 23, 2026";
-    }
+    return dateLabels[activeDay] || "February 2026";
   };
 
   return (
@@ -72,10 +103,10 @@ export default function Schedule() {
             </span>
           </div>
           <h1 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide mt-2">
-            Conference Timeline & Sessions
+            Conference Timeline &amp; Sessions
           </h1>
           <p className="mt-3 max-w-2xl font-sans text-xs sm:text-sm text-[#8A9A7E] leading-relaxed font-light">
-            Review the complete three-day schedule encompassing inaugural addresses, intensive moderated caucuses, resolution voting, and the signature IIST Observatory stargazing fellowship.
+            Three-day conference schedule, session timings, and venues.
           </p>
         </motion.div>
 
@@ -113,7 +144,7 @@ export default function Schedule() {
 
         {/* Timeline list */}
         <div className="relative border-l border-[#C9A86A]/30 ml-4 sm:ml-6 space-y-6 pb-8 text-left" id="timeline-list">
-          {SCHEDULE[activeDay].map((event, index) => (
+          {(scheduleData[activeDay] || []).map((event, index) => (
             <motion.div 
               key={index} 
               initial={{ opacity: 0, x: -16 }}

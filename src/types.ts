@@ -44,18 +44,37 @@ export interface FAQItem {
   category: "general" | "registration" | "committees";
 }
 
+export type CommitteeId = 
+  | "uncopuos"
+  | "unhrc"
+  | "unodc"
+  | "nes75"
+  | "unga"
+  | "undp"
+  | "ip";
+
 export type PortfolioStatus = "Available" | "Assigned" | "Reserved" | "Pending" | "N/A";
 
 export interface CountryMatrixRow {
   country: string;
-  copuos: PortfolioStatus;
-  disec: PortfolioStatus;
-  aippm: PortfolioStatus;
-  unsc: PortfolioStatus;
+  uncopuos?: PortfolioStatus;
+  unhrc?: PortfolioStatus;
+  unodc?: PortfolioStatus;
+  nes75?: PortfolioStatus;
+  unga?: PortfolioStatus;
+  undp?: PortfolioStatus;
+  ip?: PortfolioStatus;
+  // Legacy aliases for backward compatibility
+  copuos?: PortfolioStatus;
+  disec?: PortfolioStatus;
+  aippm?: PortfolioStatus;
+  unsc?: PortfolioStatus;
 }
+
 
 export interface RegistrationDetails {
   uid?: string;
+  userId?: string;
   id: string;
   timestamp: string;
   regType: "individual" | "double" | "contingent";
@@ -92,3 +111,92 @@ export interface ContactQuery {
   destination?: string;
   source?: string;
 }
+
+export interface EBRegistration {
+  id: string; // e.g. EB-2027-1049
+  userId?: string;
+  timestamp: string;
+  createdAt?: any;
+  status: "Pending" | "Shortlisted" | "Interview Scheduled" | "Accepted" | "Rejected";
+  // Personal Details
+  name: string;
+  email: string;
+  phone: string;
+  institution: string;
+  course: string;
+  yearOfStudy: string;
+  cityState: string;
+  // Uploads
+  photoUrl?: string;
+  photoName?: string;
+  cvUrl?: string;
+  cvName?: string;
+  // Experience
+  munDelegateCount: string;
+  munEbCount: string;
+  experienceSummary: string;
+  // Preferences
+  pref1Committee: string;
+  pref1Role: string;
+  pref2Committee: string;
+  pref2Role: string;
+  // Substantive
+  proposedAgendas: string;
+  motivation: string;
+  sampleStudyGuideLink?: string;
+  linkedinProfile?: string;
+  adminNotes?: string;
+}
+
+export interface CampusAmbassadorRegistration {
+  id: string; // e.g. CA-2027-2038
+  userId?: string;
+  timestamp: string;
+  createdAt?: any;
+  status: "Pending" | "Verified" | "Shortlisted" | "Accepted" | "Rejected";
+  // Personal Details
+  name: string;
+  email: string;
+  phone: string;
+  institution: string;
+  course: string;
+  yearOfStudy: string;
+  cityState: string;
+  // Uploads
+  photoUrl?: string;
+  photoName?: string;
+  idProofUrl?: string;
+  idProofName?: string;
+  // College & Social
+  collegeClubs: string;
+  socialHandles: string;
+  priorCaExperience: string;
+  // Promotion Plan
+  motivation: string;
+  promotionPlan: string;
+  targetMobilization: string; // e.g. "5-10", "10-20", "20-35", "35+"
+  adminNotes?: string;
+}
+
+export interface WorkshopRegistrationDetails {
+  id: string;
+  userId: string;
+  regType: "individual" | "school";
+  name: string;
+  email: string;
+  phone: string;
+  institution: string;
+  course: string;
+  experience: "Beginner" | "Intermediate" | "Advanced";
+  motivation: string;
+  timestamp: string;
+  // School/Institutional specific fields
+  teacherName?: string;
+  teacherDesignation?: string;
+  teacherEmail?: string;
+  teacherPhone?: string;
+  estimatedStudents?: string;
+  gradeLevels?: string;
+  specialRequirements?: string;
+}
+

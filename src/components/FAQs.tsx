@@ -3,15 +3,37 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FAQ_ITEMS } from "../data";
+import { FAQItem } from "../types";
+import { db } from "../firebase";
+import { collection, onSnapshot, query } from "firebase/firestore";
 import { HelpCircle, ChevronDown, ChevronUp, Search, Mail, BookOpen } from "lucide-react";
 import { motion } from "motion/react";
 
 export default function FAQs() {
+  const [faqs, setFaqs] = useState<FAQItem[]>(FAQ_ITEMS);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"all" | "general" | "registration" | "committees">("all");
   const [openIndexes, setOpenIndexes] = useState<number[]>([0]);
+
+  useEffect(() => {
+    const q = query(collection(db, "faqs"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const list: FAQItem[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push(docSnap.data() as FAQItem);
+        });
+        list.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+        setFaqs(list);
+      }
+    }, (err) => {
+      console.warn("Firestore faqs subscription notice:", err);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const toggleAccordion = (index: number) => {
     if (openIndexes.includes(index)) {
@@ -21,7 +43,7 @@ export default function FAQs() {
     }
   };
 
-  const filteredFAQs = FAQ_ITEMS.filter((item) => {
+  const filteredFAQs = faqs.filter((item) => {
     const matchesSearch =
       item.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.answer.toLowerCase().includes(searchTerm.toLowerCase());
@@ -51,10 +73,10 @@ export default function FAQs() {
             </span>
           </div>
           <h1 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide mt-2">
-            Frequently Consulted Inquiries
+            Frequently Asked Questions
           </h1>
           <p className="mt-3 max-w-2xl font-sans text-xs sm:text-sm text-[#8A9A7E] leading-relaxed font-light">
-            Review detailed guidance regarding campus housing at IIST, portfolio allotment criteria, rules of procedure, double delegation credentials, and research resources.
+            Answers regarding delegate allocations, accommodation, and conference protocols.
           </p>
         </motion.div>
 
@@ -70,7 +92,7 @@ export default function FAQs() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8A9A7E]" />
             <input
               type="text"
-              placeholder="Search protocol dossiers (e.g., accommodation, portfolio, fees)..."
+              placeholder="Search questions (e.g. accommodation, portfolio, fees)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full border border-[#C9A86A]/30 bg-[#2E3B2F] py-3 pl-11 pr-5 font-sans text-xs text-[#EDE6D3] placeholder-[#8A9A7E] outline-none focus:border-[#C9A86A] transition-all"
@@ -89,7 +111,7 @@ export default function FAQs() {
                     : "border-[#C9A86A]/25 text-[#EDE6D3]/70 hover:border-[#C9A86A] hover:text-[#EDE6D3] bg-[#2E3B2F]/40"
                 }`}
               >
-                {cat === "all" ? "All Dossiers" : `${cat} inquiries`}
+                {cat === "all" ? "All" : cat}
               </button>
             ))}
           </div>
@@ -133,7 +155,7 @@ export default function FAQs() {
             })
           ) : (
             <div className="text-center py-12 text-[#8A9A7E] font-mono text-xs uppercase tracking-wider border border-[#C9A86A]/20 bg-[#2E3B2F]/30 p-8">
-              No matching archival inquiries found. Try broader terms like "ISRO" or "matrix".
+              No matching questions found. Try terms like "accommodation" or "matrix".
             </div>
           )}
         </div>
@@ -143,15 +165,15 @@ export default function FAQs() {
           <div className="flex gap-3 items-center">
             <Mail className="h-5 w-5 text-[#C9A86A] shrink-0" />
             <div>
-              <span className="block font-serif text-lg text-[#EDE6D3] font-normal">Need Direct Secretariat Assistance?</span>
-              <span className="block font-sans text-xs text-[#8A9A7E]">Our delegate affairs desk will respond to your queries promptly.</span>
+              <span className="block font-serif text-lg text-[#EDE6D3] font-normal">Have More Questions?</span>
+              <span className="block font-sans text-xs text-[#8A9A7E]">Contact our delegate affairs desk for prompt assistance.</span>
             </div>
           </div>
           <a
             href="mailto:support@iistmun.org"
             className="px-5 py-2.5 bg-[#C9A86A] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider hover:bg-[#dfbe7e] transition-all whitespace-nowrap"
           >
-            Dispatch Query
+            Contact Secretariat
           </a>
         </div>
       </div>

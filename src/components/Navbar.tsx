@@ -4,17 +4,18 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { 
-  LogIn, 
-  LogOut, 
-  ShieldCheck, 
-  Menu, 
-  X, 
-  Globe, 
+import {
+  LogIn,
+  LogOut,
+  ShieldCheck,
+  Menu,
+  X,
+  Globe,
   Mail,
   Compass,
   Landmark,
-  Sparkles
+  Sparkles,
+  Plane
 } from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -35,12 +36,13 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
 
   // Navigation Items matching the required hierarchy
   const navItems = [
-    { id: "home", label: "Home", number: "01", icon: Globe, sectionId: "hero-landing-section" },
-    { id: "about-iist", label: "About IIST", number: "02", icon: Landmark, sectionId: "about-iist-section" },
-    { id: "about-iistmun", label: "About IISTMUN", number: "03", icon: Sparkles, sectionId: "about-iistmun-section" },
-    { id: "map", label: "Campus Map", number: "04", icon: Compass, sectionId: "map-section" },
-    { id: "contact", label: "Contact Us", number: "05", icon: Mail, sectionId: "contact-section" },
-    ...(isAdmin ? [{ id: "admin", label: "Admin Console", number: "06", icon: ShieldCheck, sectionId: null }] : []),
+    { id: "home", label: "Home", number: " ", icon: Globe, sectionId: "hero-landing-section" },
+    { id: "about-iist", label: "About IIST", number: " ", icon: Landmark, sectionId: "about-iist-section" },
+    { id: "about-iistmun", label: "About IISTMUN", number: " ", icon: Sparkles, sectionId: "about-iistmun-section" },
+    // { id: "map", label: "Campus Map", number: "04", icon: Compass, sectionId: "map-section" },
+    { id: "contact", label: "Contact Us", number: " ", icon: Mail, sectionId: "contact-section" },
+    { id: "how-to-reach", label: "How to Reach", number: " ", icon: Plane, sectionId: "how-to-reach-section" },
+    ...(isAdmin ? [{ id: "admin", label: "Admin Console", number: " ", icon: ShieldCheck, sectionId: null }] : []),
   ];
 
   // Observe scroll position to highlight active tab
@@ -56,6 +58,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
       { id: "about-iistmun-section", tab: "about-iistmun" },
       { id: "map-section", tab: "map" },
       { id: "contact-section", tab: "contact" },
+      { id: "how-to-reach-section", tab: "how-to-reach" },
     ];
 
     const handleScroll = () => {
@@ -78,9 +81,10 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const handleNavClick = (tabId: string, sectionId?: string | null) => {
     setMobileMenuOpen(false);
 
-    if (tabId === "admin") {
-      setActiveTab("admin");
-      setActiveSection("admin");
+    if (tabId === "admin" || tabId === "register-portal") {
+      setActiveTab(tabId);
+      setActiveSection(tabId);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
@@ -126,7 +130,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
         id="main-header-nav"
       >
         <div className="w-full flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-10 gap-4">
-          
+
           {/* Left Edge: Masthead / Brand Mark */}
           <div className="flex items-center justify-start shrink-0">
             <button
@@ -141,7 +145,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
                   className="h-full w-full object-contain filter drop-shadow-sm transition-transform duration-300 group-hover:scale-105"
                 />
               </div>
-              
+
               <div className="flex flex-col justify-center shrink-0">
                 <div className="flex items-center gap-2 whitespace-nowrap">
                   <span className="font-serif text-xl sm:text-2xl font-normal tracking-wide text-[#EDE6D3] group-hover:text-[#C9A86A] transition-colors leading-none">
@@ -167,20 +171,18 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
                   key={item.id}
                   id={`nav-item-${item.id}`}
                   onClick={() => handleNavClick(item.id, item.sectionId)}
-                  className={`group relative py-2 text-xs font-sans uppercase tracking-[0.14em] whitespace-nowrap transition-colors cursor-pointer select-none ${
-                    isActive ? "text-[#C9A86A] font-semibold" : "text-[#EDE6D3]/80 hover:text-[#EDE6D3]"
-                  }`}
+                  className={`group relative py-2 text-xs font-sans uppercase tracking-[0.14em] whitespace-nowrap transition-colors cursor-pointer select-none ${isActive ? "text-[#C9A86A] font-semibold" : "text-[#EDE6D3]/80 hover:text-[#EDE6D3]"
+                    }`}
                 >
                   <span className="text-[9px] font-mono text-[#8A9A7E] mr-1 opacity-60 group-hover:opacity-100">
                     {item.number}
                   </span>
                   <span>{item.label}</span>
-                  
+
                   {/* Underline draw on active or hover */}
                   <span
-                    className={`absolute bottom-0 left-0 h-[1.5px] bg-[#C9A86A] transition-all duration-300 ${
-                      isActive ? "w-full opacity-100" : "w-0 opacity-0 group-hover:w-full group-hover:opacity-70"
-                    }`}
+                    className={`absolute bottom-0 left-0 h-[1.5px] bg-[#C9A86A] transition-all duration-300 ${isActive ? "w-full opacity-100" : "w-0 opacity-0 group-hover:w-full group-hover:opacity-70"
+                      }`}
                   />
                 </button>
               );
@@ -230,24 +232,24 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
               </button>
             )}
 
-            {/* Direct Dispatch CTA */}
+            {/* Direct Register CTA */}
             <button
-              onClick={() => handleNavClick("contact", "contact-section")}
-              id="navbar-contact-cta-btn"
-              className="px-4 py-2 text-xs font-sans uppercase tracking-[0.18em] border border-[#C9A86A] text-[#EDE6D3] bg-[#2E3B2F]/60 hover:bg-[#C9A86A] hover:text-[#1A1F1A] transition-all duration-200 cursor-pointer"
+              onClick={() => handleNavClick("register-portal")}
+              id="navbar-register-cta-btn"
+              className="px-4 py-2 text-xs font-sans uppercase tracking-[0.18em] border border-[#C9A86A] text-[#1A1F1A] bg-[#C9A86A] hover:bg-[#EDE6D3] hover:text-[#1A1F1A] font-semibold transition-all duration-200 cursor-pointer shadow-md"
             >
-              Contact Us
+              Register Now
             </button>
           </div>
 
           {/* Mobile & Tablet Controls */}
           <div className="flex lg:hidden items-center gap-2 shrink-0">
             <button
-              onClick={() => handleNavClick("contact", "contact-section")}
-              id="mobile-contact-btn"
-              className="px-3 py-1.5 text-[11px] font-sans uppercase tracking-wider border border-[#C9A86A] bg-[#2E3B2F] text-[#EDE6D3]"
+              onClick={() => handleNavClick("register-portal")}
+              id="mobile-register-btn"
+              className="px-3 py-1.5 text-[11px] font-sans uppercase tracking-wider border border-[#C9A86A] bg-[#C9A86A] text-[#1A1F1A] font-semibold shadow-sm"
             >
-              Contact
+              Register Now
             </button>
 
             <button
@@ -270,11 +272,10 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
                 key={item.id}
                 id={`nav-mobile-${item.id}`}
                 onClick={() => handleNavClick(item.id, item.sectionId)}
-                className={`px-3 py-1 text-[11px] font-sans uppercase tracking-wider whitespace-nowrap border shrink-0 transition-colors ${
-                  isActive 
-                    ? "border-[#C9A86A] bg-[#2E3B2F] text-[#C9A86A] font-semibold" 
-                    : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
-                }`}
+                className={`px-3 py-1 text-[11px] font-sans uppercase tracking-wider whitespace-nowrap border shrink-0 transition-colors ${isActive
+                  ? "border-[#C9A86A] bg-[#2E3B2F] text-[#C9A86A] font-semibold"
+                  : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
+                  }`}
               >
                 <span className="text-[9px] text-[#C9A86A] mr-1">{item.number}</span>
                 {item.label}
@@ -330,11 +331,10 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
                     <button
                       key={item.id}
                       onClick={() => handleNavClick(item.id, item.sectionId)}
-                      className={`w-full flex items-center justify-between p-2.5 text-left text-xs uppercase tracking-wider border transition-colors ${
-                        isActive
-                          ? "border-[#C9A86A]/40 bg-[#2E3B2F] text-[#C9A86A] font-semibold"
-                          : "border-transparent text-[#EDE6D3]/80 hover:bg-[#2E3B2F]/40 hover:text-[#EDE6D3]"
-                      }`}
+                      className={`w-full flex items-center justify-between p-2.5 text-left text-xs uppercase tracking-wider border transition-colors ${isActive
+                        ? "border-[#C9A86A]/40 bg-[#2E3B2F] text-[#C9A86A] font-semibold"
+                        : "border-transparent text-[#EDE6D3]/80 hover:bg-[#2E3B2F]/40 hover:text-[#EDE6D3]"
+                        }`}
                     >
                       <span className="flex items-center gap-2">
                         <item.icon className="h-3.5 w-3.5 text-[#C9A86A]" />

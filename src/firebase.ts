@@ -6,6 +6,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase client SDK
@@ -16,6 +17,9 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 // Initialize Authentication
 export const auth = getAuth(app);
+
+// Initialize Firebase Cloud Storage
+export const storage = getStorage(app);
 
 // Mandated Operation Types for Firebase Security & Debugging
 export enum OperationType {

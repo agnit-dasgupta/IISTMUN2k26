@@ -1,0 +1,17 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Registrations uploads (photos, CVs, student IDs)
+    match /uploads/{allPaths=**} {
+      // Anyone can upload application attachments up to 15MB
+      allow write: if request.resource.size < 15 * 1024 * 1024;
+      // Anyone can view uploaded attachments with the generated token URL
+      allow read: if true;
+    }
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

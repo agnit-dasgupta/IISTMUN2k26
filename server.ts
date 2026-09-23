@@ -1,98 +1,72 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-
 import fs from "fs";
 
-const QUERIES_FILE = path.join(process.cwd(), "data", "contact_queries.json");
-
-function getStoredQueries() {
-  try {
-    if (!fs.existsSync(path.dirname(QUERIES_FILE))) {
-      fs.mkdirSync(path.dirname(QUERIES_FILE), { recursive: true });
-    }
-    if (!fs.existsSync(QUERIES_FILE)) {
-      fs.writeFileSync(QUERIES_FILE, JSON.stringify([]));
-      return [];
-    }
-    const content = fs.readFileSync(QUERIES_FILE, "utf-8");
-    return JSON.parse(content) || [];
-  } catch (err) {
-    console.error("Error reading queries file:", err);
-    return [];
-  }
-}
-
-function saveStoredQueries(queries: any[]) {
-  try {
-    if (!fs.existsSync(path.dirname(QUERIES_FILE))) {
-      fs.mkdirSync(path.dirname(QUERIES_FILE), { recursive: true });
-    }
-    fs.writeFileSync(QUERIES_FILE, JSON.stringify(queries, null, 2));
-  } catch (err) {
-    console.error("Error writing queries file:", err);
-  }
-}
+const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
-  app.use(express.json());
+  // Allow larger payload for base64 file uploads (photos, CVs)
+  app.use(express.json({ limit: "25mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+
+  // Ensure uploads directory exists
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+  app.use("/uploads", express.static(UPLOADS_DIR));
 
   // API health check
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
-  });
-
-  // Contact query dispatch endpoint - persists queries and logs them
-  app.post("/api/contact", (req, res) => {
-    const { name, email, category, message, queryId, timestamp } = req.body;
-    const queries = getStoredQueries();
-    const newQuery = {
-      id: queryId && queryId !== "offline-ref" ? queryId : `IM-CQ-${Date.now().toString().slice(-6)}`,
-      name: name?.trim() || "Anonymous Delegate",
-      email: email?.trim() || "unspecified@iistmun.org",
-      category: category || "General Inquiry",
-      message: message?.trim() || "",
-      timestamp: timestamp || new Date().toLocaleString(),
-      status: "pending",
-      destination: "support@iistmun.org",
-      source: "portal_contact_form",
-      createdAt: new Date().toISOString()
-    };
-
-    queries.unshift(newQuery);
-    saveStoredQueries(queries);
-
-    console.log(`[QUERY TRANSMITTED TO support@iistmun.org & SAVED]`, {
-      id: newQuery.id,
-      from: `${newQuery.name} <${newQuery.email}>`,
-      category: newQuery.category,
-      time: newQuery.timestamp
-    });
-
-    res.json({
-      status: "success",
-      query: newQuery,
-      sentTo: "support@iistmun.org",
-      timestamp: new Date().toISOString()
+    res.json({ 
+      status: "ok", 
+      backend: "firestore-direct", 
+      timestamp: new Date().toISOString() 
     });
   });
 
-  // Retrieve all logged queries for the Admin Console
-  app.get("/api/queries", (req, res) => {
-    const queries = getStoredQueries();
-    res.json({ status: "success", queries });
-  });
+  // Base64 file upload endpoint for Photo and CV
+  app.post("/api/upload", (req, res) => {
+    try {
+      const { fileName, fileData } = req.body;
+      if (!fileName || !fileData) {
+        return res.status(400).json({ status: "error", message: "Missing fileName or fileData" });
+      }
 
-  // Delete a query
-  app.delete("/api/queries/:id", (req, res) => {
-    const { id } = req.params;
-    let queries = getStoredQueries();
-    queries = queries.filter((q: any) => q.id !== id);
-    saveStoredQueries(queries);
-    res.json({ status: "success", id });
+      // Extract raw base64 buffer from data URL
+      const matches = fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      let buffer: Buffer;
+      if (matches && matches.length === 3) {
+        buffer = Buffer.from(matches[2], "base64");
+      } else {
+        buffer = Buffer.from(fileData, "base64");
+      }
+
+      // Generate sanitized, timestamped unique filename
+      const ext = path.extname(fileName) || ".dat";
+      const baseName = path.basename(fileName, ext).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 30);
+      const uniqueFileName = `${Date.now()}_${baseName}${ext}`;
+      const destinationPath = path.join(UPLOADS_DIR, uniqueFileName);
+
+      fs.writeFileSync(destinationPath, buffer);
+
+      const fileUrl = `/uploads/${uniqueFileName}`;
+      console.log(`[FILE UPLOAD SUCCESS] Saved ${fileName} -> ${fileUrl} (${buffer.length} bytes)`);
+
+      return res.json({
+        status: "success",
+        url: fileUrl,
+        fileName: uniqueFileName,
+        originalName: fileName,
+        size: buffer.length
+      });
+    } catch (err: any) {
+      console.error("File upload error:", err);
+      return res.status(500).json({ status: "error", message: err.message || "Upload failed" });
+    }
   });
 
   // Vite middleware integration

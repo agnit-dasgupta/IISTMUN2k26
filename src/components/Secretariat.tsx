@@ -3,14 +3,36 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { SECRETARIAT } from "../data";
+import { SecretariatMember } from "../types";
+import { db } from "../firebase";
+import { collection, onSnapshot, query } from "firebase/firestore";
 import { Mail, Linkedin, Compass, MessageSquare, ShieldCheck, CheckCircle2, X } from "lucide-react";
 import { motion } from "motion/react";
 import SpotlightCard from "./SpotlightCard";
 
 export default function Secretariat() {
+  const [secretariat, setSecretariat] = useState<SecretariatMember[]>(SECRETARIAT);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const q = query(collection(db, "secretariat"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const list: SecretariatMember[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push({ id: docSnap.id, ...docSnap.data() } as SecretariatMember);
+        });
+        list.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+        setSecretariat(list);
+      }
+    }, (err) => {
+      console.warn("Firestore secretariat subscription notice:", err);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleContactMember = (name: string, email: string) => {
     setToastMessage(`🛰️ Uplink protocol initialized with ${name}. Dispatch queued via ${email}.`);
@@ -52,13 +74,13 @@ export default function Secretariat() {
             The Secretariat Board
           </h1>
           <p className="mx-auto mt-4 max-w-2xl font-sans text-slate-400 text-xs sm:text-sm leading-relaxed">
-            Meet the academic orchestrators, logistics command, and diplomacy designers behind the 8th annual Indian Institute of Space Science and Technology Model UN.
+            The organizing team and academic leadership behind IISTMUN 2027.
           </p>
         </motion.div>
 
         {/* Secretariat Grid with Spotlight Cards */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4" id="secretariat-grid">
-          {SECRETARIAT.map((member, index) => (
+          {secretariat.map((member, index) => (
             <motion.div
               key={member.id}
               initial={{ opacity: 0, y: 30 }}
@@ -147,7 +169,7 @@ export default function Secretariat() {
             <Compass className="mx-auto h-8 w-8 text-cyan-400 animate-spin-slow mb-4" />
             <h3 className="font-sans text-xl font-bold text-white uppercase tracking-wider">Need Coordination Assistance?</h3>
             <p className="mt-2 font-sans text-xs sm:text-sm text-slate-400 max-w-xl mx-auto leading-relaxed">
-              Whether you are coordinating contingent housing, need clarifications on rules of procedures, or are requesting specific portfolio accommodations, our secretariat is available 24/7.
+              For questions regarding contingent housing, rules of procedure, or portfolio allocations, our secretariat is here to help.
             </p>
             <div className="mt-6 flex justify-center">
               <a

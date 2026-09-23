@@ -3,17 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Mail, MapPin, Plane, Train,
   Bus, Send, CheckCircle2, ExternalLink,
   Clock, Compass, Globe, Orbit, AlertCircle,
   MessageSquare, ShieldCheck, Landmark, Telescope,
   Rocket, BookOpen, Layers, Award, Radio, ChevronRight,
-  Flame, Leaf, Scale, Check
+  Flame, Leaf, Scale, Check, Phone, Calendar
 } from "lucide-react";
 import { motion } from "motion/react";
-import MarqueeTicker from "./MarqueeTicker";
 import { db } from "../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
@@ -21,7 +20,42 @@ interface HomeProps {
   setActiveTab: (tab: string) => void;
 }
 
+// IISTMUN 2027 Commencement: Friday, 29th January 2027, 09:00 AM IST
+const MUN_TARGET_DATE = new Date("2027-01-29T09:00:00+05:30").getTime();
+
+interface TimeRemaining {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  isStarted: boolean;
+}
+
+const calculateTimeRemaining = (): TimeRemaining => {
+  const difference = MUN_TARGET_DATE - Date.now();
+  if (difference <= 0) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, isStarted: true };
+  }
+  return {
+    days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+    minutes: Math.floor((difference / (1000 * 60)) % 60),
+    seconds: Math.floor((difference / 1000) % 60),
+    isStarted: false
+  };
+};
+
 export default function Home({ setActiveTab }: HomeProps) {
+  // Live Countdown Chronometer State
+  const [timeLeft, setTimeLeft] = useState<TimeRemaining>(calculateTimeRemaining);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeRemaining());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Contact Form State
   const [formData, setFormData] = useState({
     name: "",
@@ -66,26 +100,8 @@ export default function Home({ setActiveTab }: HomeProps) {
       console.error("Firebase write error for contact query:", firebaseErr);
     }
 
-    // 2. Also notify server endpoint for backup
-    try {
-      await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          category,
-          message,
-          queryId: docId || "offline-ref",
-          sentTo: "support@iistmun.org"
-        })
-      });
-    } catch {
-      // Offline / client fallback
-    }
-
     const subject = `[IISTMUN 2027 Query: ${category}] from ${name}`;
-    const body = 
+    const body =
       `Greetings Secretariat,\n\n` +
       `You have received a new diplomatic query from the IISTMUN 2027 Portal:\n\n` +
       `• Reference ID: ${docId || "Saved to Firebase"}\n` +
@@ -114,15 +130,16 @@ export default function Home({ setActiveTab }: HomeProps) {
   return (
     <div className="relative bg-transparent text-[#EDE6D3] min-h-screen overflow-hidden font-sans paper-grain newsprint-overlay selection:bg-[#F8C8DC]/30 selection:text-[#EDE6D3]">
 
+
       {/* ========================================================================= */}
-      {/* 1. HERO SECTION - HOME WITH COUNTER (FIRST PART ON LANDING PAGE)          */}
+      {/* 2. HERO SECTION - HOME WITH COUNTER (FIRST PART ON LANDING PAGE)          */}
       {/* ========================================================================= */}
-      <section className="relative z-10 pt-12 sm:pt-16 md:pt-20 pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center" id="hero-landing-section">
+      <section className="relative z-10 pt-10 sm:pt-14 md:pt-16 pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto text-center" id="hero-landing-section">
 
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.9, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-col items-center justify-center space-y-6 sm:space-y-8"
         >
 
@@ -170,48 +187,54 @@ export default function Home({ setActiveTab }: HomeProps) {
           {/* MINIMALIST COUNTDOWN CHRONOMETER (UNBOXED & ELEGANT)                  */}
           {/* ===================================================================== */}
           <div className="w-full max-w-xl mx-auto py-2" id="countdown-counter-section">
+            <div className="flex items-center justify-center gap-2 mb-3 select-none">
+              <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.25em] text-[#C9A86A]">
+                January 29 - 31, 2027 &bull; IIST, Thiruvananthapuram
+              </span>
+            </div>
+
             <div className="flex items-center justify-center gap-3 sm:gap-7 md:gap-10">
-              
+
               {/* DAYS */}
               <div className="flex flex-col items-center min-w-[52px] sm:min-w-[68px]">
-                <span className="font-serif text-4xl sm:text-6xl md:text-7xl text-[#C9A86A] font-light leading-none select-none tracking-widest">
-                  &mdash;
+                <span className="font-serif text-4xl sm:text-6xl md:text-7xl text-[#C9A86A] font-light leading-none select-none tracking-widest tabular-nums">
+                  {String(timeLeft.days).padStart(2, "0")}
                 </span>
                 <span className="font-mono text-[9px] sm:text-[11px] uppercase tracking-[0.25em] text-[#8A9A7E] mt-2 font-medium">
                   Days
                 </span>
               </div>
 
-              <span className="font-serif text-2xl sm:text-4xl text-[#C9A86A]/40 pb-5 select-none">:</span>
+              <span className="font-serif text-2xl sm:text-4xl text-[#C9A86A]/40 pb-5 select-none animate-pulse">:</span>
 
               {/* HOURS */}
               <div className="flex flex-col items-center min-w-[52px] sm:min-w-[68px]">
-                <span className="font-serif text-4xl sm:text-6xl md:text-7xl text-[#C9A86A] font-light leading-none select-none tracking-widest">
-                  &mdash;
+                <span className="font-serif text-4xl sm:text-6xl md:text-7xl text-[#C9A86A] font-light leading-none select-none tracking-widest tabular-nums">
+                  {String(timeLeft.hours).padStart(2, "0")}
                 </span>
                 <span className="font-mono text-[9px] sm:text-[11px] uppercase tracking-[0.25em] text-[#8A9A7E] mt-2 font-medium">
                   Hours
                 </span>
               </div>
 
-              <span className="font-serif text-2xl sm:text-4xl text-[#C9A86A]/40 pb-5 select-none">:</span>
+              <span className="font-serif text-2xl sm:text-4xl text-[#C9A86A]/40 pb-5 select-none animate-pulse">:</span>
 
               {/* MINUTES */}
               <div className="flex flex-col items-center min-w-[52px] sm:min-w-[68px]">
-                <span className="font-serif text-4xl sm:text-6xl md:text-7xl text-[#C9A86A] font-light leading-none select-none tracking-widest">
-                  &mdash;
+                <span className="font-serif text-4xl sm:text-6xl md:text-7xl text-[#C9A86A] font-light leading-none select-none tracking-widest tabular-nums">
+                  {String(timeLeft.minutes).padStart(2, "0")}
                 </span>
                 <span className="font-mono text-[9px] sm:text-[11px] uppercase tracking-[0.25em] text-[#8A9A7E] mt-2 font-medium">
                   Minutes
                 </span>
               </div>
 
-              <span className="font-serif text-2xl sm:text-4xl text-[#C9A86A]/40 pb-5 select-none">:</span>
+              <span className="font-serif text-2xl sm:text-4xl text-[#C9A86A]/40 pb-5 select-none animate-pulse">:</span>
 
               {/* SECONDS */}
               <div className="flex flex-col items-center min-w-[52px] sm:min-w-[68px]">
-                <span className="font-serif text-4xl sm:text-6xl md:text-7xl text-[#C9A86A] font-light leading-none select-none tracking-widest">
-                  &mdash;
+                <span className="font-serif text-4xl sm:text-6xl md:text-7xl text-[#C9A86A] font-light leading-none select-none tracking-widest tabular-nums">
+                  {String(timeLeft.seconds).padStart(2, "0")}
                 </span>
                 <span className="font-mono text-[9px] sm:text-[11px] uppercase tracking-[0.25em] text-[#8A9A7E] mt-2 font-medium">
                   Seconds
@@ -222,264 +245,170 @@ export default function Home({ setActiveTab }: HomeProps) {
           </div>
 
           {/* Concise Diplomatic Subtitle */}
-          <p className="font-sans text-xs sm:text-sm md:text-base text-[#EDE6D3]/85 max-w-2xl leading-relaxed font-light">
-            The premier diplomatic convocation organized by the Indian Institute of Space Science and Technology (IIST), Valiamala, Thiruvananthapuram. Convening future leaders to debate orbital sustainability, international security, and planetary governance.
+          <p className="font-sans text-xs sm:text-sm md:text-base text-[#EDE6D3]/85 max-w-xl mx-auto leading-relaxed font-light">
+
+            India&apos;s premier space diplomacy conference hosted at IIST, Thiruvananthapuram. Convening future leaders to debate orbital sustainability, international security, and planetary governance.
           </p>
 
           {/* Status Notices: EB and Campus Ambassador */}
-          <div className="w-full max-w-2xl pt-2 sm:pt-4" id="registrations-status-banner">
+          <div className="w-full max-w-2xl mx-auto pt-2 sm:pt-4" id="registrations-status-banner">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-              {/* Notice 1: EB registrations opening soon */}
-              <div className="border border-[#C9A86A]/50 hover:border-[#8BA06F] bg-[#1A1F1A]/85 p-5 text-left flex items-start gap-3.5 shadow-lg group transition-all duration-300">
+              {/* Notice 1: EB registrations open */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("register-portal-eb");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="border border-[#C9A86A]/70 hover:border-[#C9A86A] bg-[#1A1F1A]/95 hover:bg-[#2E3B2F]/60 p-5 text-left flex items-start gap-3.5 shadow-lg group transition-all duration-300 cursor-pointer"
+              >
+                <span className="relative flex h-3 w-3 mt-1 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9A86A] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#C9A86A]"></span>
+                </span>
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] block font-medium">
+                      Executive Board (EB)
+                    </span>
+                    <span className="text-[9px] font-mono text-[#1A1F1A] bg-[#C9A86A] px-1 rounded-none font-semibold">
+                      APPLY
+                    </span>
+                  </div>
+                  <span className="font-sans text-xs sm:text-sm text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#C9A86A] transition-colors">
+                    Applications Open • Click to Register
+                  </span>
+                </div>
+              </button>
+
+              {/* Notice 2: Campus ambassador registrations open */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("register-portal-ca");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="border border-[#8BA06F]/70 hover:border-[#8BA06F] bg-[#1A1F1A]/95 hover:bg-[#2E3B2F]/60 p-5 text-left flex items-start gap-3.5 shadow-lg group transition-all duration-300 cursor-pointer"
+              >
                 <span className="relative flex h-3 w-3 mt-1 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8BA06F] opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-[#8BA06F]"></span>
                 </span>
                 <div className="space-y-0.5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
                     <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8BA06F] block font-medium">
-                      Executive Board
+                      Campus Ambassador
                     </span>
-                    <span className="font-mono text-[9px] text-[#8A9A7E]/70 tracking-wider">
-                      EB RECRUITMENT
-                    </span>
-                  </div>
-                  <span className="font-sans text-xs sm:text-sm text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#EDE6D3] transition-colors">
-                    EB registrations opening soon...
-                  </span>
-                </div>
-              </div>
-
-              {/* Notice 2: Campus ambassador registrations opening soon */}
-              <div className="border border-[#C9A86A]/50 hover:border-[#CFD7D0] bg-[#1A1F1A]/85 p-5 text-left flex items-start gap-3.5 shadow-lg group transition-all duration-300">
-                <span className="relative flex h-3 w-3 mt-1 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#CFD7D0] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#CFD7D0]"></span>
-                </span>
-                <div className="space-y-0.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#CFD7D0] block font-medium">
-                      Outreach &amp; Delegation
-                    </span>
-                    <span className="font-mono text-[9px] text-[#CFD7D0]/70 tracking-wider">
-                      FELLOWSHIP
+                    <span className="text-[9px] font-mono text-[#1A1F1A] bg-[#8BA06F] px-1 rounded-none font-semibold">
+                      JOIN
                     </span>
                   </div>
-                  <span className="font-sans text-xs sm:text-sm text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#EDE6D3] transition-colors">
-                    campus ambassador registrations opening soon
+                  <span className="font-sans text-xs sm:text-sm text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#8BA06F] transition-colors">
+                    Registrations Open • Join Fellowship
                   </span>
                 </div>
-              </div>
+              </button>
 
             </div>
           </div>
 
           {/* Hairline Divider */}
-          <div className="w-full max-w-2xl pt-2 pb-1">
+          <div className="w-full max-w-2xl mx-auto pt-2 pb-1">
             <div className="w-full h-px bg-[#C9A86A]/25" />
           </div>
 
-          {/* Quick Page Jump Links in Order */}
-          <div className="w-full max-w-2xl grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 text-center">
-            <button
-              onClick={() => scrollToSection("about-iist-section")}
-              className="group border border-[#C9A86A]/30 hover:border-[#C9A86A] bg-[#2E3B2F]/40 hover:bg-[#2E3B2F] p-3 flex flex-col items-center justify-center transition-all duration-300 cursor-pointer"
-            >
-              <span className="font-serif text-sm sm:text-base text-[#C9A86A] font-normal group-hover:scale-105 transition-transform duration-300 mb-0.5">
-                01
-              </span>
-              <span className="font-sans text-[10px] uppercase tracking-[0.16em] text-[#EDE6D3] font-medium group-hover:text-[#C9A86A] transition-colors">
-                About IIST
-              </span>
-            </button>
+          {/* Quick Page Jump Links in Order - 5 Symmetrical Items */}
 
-            <button
-              onClick={() => scrollToSection("about-iistmun-section")}
-              className="group border border-[#C9A86A]/30 hover:border-[#C9A86A] bg-[#2E3B2F]/40 hover:bg-[#2E3B2F] p-3 flex flex-col items-center justify-center transition-all duration-300 cursor-pointer"
-            >
-              <span className="font-serif text-sm sm:text-base text-[#C9A86A] font-normal group-hover:scale-105 transition-transform duration-300 mb-0.5">
-                02
-              </span>
-              <span className="font-sans text-[10px] uppercase tracking-[0.16em] text-[#EDE6D3] font-medium group-hover:text-[#C9A86A] transition-colors">
-                About IISTMUN
-              </span>
-            </button>
-
-            <button
-              onClick={() => scrollToSection("map-section")}
-              className="group border border-[#C9A86A]/30 hover:border-[#C9A86A] bg-[#2E3B2F]/40 hover:bg-[#2E3B2F] p-3 flex flex-col items-center justify-center transition-all duration-300 cursor-pointer"
-            >
-              <span className="font-serif text-sm sm:text-base text-[#C9A86A] font-normal group-hover:scale-105 transition-transform duration-300 mb-0.5">
-                03
-              </span>
-              <span className="font-sans text-[10px] uppercase tracking-[0.16em] text-[#EDE6D3] font-medium group-hover:text-[#C9A86A] transition-colors">
-                Campus Map
-              </span>
-            </button>
-
-            <button
-              onClick={() => scrollToSection("contact-section")}
-              className="group border border-[#C9A86A]/30 hover:border-[#C9A86A] bg-[#2E3B2F]/40 hover:bg-[#2E3B2F] p-3 flex flex-col items-center justify-center transition-all duration-300 cursor-pointer"
-            >
-              <span className="font-serif text-sm sm:text-base text-[#C9A86A] font-normal group-hover:scale-105 transition-transform duration-300 mb-0.5">
-                04
-              </span>
-              <span className="font-sans text-[10px] uppercase tracking-[0.16em] text-[#EDE6D3] font-medium group-hover:text-[#C9A86A] transition-colors">
-                Contact Desk
-              </span>
-            </button>
-          </div>
 
         </motion.div>
       </section>
 
       {/* ========================================================================= */}
-      {/* MARQUEE RUNNING TICKER DISPATCH                                           */}
-      {/* ========================================================================= */}
-      <MarqueeTicker />
-
-      {/* ========================================================================= */}
       {/* 2. ABOUT IIST SECTION (ORDER ITEM #2)                                     */}
       {/* ========================================================================= */}
-      <section className="relative z-10 py-20 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-b border-[#C9A86A]/20 text-left" id="about-iist-section">
-        
-        {/* Section Header */}
-        <div className="mb-12">
-          <div className="flex items-center gap-2">
-            <Landmark className="h-4 w-4 text-[#C9A86A]" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#C9A86A] font-semibold block">
-              Institutional Heritage &bull; Valiamala, Thiruvananthapuram
-            </span>
+      <section className="relative z-10 py-20 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-b border-[#C9A86A]/20" id="about-iist-section">
+
+        {/* Symmetrical Section Header */}
+        <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
+          <div className="inline-flex items-center justify-center gap-2 mb-3">
+
           </div>
-          <h2 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide mt-2">
+          <h2 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide">
             Indian Institute of Space Science and Technology
           </h2>
-          <p className="font-sans text-xs sm:text-sm text-[#8A9A7E] max-w-2xl leading-relaxed mt-2">
-            Asia's first Space University &mdash; an autonomous deemed university established in 2007 under the Department of Space, Government of India, and conceived by the Indian Space Research Organisation (ISRO).
+          <p className="font-sans text-xs sm:text-sm text-[#8A9A7E] max-w-2xl mx-auto leading-relaxed mt-3">
+            Asia&apos;s first Space University, established by ISRO under the Department of Space, Government of India.
           </p>
         </div>
 
-        {/* Narrative & Institutional Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-12">
-          
-          {/* Main Story Column */}
-          <div className="lg:col-span-7 space-y-4 font-sans text-xs sm:text-sm text-[#EDE6D3]/85 leading-relaxed">
-            <p>
-              Inaugurated on 14 September 2007 by former ISRO Chairman <strong className="text-[#C9A86A]">Dr. G. Madhavan Nair</strong>, with former President of India <strong className="text-[#C9A86A]">Dr. A.P.J. Abdul Kalam</strong> serving as its founding Chancellor, IIST was established to provide world-class education and pioneering research tailored to the ambitions of the Indian space programme.
-            </p>
-            <p>
-              Nestled across 100 acres in the picturesque, verdant foothills of the Sahyadri ranges in Valiamala, Thiruvananthapuram, IIST sits adjacent to the <strong className="text-[#EDE6D3]">Liquid Propulsion Systems Centre (LPSC)</strong> of ISRO. This proximity enables unprecedented synergy between academic rigor and live space missions.
-            </p>
-            <p>
-              From designing nano-satellites and atmospheric sounding instruments to contributing directly to historic milestones like <strong className="text-[#C9A86A]">Chandrayaan, Gaganyaan, Aditya-L1, and Shukrayaan</strong>, IIST scholars and faculty represent the vanguard of India&apos;s technological ascent.
-            </p>
+        {/* Narrative & Institutional Overview - Symmetrical 2 Columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
 
-            {/* Quote Block */}
-            <div className="border-l-2 border-[#C9A86A] pl-4 py-2 mt-4 bg-[#2E3B2F]/30 text-xs italic font-serif text-[#EDE6D3]/90">
-              &ldquo;Space is the realm of boundless dreams. IIST was born to transform youthful scientific passion into national sovereignty, technological mastery, and humanitarian progress.&rdquo;
-            </div>
-          </div>
-
-          {/* Key Facts / Highlights Box */}
-          <div className="lg:col-span-5">
-            <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-6 sm:p-7 shadow-xl space-y-5">
+          {/* Left Column: Historical Overview & Academic Mission Card */}
+          <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-6 sm:p-8 shadow-xl flex flex-col justify-between space-y-6">
+            <div className="space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-[#C9A86A]/20">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold">
-                  Institutional Profile
+                  Pioneering Space Academia
                 </span>
-                <span className="font-mono text-[9px] text-[#8A9A7E]">VALIAMALA CAMPUS</span>
+                <span className="font-mono text-[9px] text-[#8A9A7E]">ESTD. 2007</span>
               </div>
 
-              <dl className="space-y-3 font-sans text-xs">
-                <div className="flex items-start justify-between gap-4 pb-2 border-b border-[#8A9A7E]/15">
-                  <dt className="text-[#8A9A7E]">Inception</dt>
-                  <dd className="font-mono text-[#EDE6D3] text-right font-medium">14 September 2007</dd>
-                </div>
-                <div className="flex items-start justify-between gap-4 pb-2 border-b border-[#8A9A7E]/15">
-                  <dt className="text-[#8A9A7E]">Parent Department</dt>
-                  <dd className="font-mono text-[#EDE6D3] text-right font-medium">Department of Space, Govt. of India</dd>
-                </div>
-                <div className="flex items-start justify-between gap-4 pb-2 border-b border-[#8A9A7E]/15">
-                  <dt className="text-[#8A9A7E]">Apex Mentorship</dt>
-                  <dd className="font-mono text-[#C9A86A] text-right font-medium">ISRO (Indian Space Research Organisation)</dd>
-                </div>
-                <div className="flex items-start justify-between gap-4 pb-2 border-b border-[#8A9A7E]/15">
-                  <dt className="text-[#8A9A7E]">Founding Chancellor</dt>
-                  <dd className="font-mono text-[#EDE6D3] text-right font-medium">Dr. A.P.J. Abdul Kalam</dd>
-                </div>
-                <div className="flex items-start justify-between gap-4">
-                  <dt className="text-[#8A9A7E]">Campus Location</dt>
-                  <dd className="font-mono text-[#EDE6D3] text-right font-medium">Valiamala, Nedumangad, Kerala &bull; 695547</dd>
-                </div>
-              </dl>
+              <div className="space-y-4 font-sans text-xs sm:text-sm text-[#EDE6D3]/85 leading-relaxed">
+                <p>
+                  Inaugurated on 14 September 2007 with former President of India <strong className="text-[#C9A86A]">Dr. A.P.J. Abdul Kalam</strong> as founding Chancellor, IIST was established to provide world-class education and research for the Indian space programme.
+                </p>
+                <p>
+                  Situated on a 100-acre residential campus adjacent to ISRO&apos;s <strong className="text-[#EDE6D3]">Liquid Propulsion Systems Centre (LPSC)</strong>, IIST enables direct synergy with live space missions, contributing to landmark projects including <strong className="text-[#C9A86A]">Chandrayaan, Gaganyaan, and Aditya-L1</strong>.
+                </p>
+              </div>
 
-              <div className="pt-3 border-t border-[#C9A86A]/20">
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="bg-[#2E3B2F]/50 border border-[#C9A86A]/20 p-2.5">
-                    <span className="font-serif text-xl font-bold text-[#C9A86A] block">100+</span>
-                    <span className="text-[9px] font-mono text-[#8A9A7E] uppercase">Space Payloads &amp; Patents</span>
-                  </div>
-                  <div className="bg-[#2E3B2F]/50 border border-[#C9A86A]/20 p-2.5">
-                    <span className="font-serif text-xl font-bold text-[#C9A86A] block">1st</span>
-                    <span className="text-[9px] font-mono text-[#8A9A7E] uppercase">Space University in Asia</span>
-                  </div>
-                </div>
+              {/* Quote Block */}
+              <div className="border-l-2 border-[#C9A86A] pl-4 py-3 bg-[#2E3B2F]/40 text-xs italic font-serif text-[#EDE6D3]/90">
+                &ldquo;Transforming youthful scientific passion into national sovereignty, technological mastery, and humanitarian progress.&rdquo;
+                <span className="block mt-1.5 font-sans not-italic text-[10px] text-[#8A9A7E] font-medium">
+                  &mdash; Dr. A.P.J. Abdul Kalam, Founding Chancellor
+                </span>
               </div>
             </div>
+
+            <div className="pt-4 border-t border-[#C9A86A]/20 flex items-center justify-between font-mono text-[10px] text-[#C9A86A]">
+              <span>Department of Space, Govt. of India</span>
+              <span>Valiamala, Thiruvananthapuram</span>
+            </div>
           </div>
 
-        </div>
+          {/* Right Column: IIST Valiamala Campus Aerial View (Replaces Institutional Profile Card) */}
+          <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-6 sm:p-8 shadow-xl flex flex-col justify-between space-y-6 group">
+            <div className="space-y-4 flex-1 flex flex-col">
+              <div className="flex items-center justify-between pb-3 border-b border-[#C9A86A]/20">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold flex items-center gap-2">
 
-        {/* 4 Pillars of IIST Research & Pedagogy */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 shadow-md hover:border-[#C9A86A] transition-all group">
-            <div className="h-9 w-9 border border-[#C9A86A] bg-[#1A1F1A] flex items-center justify-center text-[#C9A86A] mb-4">
-              <Rocket className="h-4 w-4" />
-            </div>
-            <h4 className="font-serif text-lg text-[#EDE6D3] group-hover:text-[#C9A86A] transition-colors">
-              ISRO Mission Integration
-            </h4>
-            <p className="font-sans text-xs text-[#EDE6D3]/80 leading-relaxed mt-2">
-              Direct institutional linkage with ISRO research facilities nationwide, contributing to launch vehicles, spacecraft autonomy, and deep-space telemetry.
-            </p>
-          </div>
+                  Institutional Campus
+                </span>
 
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 shadow-md hover:border-[#C9A86A] transition-all group">
-            <div className="h-9 w-9 border border-[#C9A86A] bg-[#1A1F1A] flex items-center justify-center text-[#C9A86A] mb-4">
-              <Telescope className="h-4 w-4" />
-            </div>
-            <h4 className="font-serif text-lg text-[#EDE6D3] group-hover:text-[#C9A86A] transition-colors">
-              Advanced Space Laboratories
-            </h4>
-            <p className="font-sans text-xs text-[#EDE6D3]/80 leading-relaxed mt-2">
-              Houses Small Spacecraft Systems Labs (SSSL), advanced rocket propulsion test rigs, atmospheric lidar sounders, and high-resolution optical observatories.
-            </p>
-          </div>
+              </div>
 
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 shadow-md hover:border-[#C9A86A] transition-all group">
-            <div className="h-9 w-9 border border-[#C9A86A] bg-[#1A1F1A] flex items-center justify-center text-[#C9A86A] mb-4">
-              <Leaf className="h-4 w-4" />
-            </div>
-            <h4 className="font-serif text-lg text-[#EDE6D3] group-hover:text-[#C9A86A] transition-colors">
-              Western Ghats Ecology
-            </h4>
-            <p className="font-sans text-xs text-[#EDE6D3]/80 leading-relaxed mt-2">
-              An eco-harmonious residential campus in the rainforest foothills of Sahyadri, blending sustainable green architecture with planetary observation research.
-            </p>
-          </div>
+              {/* Campus Image Frame */}
+              <div className="relative flex-1 min-h-[260px] sm:min-h-[290px] w-full overflow-hidden border border-[#C9A86A]/30 bg-[#141814] shadow-inner">
+                <img
+                  src="/iist-campus.jpg"
+                  alt="Aerial view of the Indian Institute of Space Science and Technology (IIST) campus in Valiamala, Thiruvananthapuram"
+                  className="w-full h-full object-cover object-center transform group-hover:scale-105 transition-transform duration-700 filter brightness-[0.96] group-hover:brightness-105"
+                />
 
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 shadow-md hover:border-[#C9A86A] transition-all group">
-            <div className="h-9 w-9 border border-[#C9A86A] bg-[#1A1F1A] flex items-center justify-center text-[#C9A86A] mb-4">
-              <BookOpen className="h-4 w-4" />
+                {/* Subtle vignette / gold aura gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#141814]/90 via-transparent to-[#141814]/20 pointer-events-none" />
+
+
+              </div>
             </div>
-            <h4 className="font-serif text-lg text-[#EDE6D3] group-hover:text-[#C9A86A] transition-colors">
-              Scholars of Spacecraft &amp; Law
-            </h4>
-            <p className="font-sans text-xs text-[#EDE6D3]/80 leading-relaxed mt-2">
-              Nurturing aerospace engineers, astrophysicists, and scientific leaders equipped to shape both interplanetary technology and international space policy.
-            </p>
+
+            <div className="pt-4 border-t border-[#C9A86A]/20 flex items-center justify-between font-mono text-[10px] text-[#C9A86A]">
+              <span>Valiamala, Thiruvananthapuram</span>
+              <span>8.6277&deg; N, 77.0373&deg; E</span>
+            </div>
           </div>
 
         </div>
@@ -489,127 +418,376 @@ export default function Home({ setActiveTab }: HomeProps) {
       {/* ========================================================================= */}
       {/* 3. ABOUT IISTMUN SECTION (ORDER ITEM #3)                                  */}
       {/* ========================================================================= */}
-      <section className="relative z-10 py-20 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-b border-[#C9A86A]/20 text-left" id="about-iistmun-section">
-        
-        {/* Section Header */}
-        <div className="mb-12">
-          <div className="flex items-center gap-2">
-            <Globe className="h-4 w-4 text-[#C9A86A]" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#C9A86A] font-semibold block">
-              Diplomatic Tradition &bull; 14th Edition Convocation
-            </span>
-          </div>
-          <h2 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide mt-2">
+      <section className="relative z-10 py-20 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-b border-[#C9A86A]/20" id="about-iistmun-section">
+
+        {/* Symmetrical Section Header */}
+        <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
+
+          <h2 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide">
             IIST Model United Nations 2027
           </h2>
-          <p className="font-sans text-xs sm:text-sm text-[#8A9A7E] max-w-2xl leading-relaxed mt-2">
-            Save &middot; Sustain &middot; Safeguard &mdash; South India's premier collegiate symposium uniting the frontiers of space law, planetary sustainability, and multilateral statecraft.
+          <p className="font-sans text-xs sm:text-sm text-[#8A9A7E] max-w-2xl mx-auto leading-relaxed mt-3">
+            Save &middot; Sustain &middot; Safeguard &mdash; South India&apos;s premier collegiate space diplomacy symposium.
           </p>
         </div>
 
-        {/* Narrative & Thematic Vision */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-12">
-          
-          <div className="lg:col-span-7 space-y-4 font-sans text-xs sm:text-sm text-[#EDE6D3]/85 leading-relaxed">
-            <p>
-              Over thirteen distinguished editions, <strong className="text-[#C9A86A]">IIST MUN</strong> has established a formidable legacy as a premier collegiate diplomatic forum. Hosted by the student body of IIST under the guidance of academic mentors, it convenes top delegates, scholars, and youth debaters from all corners of the nation.
-            </p>
-            <p>
-              While standard Model UN conferences focus strictly on conventional geopolitical agendas, IISTMUN leverages the institution's space heritage to introduce groundbreaking debates at the nexus of <strong className="text-[#EDE6D3]">international space treaties, orbital sustainability, space debris mitigation, remote-sensing data ethics, and planetary stewardship</strong>.
-            </p>
-            <p>
-              For the <strong className="text-[#C9A86A]">14th Edition (2027)</strong>, the convocation rallies under the defining tripartite charter: <strong className="text-[#C9A86A]">Save &middot; Sustain &middot; Safeguard</strong>. Delegates will confront pressing existential questions: How do we balance sovereign space commerce with orbital environmental protection? How can satellite data defend climate-vulnerable nations? How can multilateral diplomacy prevent weaponization in orbit?
-            </p>
+        {/* Narrative & Thematic Vision - Symmetrical 2 Columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+
+          {/* Left Column: Diplomatic Legacy Card */}
+          <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-6 sm:p-8 shadow-xl flex flex-col justify-between space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#C9A86A]/20">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold">
+                  Symposium Legacy
+                </span>
+                <span className="font-mono text-[9px] text-[#8A9A7E]">14 CONVOCATIONS</span>
+              </div>
+
+              <div className="space-y-4 font-sans text-xs sm:text-sm text-[#EDE6D3]/85 leading-relaxed">
+                <p>
+                  Over thirteen editions, <strong className="text-[#C9A86A]">IIST MUN</strong> has earned distinction as a premier national collegiate forum, convening delegates and debaters from prestigious institutions nationwide.
+                </p>
+                <p>
+                  Grounded in the institute&apos;s aerospace heritage, IISTMUN advances critical debates in <strong className="text-[#EDE6D3]">space law, orbital sustainability, space debris mitigation, and planetary stewardship</strong> under the 14th edition charter: <strong className="text-[#C9A86A]">Save &middot; Sustain &middot; Safeguard</strong>.
+                </p>
+                <p>
+                  Delegates engage in rigorous parliamentary procedure, simulating specialized UN bodies to negotiate multi-lateral treaties governing the outer space commons and safeguarding terrestrial sustainability.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-[#C9A86A]/20 flex items-center justify-between font-mono text-[10px] text-[#C9A86A]">
+              <span>7 Specialized Chambers</span>
+              <span>National Collegiate Representation</span>
+            </div>
           </div>
 
-          <div className="lg:col-span-5">
-            <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-6 sm:p-7 shadow-xl space-y-4">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold block pb-2 border-b border-[#C9A86A]/20">
+          {/* Right Column: Conference Charter Pillars */}
+          <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-6 sm:p-8 shadow-xl flex flex-col justify-between space-y-5">
+            <div className="space-y-4">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold block pb-3 border-b border-[#C9A86A]/20">
                 Conference Charter &bull; 14th Edition
               </span>
-              
+
               <div className="space-y-3 font-sans text-xs">
-                <div className="border-l-2 border-[#8BA06F] pl-3 py-1">
+                <div className="border-l-2 border-[#8BA06F] pl-3.5 py-1.5 bg-[#2E3B2F]/20">
                   <span className="font-serif text-base text-[#EDE6D3] block font-semibold">SAVE</span>
-                  <p className="text-[11px] text-[#8A9A7E] mt-0.5">
-                    Defending terrestrial ecosystems, climate-fragile regions, and shared human heritage through satellite-monitored international accords.
+                  <p className="text-[11px] text-[#8A9A7E] mt-0.5 leading-relaxed">
+                    Protecting fragile terrestrial ecosystems and human heritage through satellite-monitored environmental accords.
                   </p>
                 </div>
 
-                <div className="border-l-2 border-[#C9A86A] pl-3 py-1">
+                <div className="border-l-2 border-[#C9A86A] pl-3.5 py-1.5 bg-[#2E3B2F]/20">
                   <span className="font-serif text-base text-[#EDE6D3] block font-semibold">SUSTAIN</span>
-                  <p className="text-[11px] text-[#8A9A7E] mt-0.5">
-                    Ensuring low Earth orbit (LEO) remains free from catastrophic debris, regulating lunar resources, and stewarding future orbital commons.
+                  <p className="text-[11px] text-[#8A9A7E] mt-0.5 leading-relaxed">
+                    Mitigating orbital debris, regulating lunar and planetary resources, and safeguarding the outer space commons.
                   </p>
                 </div>
 
-                <div className="border-l-2 border-[#CFD7D0] pl-3 py-1">
+                <div className="border-l-2 border-[#CFD7D0] pl-3.5 py-1.5 bg-[#2E3B2F]/20">
                   <span className="font-serif text-base text-[#EDE6D3] block font-semibold">SAFEGUARD</span>
-                  <p className="text-[11px] text-[#8A9A7E] mt-0.5">
-                    Upholding the UN Outer Space Treaty (1967), disarmament mandates, international cybersecurity, and peaceful scientific coexistence.
+                  <p className="text-[11px] text-[#8A9A7E] mt-0.5 leading-relaxed">
+                    Upholding international space treaties, disarmament mandates, and peaceful multilateral coexistence.
                   </p>
                 </div>
               </div>
+            </div>
 
-              <div className="pt-3 border-t border-[#C9A86A]/20 text-center">
-                <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C9A86A] block">
-                  Registrations &bull; Opening Shortly for Delegates &amp; EB
-                </span>
-              </div>
+            <div className="pt-4 border-t border-[#C9A86A]/20 text-center">
+              <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C9A86A] block">
+                Registrations Live &bull; Executive Board &amp; Campus Ambassadors
+              </span>
             </div>
           </div>
 
         </div>
 
-        {/* 4 Chamber Dimensions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 shadow-md hover:border-[#C9A86A] transition-all group">
-            <div className="h-9 w-9 border border-[#C9A86A] bg-[#1A1F1A] flex items-center justify-center text-[#C9A86A] mb-4">
-              <Orbit className="h-4 w-4" />
+      </section>
+
+
+
+      {/* ========================================================================= */}
+      {/* 5. CONTACT US SECTION (DIPLOMATIC COMMUNICATIONS DESK)                    */}
+      {/* ========================================================================= */}
+      <section className="relative z-10 py-20 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-b border-[#C9A86A]/20" id="contact-section">
+
+        {/* Symmetrical Section Header */}
+        <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
+          <div className="inline-flex items-center justify-center gap-2 mb-3">
+            <span className="h-px w-8 bg-[#C9A86A]/40" />
+            <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-[#C9A86A] font-semibold">
+              <Mail className="h-3.5 w-3.5" />
+              Communications &amp; Dispatches
+            </span>
+            <span className="h-px w-8 bg-[#C9A86A]/40" />
+          </div>
+          <h2 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide">
+            Contact the Secretariat
+          </h2>
+          <p className="font-sans text-xs sm:text-sm text-[#8A9A7E] max-w-2xl mx-auto leading-relaxed mt-3">
+            Questions regarding registrations, EB applications, or delegations? Reach out to our communications desk.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+
+          {/* Left Column: Diplomatic Directory (Cards) */}
+          <div className="space-y-6">
+
+            {/* Card 1: Official Electronic Mail */}
+            <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-6 shadow-xl hover:border-[#C9A86A] transition-all">
+              <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#C9A86A]/20">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 border border-[#C9A86A] bg-[#2E3B2F] flex items-center justify-center text-[#C9A86A]">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-serif text-lg text-[#EDE6D3]">Electronic Mail</h4>
+                    <span className="font-mono text-[10px] text-[#8A9A7E] uppercase">Official Inquiries</span>
+                  </div>
+                </div>
+                <span className="font-mono text-[9px] uppercase tracking-wider text-[#C9A86A] bg-[#C9A86A]/10 px-2 py-0.5 border border-[#C9A86A]/30">
+                  Primary
+                </span>
+              </div>
+
+              <div className="space-y-3 font-sans text-xs">
+                <div className="flex items-center justify-between pb-2 border-b border-[#8A9A7E]/15">
+                  <span className="text-[#8A9A7E]">Official Secretariat Desk</span>
+                  <a href="mailto:support@iistmun.org" className="text-[#C9A86A] hover:underline font-mono text-xs">
+                    support@iistmun.org
+                  </a>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#8A9A7E]">Response Window</span>
+                  <span className="text-[#EDE6D3]/90 font-mono text-[11px]">Within 24 hours (Working Days)</span>
+                </div>
+              </div>
             </div>
-            <h4 className="font-serif text-lg text-[#EDE6D3] group-hover:text-[#C9A86A] transition-colors">
-              Space Law &amp; Governance
-            </h4>
-            <p className="font-sans text-xs text-[#EDE6D3]/80 leading-relaxed mt-2">
-              COPUOS &amp; outer space legal frameworks, space traffic management, anti-satellite (ASAT) test bans, and equitable celestial mining charters.
-            </p>
+
+            {/* Card 2: Secretariat Contact Numbers (SG & DSG) and Short Form Address */}
+            <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-6 shadow-xl hover:border-[#C9A86A] transition-all space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-[#C9A86A]/20">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 border border-[#C9A86A] bg-[#2E3B2F] flex items-center justify-center text-[#C9A86A]">
+                    <Phone className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-serif text-lg text-[#EDE6D3]">Secretariat Helplines</h4>
+                    <span className="font-mono text-[10px] text-[#8A9A7E] uppercase">Direct Diplomatic Contacts</span>
+                  </div>
+                </div>
+                <span className="font-mono text-[9px] uppercase tracking-wider text-[#8BA06F] bg-[#8BA06F]/10 px-2 py-0.5 border border-[#8BA06F]/30">
+                  Helplines
+                </span>
+              </div>
+
+              {/* SG & DSG Contact Numbers */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Secretary-General */}
+                <div className="p-3.5 bg-[#2E3B2F]/40 border border-[#C9A86A]/30 space-y-1.5 group hover:border-[#C9A86A] transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-semibold">
+                      Secretary-General
+                    </span>
+                    <span className="text-[9px] font-mono text-[#8A9A7E]">SG</span>
+                  </div>
+                  <div className="font-serif text-sm text-[#EDE6D3] font-medium">Niranjan Patil</div>
+                  <a
+                    href="tel:+918179694807"
+                    className="font-mono text-xs text-[#C9A86A] hover:underline flex items-center gap-1.5 pt-1"
+                  >
+                    <Phone className="h-3 w-3 text-[#8BA06F]" />
+                    <span>+91 94000 00000</span>
+                  </a>
+                </div>
+
+                {/* Deputy Secretary-General */}
+                <div className="p-3.5 bg-[#2E3B2F]/40 border border-[#8BA06F]/30 space-y-1.5 group hover:border-[#8BA06F] transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#8BA06F] font-semibold">
+                      Deputy Sec-Gen
+                    </span>
+                    <span className="text-[9px] font-mono text-[#8A9A7E]">DSG</span>
+                  </div>
+                  <div className="font-serif text-sm text-[#EDE6D3] font-medium"> Ananya Bhat</div>
+                  <a
+                    href="tel:+918179694807"
+                    className="font-mono text-xs text-[#8BA06F] hover:underline flex items-center gap-1.5 pt-1"
+                  >
+                    <Phone className="h-3 w-3 text-[#8BA06F]" />
+                    <span>+91 81796 94807</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Short Form Address */}
+              <div className="pt-3 border-t border-[#C9A86A]/20 flex items-start gap-3">
+                <div className="h-8 w-8 border border-[#C9A86A]/40 bg-[#2E3B2F]/60 flex items-center justify-center text-[#C9A86A] shrink-0 mt-0.5">
+                  <MapPin className="h-4 w-4" />
+                </div>
+                <div>
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-[#8A9A7E] font-semibold block">
+                    Address
+                  </span>
+                  <p className="font-sans text-xs text-[#EDE6D3] font-medium mt-0.5">
+                    IIST, Valiamala, Thiruvananthapuram, Kerala &mdash; 695547
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 text-[11px] font-mono text-[#8A9A7E] pt-1">
+                <Clock className="h-3.5 w-3.5 text-[#C9A86A]" />
+                <span>Operating Hours: Mon &ndash; Sat, 09:00 &ndash; 18:00 IST</span>
+              </div>
+            </div>
+
           </div>
 
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 shadow-md hover:border-[#C9A86A] transition-all group">
-            <div className="h-9 w-9 border border-[#C9A86A] bg-[#1A1F1A] flex items-center justify-center text-[#C9A86A] mb-4">
-              <ShieldCheck className="h-4 w-4" />
-            </div>
-            <h4 className="font-serif text-lg text-[#EDE6D3] group-hover:text-[#C9A86A] transition-colors">
-              Global Geopolitical Security
-            </h4>
-            <p className="font-sans text-xs text-[#EDE6D3]/80 leading-relaxed mt-2">
-              Security Council simulations resolving cross-border tensions, non-proliferation covenants, and multilateral conflict de-escalation protocols.
-            </p>
-          </div>
+          {/* Right Column: Interactive Dispatch Form */}
+          <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-6 sm:p-8 shadow-xl">
 
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 shadow-md hover:border-[#C9A86A] transition-all group">
-            <div className="h-9 w-9 border border-[#C9A86A] bg-[#1A1F1A] flex items-center justify-center text-[#C9A86A] mb-4">
-              <Scale className="h-4 w-4" />
+            <div className="flex items-center justify-between pb-4 mb-6 border-b border-[#C9A86A]/25">
+              <div>
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-semibold block">
+                  Diplomatic Query Portal
+                </span>
+                <h3 className="font-serif text-xl sm:text-2xl text-[#EDE6D3] font-normal">
+                  Transmit a Query
+                </h3>
+              </div>
+              <div className="h-8 w-8 border border-[#C9A86A]/40 bg-[#2E3B2F] flex items-center justify-center text-[#C9A86A]">
+                <MessageSquare className="h-4 w-4" />
+              </div>
             </div>
-            <h4 className="font-serif text-lg text-[#EDE6D3] group-hover:text-[#C9A86A] transition-colors">
-              Resolution Rigor &amp; Drafting
-            </h4>
-            <p className="font-sans text-xs text-[#EDE6D3]/80 leading-relaxed mt-2">
-              Rigorous UN parliamentary procedure, substantive working papers, and consensus-building that translates debates into legally persuasive draft treaties.
-            </p>
-          </div>
 
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 shadow-md hover:border-[#C9A86A] transition-all group">
-            <div className="h-9 w-9 border border-[#C9A86A] bg-[#1A1F1A] flex items-center justify-center text-[#C9A86A] mb-4">
-              <Award className="h-4 w-4" />
-            </div>
-            <h4 className="font-serif text-lg text-[#EDE6D3] group-hover:text-[#C9A86A] transition-colors">
-              Distinguished Executive Board
-            </h4>
-            <p className="font-sans text-xs text-[#EDE6D3]/80 leading-relaxed mt-2">
-              Adjudicated by seasoned national circuit chairs and diplomats dedicated to impartial scoring, constructive debriefs, and academic excellence.
-            </p>
+            {formSubmitted ? (
+              <div className="p-6 sm:p-8 border border-[#C9A86A] bg-[#2E3B2F] text-center space-y-4">
+                <CheckCircle2 className="h-9 w-9 text-[#C9A86A] mx-auto" />
+                <div className="space-y-1">
+                  <h4 className="font-serif text-xl sm:text-2xl text-[#EDE6D3]">
+                    Query Received
+                  </h4>
+                  <p className="font-mono text-[10px] text-[#C9A86A] uppercase tracking-widest">
+                    Destination: support@iistmun.org &bull; Status: Recorded
+                  </p>
+                  {savedQueryId && (
+                    <span className="inline-block mt-2 font-mono text-[10px] text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 px-3 py-1">
+                      Ref: <span className="text-[#C9A86A]">{savedQueryId}</span>
+                    </span>
+                  )}
+                </div>
+                <p className="font-sans text-xs text-[#EDE6D3]/85 max-w-md mx-auto leading-relaxed">
+                  Your query has been logged and sent to <strong className="text-[#C9A86A]">support@iistmun.org</strong>. You may also open your email client for a direct follow-up.
+                </p>
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <a
+                    href={lastMailtoUrl}
+                    className="px-5 py-2.5 bg-[#C9A86A] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider hover:bg-[#dfbe7e] transition-colors flex items-center gap-2"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    <span>Open Email Client</span>
+                  </a>
+                  <button
+                    onClick={() => {
+                      setFormSubmitted(false);
+                      setFormData({ name: "", email: "", category: "EB Application", message: "" });
+                      setSavedQueryId(null);
+                    }}
+                    className="px-5 py-2.5 border border-[#C9A86A]/40 text-[#EDE6D3] font-sans text-xs uppercase tracking-wider hover:bg-[#2E3B2F] transition-colors cursor-pointer"
+                  >
+                    Send Another Query
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleContactSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1 text-left">
+                    <label htmlFor="contact-name-input" className="block text-[10px] font-mono text-[#8A9A7E] uppercase">
+                      Full Name *
+                    </label>
+                    <input
+                      id="contact-name-input"
+                      type="text"
+                      required
+                      placeholder="Your name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full bg-[#2E3B2F]/60 border border-[#C9A86A]/30 px-3.5 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1 text-left">
+                    <label htmlFor="contact-email-input" className="block text-[10px] font-mono text-[#8A9A7E] uppercase">
+                      Email Address *
+                    </label>
+                    <input
+                      id="contact-email-input"
+                      type="email"
+                      required
+                      placeholder="name@example.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full bg-[#2E3B2F]/60 border border-[#C9A86A]/30 px-3.5 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-left">
+                  <label htmlFor="contact-category-select" className="block text-[10px] font-mono text-[#8A9A7E] uppercase">
+                    Inquiry Category *
+                  </label>
+                  <select
+                    id="contact-category-select"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full bg-[#2E3B2F] border border-[#C9A86A]/30 px-3.5 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none cursor-pointer"
+                  >
+                    <option value="EB Application">Executive Board (EB) Applications</option>
+                    <option value="Campus Ambassador">Campus Ambassador Program</option>
+                    <option value="Delegation Registrations">Delegation &amp; Institutional Registrations</option>
+                    <option value="Accommodation & Travel">Travel, Transit &amp; Accommodation</option>
+                    <option value="Partnerships">Institutional Partnerships</option>
+                    <option value="General Query">General Inquiry</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1 text-left">
+                  <label htmlFor="contact-message-input" className="block text-[10px] font-mono text-[#8A9A7E] uppercase">
+                    Message *
+                  </label>
+                  <textarea
+                    id="contact-message-input"
+                    required
+                    rows={4}
+                    placeholder="Write your query or message here..."
+                    value={formData.message}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    className="w-full bg-[#2E3B2F]/60 border border-[#C9A86A]/30 px-3.5 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none resize-y"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-3 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="h-3.5 w-3.5 border-2 border-[#1A1F1A] border-t-transparent rounded-full animate-spin" />
+                      <span>Sending Query...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-3.5 w-3.5" />
+                      <span>Send Query to Secretariat</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+
           </div>
 
         </div>
@@ -617,97 +795,48 @@ export default function Home({ setActiveTab }: HomeProps) {
       </section>
 
       {/* ========================================================================= */}
-      {/* 4. INTERACTIVE MAP & HOW TO REACH (ORDER ITEM #4)                         */}
+      {/* 6. HOW TO REACH IIST SECTION (ORDER ITEM #6 - AFTER CONTACT US)           */}
       {/* ========================================================================= */}
-      <section className="relative z-10 py-20 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto border-b border-[#C9A86A]/20 text-left" id="map-section">
-        
-        {/* Section Header */}
-        <div className="mb-10">
-          <div className="flex items-center gap-2">
-            <Compass className="h-4 w-4 text-[#C9A86A]" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#C9A86A] font-semibold block">
-              Transit &bull; Campus Navigation &bull; Geo-Coordinates
+      <section className="relative z-10 py-20 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto" id="how-to-reach-section">
+        {/* ========================================================================= */}
+        {/* 4. INTERACTIVE CAMPUS MAP (ORDER ITEM #4)                                 */}
+        {/* ========================================================================= */}
+
+
+        {/* Symmetrical Section Header */}
+        <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
+          <div className="inline-flex items-center justify-center gap-2 mb-3">
+            <span className="h-px w-8 bg-[#C9A86A]/40" />
+            <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-[#C9A86A] font-semibold">
+              <Plane className="h-3.5 w-3.5" />
+              Transit &amp; Connectivity Guidelines
             </span>
+            <span className="h-px w-8 bg-[#C9A86A]/40" />
           </div>
-          <h2 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide mt-2">
-            Interactive Campus Map &amp; How to Reach
+          <h2 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide">
+            How to Reach IIST Valiamala
           </h2>
-          <p className="font-sans text-xs sm:text-sm text-[#8A9A7E] max-w-2xl leading-relaxed mt-2">
-            Indian Institute of Space Science and Technology is situated in Valiamala, near Nedumangad, approximately 26 km from Thiruvananthapuram city center, Kerala. Explore the interactive campus locator and transit guide below.
+          <p className="font-sans text-xs sm:text-sm text-[#8A9A7E] max-w-2xl mx-auto leading-relaxed mt-3">
+            The institute is situated in Valiamala, approximately 26 km from Thiruvananthapuram city center. Plan your journey using the connectivity guidelines below.
           </p>
         </div>
 
-        {/* ===================================================================== */}
-        {/* INTERACTIVE EMBEDDED GOOGLE MAP (REPLACES STATIC BUTTON)              */}
-        {/* ===================================================================== */}
-        <div className="border-2 border-[#C9A86A]/45 bg-[#141814] shadow-2xl overflow-hidden mb-10">
-          
-          {/* Map Status & Coordinates Top Bar */}
-          <div className="bg-[#233124] border-b border-[#C9A86A]/30 px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8BA06F] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#8BA06F]"></span>
-              </span>
-              <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-widest text-[#EDE6D3] font-semibold">
-                Live Geo-Coordinates: 8.6277&deg; N, 77.0373&deg; E
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[9px] uppercase tracking-wider text-[#C9A86A] border border-[#C9A86A]/30 px-2 py-0.5 bg-[#1A1F1A]">
-                Valiamala Campus &bull; ISRO LPSC Adjacent
-              </span>
-            </div>
-          </div>
-
-          {/* Interactive Map Iframe Container */}
-          <div className="relative w-full h-[360px] sm:h-[460px] md:h-[520px] bg-[#1A1F1A]">
-            <iframe
-              title="Indian Institute of Space Science and Technology Valiamala Interactive Map"
-              src="https://maps.google.com/maps?q=Indian+Institute+of+Space+Science+and+Technology+Valiamala+Thiruvananthapuram&t=&z=15&ie=UTF8&iwloc=&output=embed"
-              className="w-full h-full border-0"
-              loading="lazy"
-              allowFullScreen
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          </div>
-
-          {/* Map Footer Bar with Location Details & Direct External Navigation */}
-          <div className="p-4 sm:p-6 bg-[#1A1F1A] border-t border-[#C9A86A]/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div>
-              <h4 className="font-serif text-xl sm:text-2xl text-[#EDE6D3]">
-                Indian Institute of Space Science and Technology (IIST)
-              </h4>
-              <p className="font-sans text-xs text-[#8A9A7E] mt-1">
-                Valiamala P.O., Nedumangad, Thiruvananthapuram, Kerala &mdash; 695547
-              </p>
-              <div className="flex flex-wrap items-center gap-2 mt-2 font-mono text-[10px] text-[#C9A86A]">
-                <span>TRV Airport: ~32 km</span>
-                <span>&bull;</span>
-                <span>TVC Railway: ~26 km</span>
-                <span>&bull;</span>
-                <span>Nedumangad Town: ~8 km</span>
-              </div>
-            </div>
-
-            <a
-              href="https://www.google.com/maps/search/?api=1&query=Indian+Institute+of+Space+Science+and+Technology+Valiamala"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-6 py-3 border border-[#C9A86A] bg-[#2E3B2F] text-[#EDE6D3] hover:bg-[#C9A86A] hover:text-[#1A1F1A] font-sans text-xs uppercase tracking-[0.18em] transition-all duration-300 flex items-center gap-2 shrink-0 cursor-pointer shadow-md"
-            >
-              <span>Open in Google Maps App</span>
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          </div>
-
+        <div className="relative w-full h-[360px] sm:h-[360px] md:h-[460px] bg-[#1A1F1A] mb-10">
+          <iframe
+            title="Indian Institute of Space Science and Technology Valiamala Interactive Map"
+            src="https://maps.google.com/maps?q=Indian+Institute+of+Space+Science+and+Technology+Valiamala+Thiruvananthapuram&t=&z=15&ie=UTF8&iwloc=&output=embed"
+            className="w-full h-full border-0"
+            loading="lazy"
+            allowFullScreen
+            referrerPolicy="no-referrer-when-downgrade"
+          />
         </div>
 
-        {/* 3 Transit Modes Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6" id="how-to-reach-section">
+        {/* 3 Symmetrical Transit Modes Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 
           {/* Mode 1: By Air */}
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-6 flex flex-col justify-between shadow-md group hover:border-[#C9A86A] transition-all">
+          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-6 sm:p-7 flex flex-col justify-between shadow-xl group hover:border-[#C9A86A] transition-all">
             <div>
               <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#C9A86A]/20">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold">
@@ -724,12 +853,12 @@ export default function Home({ setActiveTab }: HomeProps) {
               </p>
             </div>
             <div className="pt-4 mt-4 border-t border-[#C9A86A]/15 font-mono text-[10px] text-[#C9A86A]">
-              Pre-paid Taxi / App Cabs Available
+              Pre-paid Taxi / App Cabs Available 24/7
             </div>
           </div>
 
           {/* Mode 2: By Train */}
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-6 flex flex-col justify-between shadow-md group hover:border-[#C9A86A] transition-all">
+          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-6 sm:p-7 flex flex-col justify-between shadow-xl group hover:border-[#C9A86A] transition-all">
             <div>
               <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#C9A86A]/20">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold">
@@ -742,7 +871,7 @@ export default function Home({ setActiveTab }: HomeProps) {
               <h3 className="font-serif text-xl text-[#EDE6D3]">Trivandrum Central (TVC)</h3>
               <span className="font-mono text-[10px] text-[#8A9A7E] block mt-1">Distance: ~26 km &bull; 40–50 mins</span>
               <p className="font-sans text-xs text-[#EDE6D3]/80 leading-relaxed mt-3">
-                Thiruvananthapuram Central (TVC) &amp; Kochuveli (KCVL) have daily direct express and superfast trains connecting every state. Taxis, auto-rickshaws, and direct state buses operate outside the station concourse.
+                TVC &amp; Kochuveli (KCVL) connect nationwide via direct superfast and express trains. Pre-paid taxis, auto-rickshaws, and direct state buses operate outside the station concourse.
               </p>
             </div>
             <div className="pt-4 mt-4 border-t border-[#C9A86A]/15 font-mono text-[10px] text-[#C9A86A]">
@@ -751,7 +880,7 @@ export default function Home({ setActiveTab }: HomeProps) {
           </div>
 
           {/* Mode 3: By Bus & Road */}
-          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-6 flex flex-col justify-between shadow-md group hover:border-[#C9A86A] transition-all">
+          <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-6 sm:p-7 flex flex-col justify-between shadow-xl group hover:border-[#C9A86A] transition-all">
             <div>
               <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#C9A86A]/20">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold">
@@ -764,249 +893,42 @@ export default function Home({ setActiveTab }: HomeProps) {
               <h3 className="font-serif text-xl text-[#EDE6D3]">KSRTC Bus Network</h3>
               <span className="font-mono text-[10px] text-[#8A9A7E] block mt-1">Direct via Nedumangad Route</span>
               <p className="font-sans text-xs text-[#EDE6D3]/80 leading-relaxed mt-3">
-                Frequent KSRTC buses operate from Thampanoor Central Bus Station to Nedumangad. From Nedumangad, frequent connecting buses pass the main entrance gate of IIST (adjacent to ISRO LPSC).
+                Frequent KSRTC buses operate from Thampanoor Central Bus Station to Nedumangad. Frequent connecting buses drop delegates directly at the IIST Main Gate (adjacent to ISRO LPSC).
               </p>
             </div>
             <div className="pt-4 mt-4 border-t border-[#C9A86A]/15 font-mono text-[10px] text-[#C9A86A]">
-              Valiamala / LPSC Bus Stop
+              Valiamala / ISRO LPSC Bus Stop
             </div>
           </div>
 
         </div>
 
-      </section>
-
-      {/* ========================================================================= */}
-      {/* 5. CONTACT US SECTION (DIPLOMATIC COMMUNICATIONS DESK)                    */}
-      {/* ========================================================================= */}
-      <section className="relative z-10 py-20 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto text-left" id="contact-section">
-
-        {/* Section Header */}
-        <div className="mb-12">
-          <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-[#C9A86A]" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#C9A86A] font-semibold block">
-              Communications &amp; Dispatches
-            </span>
-          </div>
-          <h2 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide mt-2">
-            Contact the Secretariat
-          </h2>
-          <p className="font-sans text-xs sm:text-sm text-[#8A9A7E] max-w-xl leading-relaxed mt-2">
-            Have inquiries regarding Executive Board applications, Campus Ambassador fellowships, delegation registrations, or institutional partnerships? Reach out directly to our communications desk.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
-          {/* Left Column: Diplomatic Communications Directory (5 cols) */}
-          <div className="lg:col-span-5 space-y-6">
-
-            {/* Primary Email Card */}
-            <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-6 shadow-md hover:border-[#C9A86A] transition-all">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-9 w-9 border border-[#C9A86A] bg-[#1A1F1A] flex items-center justify-center text-[#C9A86A]">
-                  <Mail className="h-4 w-4" />
-                </div>
-                <div>
-                  <h4 className="font-serif text-lg text-[#EDE6D3]">Electronic Mailboxes</h4>
-                  <span className="font-mono text-[10px] text-[#8A9A7E] uppercase">Direct Dispatch Desk</span>
-                </div>
-              </div>
-              <ul className="space-y-3 font-sans text-xs text-[#EDE6D3]/90">
-                <li className="flex flex-col">
-                  <span className="text-[10px] font-mono text-[#8A9A7E] uppercase">Official Support Mail</span>
-                  <a href="mailto:support@iistmun.org" className="text-[#C9A86A] hover:underline font-mono text-xs">
-                    support@iistmun.org
-                  </a>
-                </li>
-                <li className="flex flex-col">
-                  <span className="text-[10px] font-mono text-[#8A9A7E] uppercase">General Inquiries &amp; Secretariat</span>
-                  <a href="mailto:support@iistmun.org" className="text-[#EDE6D3] hover:text-[#C9A86A] font-mono text-xs transition-colors">
-                    support@iistmun.org
-                  </a>
-                </li>
-                <li className="flex flex-col">
-                  <span className="text-[10px] font-mono text-[#8A9A7E] uppercase">Delegate Affairs &amp; Applications</span>
-                  <a href="mailto:support@iistmun.org" className="text-[#EDE6D3] hover:text-[#C9A86A] font-mono text-xs transition-colors">
-                    support@iistmun.org
-                  </a>
-                </li>
-              </ul>
+        {/* Transit Advisory Footer Banner */}
+        <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Compass className="h-4 w-4 text-[#C9A86A]" />
+              <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold">
+                Delegate Transit Advisory &bull; Geo Coordinates: 8.6277&deg; N, 77.0373&deg; E
+              </span>
             </div>
-
-            {/* Address & Helplines Card */}
-            <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-6 shadow-md">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-9 w-9 border border-[#C9A86A] bg-[#1A1F1A] flex items-center justify-center text-[#C9A86A]">
-                  <MapPin className="h-4 w-4" />
-                </div>
-                <div>
-                  <h4 className="font-serif text-lg text-[#EDE6D3]">Secretariat Headquarters</h4>
-                  <span className="font-mono text-[10px] text-[#8A9A7E] uppercase">Postal &amp; Physical Location</span>
-                </div>
-              </div>
-              <p className="font-sans text-xs text-[#EDE6D3]/85 leading-relaxed">
-                Indian Institute of Space Science and Technology (IIST)<br />
-                Valiamala P.O., Nedumangad, Thiruvananthapuram<br />
-                Kerala, India &mdash; 695547
-              </p>
-
-              <div className="pt-4 mt-4 border-t border-[#C9A86A]/20 flex items-center gap-2 text-xs font-mono text-[#8A9A7E]">
-                <Clock className="h-3.5 w-3.5 text-[#C9A86A]" />
-                <span>Operating Hours: Mon &ndash; Sat, 09:00 &ndash; 18:00 IST</span>
-              </div>
-            </div>
-
+            <h4 className="font-serif text-xl sm:text-2xl text-[#EDE6D3]">
+              Arrival Coordination &bull; Valiamala Main Gate
+            </h4>
+            <p className="font-sans text-xs text-[#8A9A7E]">
+              Delegates are advised to arrive 45 minutes prior to convocation sessions. Institutional transport coordination details will be communicated to registered delegations.
+            </p>
           </div>
 
-          {/* Right Column: Interactive Dispatch Form (7 cols) */}
-          <div className="lg:col-span-7">
-            <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-6 sm:p-8 shadow-xl">
-
-              <div className="flex items-center justify-between pb-4 mb-6 border-b border-[#C9A86A]/25">
-                <div>
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-semibold block">
-                    Diplomatic Query Portal
-                  </span>
-                  <h3 className="font-serif text-xl sm:text-2xl text-[#EDE6D3] font-normal">
-                    Transmit a Query
-                  </h3>
-                </div>
-                <div className="h-8 w-8 border border-[#C9A86A]/40 bg-[#2E3B2F] flex items-center justify-center text-[#C9A86A]">
-                  <MessageSquare className="h-4 w-4" />
-                </div>
-              </div>
-
-              {formSubmitted ? (
-                <div className="p-6 sm:p-8 border border-[#C9A86A] bg-[#2E3B2F] text-center space-y-4">
-                  <CheckCircle2 className="h-9 w-9 text-[#C9A86A] mx-auto" />
-                  <div className="space-y-1">
-                    <h4 className="font-serif text-xl sm:text-2xl text-[#EDE6D3]">
-                      Query Received &amp; Logged in Firebase
-                    </h4>
-                    <p className="font-mono text-[10px] text-[#C9A86A] uppercase tracking-widest">
-                      Destination: support@iistmun.org • Status: Recorded
-                    </p>
-                    {savedQueryId && (
-                      <span className="inline-block mt-2 font-mono text-[10px] text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 px-3 py-1">
-                        Dispatch Ref: <span className="text-[#C9A86A]">{savedQueryId}</span>
-                      </span>
-                    )}
-                  </div>
-                  <p className="font-sans text-xs text-[#EDE6D3]/85 max-w-md mx-auto leading-relaxed">
-                    Your query has been logged directly into the IISTMUN Secretariat's database and forwarded to <strong className="text-[#C9A86A]">support@iistmun.org</strong>. You may also click below to open your email client and send an additional direct transmission.
-                  </p>
-                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <a
-                      href={lastMailtoUrl}
-                      className="px-5 py-2.5 bg-[#C9A86A] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider hover:bg-[#dfbe7e] transition-colors flex items-center gap-2"
-                    >
-                      <Mail className="h-3.5 w-3.5" />
-                      <span>Open Email Client</span>
-                    </a>
-                    <button
-                      onClick={() => {
-                        setFormSubmitted(false);
-                        setFormData({ name: "", email: "", category: "EB Application", message: "" });
-                        setSavedQueryId(null);
-                      }}
-                      className="px-5 py-2.5 border border-[#C9A86A]/40 text-[#EDE6D3] font-sans text-xs uppercase tracking-wider hover:bg-[#2E3B2F] transition-colors cursor-pointer"
-                    >
-                      Send Another Query
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <form onSubmit={handleContactSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1 text-left">
-                      <label htmlFor="contact-name-input" className="block text-[10px] font-mono text-[#8A9A7E] uppercase">
-                        Delegate / Inquirer Name *
-                      </label>
-                      <input
-                        id="contact-name-input"
-                        type="text"
-                        required
-                        placeholder="e.g. Niranjan Patil"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full bg-[#2E3B2F]/60 border border-[#C9A86A]/30 px-3.5 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none"
-                      />
-                    </div>
-                    <div className="space-y-1 text-left">
-                      <label htmlFor="contact-email-input" className="block text-[10px] font-mono text-[#8A9A7E] uppercase">
-                        Email Address *
-                      </label>
-                      <input
-                        id="contact-email-input"
-                        type="email"
-                        required
-                        placeholder="name@institution.edu"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full bg-[#2E3B2F]/60 border border-[#C9A86A]/30 px-3.5 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1 text-left">
-                    <label htmlFor="contact-category-select" className="block text-[10px] font-mono text-[#8A9A7E] uppercase">
-                      Inquiry Category *
-                    </label>
-                    <select
-                      id="contact-category-select"
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full bg-[#2E3B2F] border border-[#C9A86A]/30 px-3.5 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none cursor-pointer"
-                    >
-                      <option value="EB Application">Executive Board (EB) Applications &amp; Selection</option>
-                      <option value="Campus Ambassador">Campus Ambassador Fellowship</option>
-                      <option value="Delegation Registrations">Delegation &amp; Institutional Registrations</option>
-                      <option value="Accommodation & Travel">Travel, Transit &amp; Accommodation at Valiamala</option>
-                      <option value="Partnerships">Institutional Partnerships &amp; Sponsorships</option>
-                      <option value="General Query">General Academic / Protocol Query</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1 text-left">
-                    <label htmlFor="contact-message-input" className="block text-[10px] font-mono text-[#8A9A7E] uppercase">
-                      Dispatch Message / Query Details *
-                    </label>
-                    <textarea
-                      id="contact-message-input"
-                      required
-                      rows={4}
-                      placeholder="Please delineate your query or institutional dispatch details..."
-                      value={formData.message}
-                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      className="w-full bg-[#2E3B2F]/60 border border-[#C9A86A]/30 px-3.5 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none resize-y"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-3 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="h-3.5 w-3.5 border-2 border-[#1A1F1A] border-t-transparent rounded-full animate-spin" />
-                        <span>Logging Query to Firebase...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-3.5 w-3.5" />
-                        <span>Transmit Query to Secretariat</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              )}
-
-            </div>
-          </div>
-
+          <a
+            href="https://www.google.com/maps/search/?api=1&query=Indian+Institute+of+Space+Science+and+Technology+Valiamala"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-6 py-3 border border-[#C9A86A] bg-[#2E3B2F] text-[#EDE6D3] hover:bg-[#C9A86A] hover:text-[#1A1F1A] font-sans text-xs uppercase tracking-[0.18em] transition-all duration-300 flex items-center gap-2 shrink-0 cursor-pointer shadow-md"
+          >
+            <span>Open in Google Maps</span>
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
         </div>
 
       </section>

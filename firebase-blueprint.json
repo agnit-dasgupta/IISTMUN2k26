@@ -33,10 +33,223 @@
       "description": "Custom availability or assignment state override for a country/portfolio",
       "type": "object",
       "properties": {
-        "copuos": { "type": "string", "enum": ["Available", "Assigned", "Reserved"], "description": "COPUOS committee portfolio state" },
-        "disec": { "type": "string", "enum": ["Available", "Assigned", "Reserved"], "description": "DISEC committee portfolio state" },
-        "aippm": { "type": "string", "enum": ["Available", "Assigned", "Reserved"], "description": "AIPPM committee portfolio state" },
-        "unsc": { "type": "string", "enum": ["Available", "Assigned", "Reserved"], "description": "UNSC committee portfolio state" }
+        "copuos": { "type": "string", "enum": ["Available", "Assigned", "Reserved", "Pending", "N/A"], "description": "COPUOS committee portfolio state" },
+        "disec": { "type": "string", "enum": ["Available", "Assigned", "Reserved", "Pending", "N/A"], "description": "DISEC committee portfolio state" },
+        "aippm": { "type": "string", "enum": ["Available", "Assigned", "Reserved", "Pending", "N/A"], "description": "AIPPM committee portfolio state" },
+        "unsc": { "type": "string", "enum": ["Available", "Assigned", "Reserved", "Pending", "N/A"], "description": "UNSC committee portfolio state" }
+      }
+    },
+    "committee": {
+      "title": "Committee",
+      "description": "MUN simulation committee dossier and executive board info",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique committee identifier (e.g. copuos, disec)" },
+        "name": { "type": "string", "description": "Official full name of the committee" },
+        "abbreviation": { "type": "string", "description": "Short abbreviation (e.g. COPUOS, UNSC)" },
+        "agenda": { "type": "string", "description": "Primary substantive agenda of the committee" },
+        "description": { "type": "string", "description": "Comprehensive committee overview" },
+        "logo": { "type": "string", "description": "Sigil icon identifier" },
+        "color": { "type": "string", "description": "Thematic accent color identifier" },
+        "guideUrl": { "type": "string", "description": "Study guide or archival dossier link" },
+        "eb": {
+          "type": "array",
+          "description": "Executive Board presiding officers",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "role": { "type": "string" },
+              "avatar": { "type": "string" }
+            }
+          }
+        },
+        "order": { "type": "number", "description": "Display sort order" }
+      },
+      "required": ["id", "name", "abbreviation", "agenda", "description"]
+    },
+    "secretariat_member": {
+      "title": "Secretariat Member",
+      "description": "Organizing board member and operational executive",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Member identifier" },
+        "name": { "type": "string", "description": "Full name of the secretariat officer" },
+        "designation": { "type": "string", "description": "Secretariat role/position" },
+        "bio": { "type": "string", "description": "Diplomatic biography and credentials" },
+        "email": { "type": "string", "description": "Official correspondence email" },
+        "order": { "type": "number", "description": "Display order in the roster" }
+      },
+      "required": ["id", "name", "designation", "bio", "email"]
+    },
+    "faq": {
+      "title": "FAQ Item",
+      "description": "Administrative intelligence and conference guidance",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "FAQ unique ID" },
+        "question": { "type": "string", "description": "Frequently asked inquiry" },
+        "answer": { "type": "string", "description": "Official diplomatic guidance" },
+        "category": { "type": "string", "enum": ["general", "registration", "committees"], "description": "Category" },
+        "order": { "type": "number", "description": "Display sort order" }
+      },
+      "required": ["question", "answer", "category"]
+    },
+    "schedule_day": {
+      "title": "Schedule Day",
+      "description": "Conference itinerary and timeline events for a day",
+      "type": "object",
+      "properties": {
+        "dayId": { "type": "string", "description": "day1, day2, or day3" },
+        "date": { "type": "string", "description": "Calendar date representation" },
+        "events": {
+          "type": "array",
+          "description": "Chronological events",
+          "items": {
+            "type": "object",
+            "properties": {
+              "time": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "location": { "type": "string" },
+              "category": { "type": "string", "enum": ["ceremony", "session", "social", "other"] }
+            }
+          }
+        }
+      },
+      "required": ["dayId", "date", "events"]
+    },
+    "country_matrix_row": {
+      "title": "Country Matrix Row",
+      "description": "Default country portfolio allocation across committees",
+      "type": "object",
+      "properties": {
+        "country": { "type": "string", "description": "Sovereign state or portfolio name" },
+        "copuos": { "type": "string", "enum": ["Available", "Assigned", "Reserved", "Pending", "N/A"] },
+        "disec": { "type": "string", "enum": ["Available", "Assigned", "Reserved", "Pending", "N/A"] },
+        "aippm": { "type": "string", "enum": ["Available", "Assigned", "Reserved", "Pending", "N/A"] },
+        "unsc": { "type": "string", "enum": ["Available", "Assigned", "Reserved", "Pending", "N/A"] }
+      },
+      "required": ["country", "copuos", "disec", "aippm", "unsc"]
+    },
+    "eb_registration": {
+      "title": "EB Registration",
+      "description": "Executive Board dais applicant dossier",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique EB application reference ID" },
+        "userId": { "type": "string", "description": "Firebase user ID or guest reference" },
+        "timestamp": { "type": "string", "description": "Submission timestamp" },
+        "status": { "type": "string", "enum": ["Pending", "Under Review", "Shortlisted", "Interview Scheduled", "Accepted", "Rejected"], "description": "Application review status" },
+        "name": { "type": "string", "description": "Applicant full name" },
+        "email": { "type": "string", "description": "Email address" },
+        "phone": { "type": "string", "description": "Contact number" },
+        "institution": { "type": "string", "description": "Academic institution" },
+        "course": { "type": "string", "description": "Course and degree" },
+        "yearOfStudy": { "type": "string", "description": "Year of study" },
+        "cityState": { "type": "string", "description": "City and State" },
+        "photoUrl": { "type": "string", "description": "Official portrait image link" },
+        "photoName": { "type": "string", "description": "Photo filename" },
+        "cvUrl": { "type": "string", "description": "CV / Resume document link" },
+        "cvName": { "type": "string", "description": "CV filename" },
+        "munDelegateCount": { "type": "string", "description": "Number of delegate experiences" },
+        "munEbCount": { "type": "string", "description": "Number of EB experiences" },
+        "experienceSummary": { "type": "string", "description": "Dais experience summary" },
+        "pref1Committee": { "type": "string", "description": "First committee choice" },
+        "pref1Role": { "type": "string", "description": "First dais role choice" },
+        "pref2Committee": { "type": "string", "description": "Second committee choice" },
+        "pref2Role": { "type": "string", "description": "Second dais role choice" },
+        "proposedAgendas": { "type": "string", "description": "Proposed substantive agendas" },
+        "motivation": { "type": "string", "description": "Motivation and dais philosophy" },
+        "sampleStudyGuideLink": { "type": "string", "description": "Sample study guide drive link" },
+        "linkedinProfile": { "type": "string", "description": "LinkedIn profile link" },
+        "createdAt": { "type": "string", "description": "ISO creation timestamp" }
+      },
+      "required": ["id", "name", "email", "phone", "institution", "pref1Committee", "pref1Role", "motivation"]
+    },
+    "campus_ambassador_registration": {
+      "title": "Campus Ambassador Registration",
+      "description": "Campus Ambassador leadership applicant dossier",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique CA application reference ID" },
+        "userId": { "type": "string", "description": "Firebase user ID or guest reference" },
+        "timestamp": { "type": "string", "description": "Submission timestamp" },
+        "status": { "type": "string", "enum": ["Pending", "Under Review", "Shortlisted", "Selected", "Rejected"], "description": "Application review status" },
+        "name": { "type": "string", "description": "Applicant full name" },
+        "email": { "type": "string", "description": "Email address" },
+        "phone": { "type": "string", "description": "Contact number" },
+        "institution": { "type": "string", "description": "Academic institution" },
+        "course": { "type": "string", "description": "Course and degree" },
+        "yearOfStudy": { "type": "string", "description": "Year of study" },
+        "cityState": { "type": "string", "description": "City and State" },
+        "photoUrl": { "type": "string", "description": "Official portrait image link" },
+        "photoName": { "type": "string", "description": "Photo filename" },
+        "idProofUrl": { "type": "string", "description": "Student ID card link" },
+        "idProofName": { "type": "string", "description": "ID proof filename" },
+        "collegeClubs": { "type": "string", "description": "Student clubs or societies associated" },
+        "socialHandles": { "type": "string", "description": "Social media handles" },
+        "priorCaExperience": { "type": "string", "description": "Prior ambassador or public relations experience" },
+        "motivation": { "type": "string", "description": "Motivation for becoming ambassador" },
+        "promotionPlan": { "type": "string", "description": "Campus mobilization plan" },
+        "targetMobilization": { "type": "string", "description": "Expected delegate turnout" },
+        "createdAt": { "type": "string", "description": "ISO creation timestamp" }
+      },
+      "required": ["id", "name", "email", "phone", "institution", "motivation", "promotionPlan"]
+    },
+    "contact_query": {
+      "title": "Contact Query",
+      "description": "Diplomatic inquiries submitted via the portal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique inquiry reference ID" },
+        "name": { "type": "string", "description": "Sender name" },
+        "email": { "type": "string", "description": "Sender email" },
+        "category": { "type": "string", "description": "Inquiry category" },
+        "message": { "type": "string", "description": "Message dispatch" },
+        "timestamp": { "type": "string", "description": "Submission time" },
+        "status": { "type": "string", "enum": ["pending", "in_review", "resolved", "archived"], "description": "Resolution status" },
+        "destination": { "type": "string", "description": "Target support mailbox" },
+        "source": { "type": "string", "description": "Form origin" }
+      },
+      "required": ["name", "email", "category", "message"]
+    },
+    "workshop_registration": {
+      "title": "Workshop Registration",
+      "description": "Accreditation for Space Technology & Orbital Diplomacy Masterclass",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Workshop accreditation pass ID" },
+        "userId": { "type": "string", "description": "Registrant user ID" },
+        "regType": { "type": "string", "enum": ["individual", "school"], "description": "Individual or School delegation" },
+        "name": { "type": "string", "description": "Delegate or School Name" },
+        "email": { "type": "string", "description": "Contact email" },
+        "phone": { "type": "string", "description": "Contact phone" },
+        "institution": { "type": "string", "description": "Institution name" },
+        "course": { "type": "string", "description": "Course or class delegation" },
+        "experience": { "type": "string", "description": "Prior space science / MUN experience" },
+        "motivation": { "type": "string", "description": "Statement of interest" },
+        "timestamp": { "type": "string", "description": "Registration time" },
+        "teacherName": { "type": "string", "description": "Teacher-in-charge if school delegation" },
+        "teacherDesignation": { "type": "string", "description": "Teacher designation" },
+        "teacherEmail": { "type": "string", "description": "Teacher email" },
+        "teacherPhone": { "type": "string", "description": "Teacher phone" },
+        "estimatedStudents": { "type": "string", "description": "Estimated student count" },
+        "gradeLevels": { "type": "string", "description": "School classes/grades participating" },
+        "specialRequirements": { "type": "string", "description": "Special logistics requirements" }
+      },
+      "required": ["id", "userId", "regType", "name", "email", "phone", "institution"]
+    },
+    "sent_email": {
+      "title": "Sent Email",
+      "description": "Archived dispatch logs for automated system emails",
+      "type": "object",
+      "properties": {
+        "to": { "type": "string", "description": "Recipient email" },
+        "subject": { "type": "string", "description": "Email subject" },
+        "messageId": { "type": "string", "description": "Delivery reference ID" },
+        "timestamp": { "type": "string", "description": "Dispatch timestamp" },
+        "status": { "type": "string", "description": "Delivery status" }
       }
     }
   },
@@ -47,7 +260,47 @@
     },
     "portfolio_states/{countryName}": {
       "schema": "portfolio_state",
-      "description": "Overrides for portfolio statuses in different committees"
+      "description": "Live overrides for portfolio statuses in different committees"
+    },
+    "committees/{committeeId}": {
+      "schema": "committee",
+      "description": "MUN simulation committees and academic dossiers"
+    },
+    "secretariat/{memberId}": {
+      "schema": "secretariat_member",
+      "description": "Secretariat leadership profiles"
+    },
+    "faqs/{faqId}": {
+      "schema": "faq",
+      "description": "Conference FAQs and protocol inquiries"
+    },
+    "schedule/{dayId}": {
+      "schema": "schedule_day",
+      "description": "Three-day conference schedule itineraries"
+    },
+    "country_matrix/{countryId}": {
+      "schema": "country_matrix_row",
+      "description": "Comprehensive sovereign portfolio roster across committees"
+    },
+    "eb_registrations/{registrationId}": {
+      "schema": "eb_registration",
+      "description": "Executive Board dais applications"
+    },
+    "campus_ambassador_registrations/{ambassadorId}": {
+      "schema": "campus_ambassador_registration",
+      "description": "Campus Ambassador leadership applications"
+    },
+    "contact_queries/{queryId}": {
+      "schema": "contact_query",
+      "description": "Diplomatic queries submitted through the portal"
+    },
+    "workshop_registrations/{registrationId}": {
+      "schema": "workshop_registration",
+      "description": "Registrations for the Space Technology Workshop"
+    },
+    "sent_emails/{emailId}": {
+      "schema": "sent_email",
+      "description": "Archived email transmission logs"
     }
   }
 }

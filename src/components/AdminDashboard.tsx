@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from "react";
 import { db, handleFirestoreError, OperationType } from "../firebase";
-import { collection, onSnapshot, query, deleteDoc, doc, setDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, deleteDoc, doc, setDoc, updateDoc } from "firebase/firestore";
 import { useFirebase } from "../FirebaseContext";
 import { COUNTRY_MATRIX } from "../data";
 import * as XLSX from "xlsx";
@@ -31,15 +31,143 @@ import {
   ExternalLink,
   Eye,
   Inbox,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Image as ImageIcon,
+  Award,
+  Sparkles,
+  Phone,
+  GraduationCap,
+  MapPin,
+  CheckCircle2,
+  Database,
+  RefreshCw,
+  Layers,
+  Copy
 } from "lucide-react";
-import { RegistrationDetails, CountryMatrixRow, PortfolioStatus, ContactQuery } from "../types";
+
+export const FIRESTORE_RULES_TEXT = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && 
+             'email' in request.auth.token && 
+             (request.auth.token.email.lower() == "agnit.dg@gmail.com" || 
+              request.auth.token.email.lower() == "iist.mun.club@gmail.com");
+    }
+
+    // Match block for connection testing
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // --- Master Content Collections (Public read, Admin write) ---
+
+    match /committees/{committeeId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /secretariat/{memberId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /faqs/{faqId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /schedule/{dayId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /country_matrix/{countryId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /portfolio_states/{countryName} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
+
+    match /sent_emails/{emailId} {
+      allow get, list: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // --- Transactional Intake & Registration Collections ---
+
+    match /contact_queries/{queryId} {
+      allow get, list: if isAdmin();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    match /registrations/{registrationId} {
+      allow get: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId);
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /workshop_registrations/{registrationId} {
+      allow get: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId);
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /eb_registrations/{applicationId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    match /campus_ambassador_registrations/{ambassadorId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+  }
+}
+`;
+
+import { 
+  fetchCollectionCounts, 
+  seedAllConferenceData, 
+  seedCommittees, 
+  seedSecretariat, 
+  seedFAQs, 
+  seedSchedule, 
+  seedCountryMatrix,
+  purgeSampleData,
+  CollectionCounts 
+} from "../utils/firestoreSeed";
+import { RegistrationDetails, CountryMatrixRow, PortfolioStatus, CommitteeId, ContactQuery, EBRegistration, CampusAmbassadorRegistration, WorkshopRegistrationDetails } from "../types";
+
 
 interface PortfolioStatusSelectorProps {
   country: string;
-  committee: "copuos" | "disec" | "aippm" | "unsc";
+  committee: CommitteeId | string;
   currentStatus: PortfolioStatus;
-  onUpdate: (country: string, committee: "copuos" | "disec" | "aippm" | "unsc", newStatus: PortfolioStatus) => void;
+  onUpdate: (country: string, committee: CommitteeId | string, newStatus: PortfolioStatus) => void;
 }
 
 function PortfolioStatusSelector({ country, committee, currentStatus, onUpdate }: PortfolioStatusSelectorProps) {
@@ -80,13 +208,51 @@ export default function AdminDashboard() {
   const [confirmWorkshopDeleteId, setConfirmWorkshopDeleteId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((current) => (current === msg ? null : current));
+    }, 4000);
+  };
   const [workshopRegistrations, setWorkshopRegistrations] = useState<any[]>([]);
   const [workshopSearch, setWorkshopSearch] = useState("");
 
   // New portfolio states
-  const [activeSubTab, setActiveSubTab] = useState<"registrations" | "workshop" | "queries">("registrations");
+  const [activeSubTab, setActiveSubTab] = useState<"registrations" | "eb" | "campus-ambassador" | "workshop" | "queries" | "database">("registrations");
   const [portfolioSearch, setPortfolioSearch] = useState("");
-  const [portfolioOverrides, setPortfolioOverrides] = useState<Record<string, Partial<Record<"copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>>({});
+  const [portfolioOverrides, setPortfolioOverrides] = useState<Record<string, Partial<Record<CommitteeId | "copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>>({});
+  
+  // Database collection counts & seeding state
+  const [collectionCounts, setCollectionCounts] = useState<Partial<CollectionCounts>>({});
+  const [loadingCounts, setLoadingCounts] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [copiedRules, setCopiedRules] = useState(false);
+
+  const handleCopyRules = () => {
+    navigator.clipboard.writeText(FIRESTORE_RULES_TEXT);
+    setCopiedRules(true);
+    showToast("firestore.rules copied to clipboard!");
+    setTimeout(() => setCopiedRules(false), 3000);
+  };
+
+
+  // EB Registrations state
+  const [ebRegistrations, setEbRegistrations] = useState<EBRegistration[]>([]);
+  const [ebSearch, setEbSearch] = useState("");
+  const [ebCommitteeFilter, setEbCommitteeFilter] = useState("all");
+  const [ebStatusFilter, setEbStatusFilter] = useState("all");
+  const [selectedEb, setSelectedEb] = useState<EBRegistration | null>(null);
+  const [confirmEbDeleteId, setConfirmEbDeleteId] = useState<string | null>(null);
+  const [isUpdatingEbStatus, setIsUpdatingEbStatus] = useState(false);
+
+  // Campus Ambassador Registrations state
+  const [caRegistrations, setCaRegistrations] = useState<CampusAmbassadorRegistration[]>([]);
+  const [caSearch, setCaSearch] = useState("");
+  const [caStatusFilter, setCaStatusFilter] = useState("all");
+  const [selectedCa, setSelectedCa] = useState<CampusAmbassadorRegistration | null>(null);
+  const [confirmCaDeleteId, setConfirmCaDeleteId] = useState<string | null>(null);
+  const [isUpdatingCaStatus, setIsUpdatingCaStatus] = useState(false);
 
   // Contact Queries state
   const [contactQueries, setContactQueries] = useState<ContactQuery[]>([]);
@@ -96,45 +262,106 @@ export default function AdminDashboard() {
   const [confirmQueryDeleteId, setConfirmQueryDeleteId] = useState<string | null>(null);
   const [isDeletingQuery, setIsDeletingQuery] = useState(false);
 
+
   const adminEmails = ["agnit.dg@gmail.com", "iist.mun.club@gmail.com"];
   const isAdmin = Boolean(user?.email && adminEmails.includes(user.email.toLowerCase()));
 
-  // Listener & sync for contact queries from server persistent storage and Firestore
+  // Function to refresh collection statistics
+  const refreshCollectionStats = async () => {
+    if (!isAdmin) return;
+    setLoadingCounts(true);
+    try {
+      const counts = await fetchCollectionCounts(db);
+      setCollectionCounts(counts);
+    } catch (err) {
+      console.warn("Error refreshing collection counts:", err);
+    } finally {
+      setLoadingCounts(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin && activeSubTab === "database") {
+      refreshCollectionStats();
+    }
+  }, [isAdmin, activeSubTab]);
+
+  const handleSeedAll = async () => {
+    if (!isAdmin) return;
+    setIsSeeding(true);
+    setSeedResult(null);
+    try {
+      const res = await seedAllConferenceData(db);
+      if (res.success) {
+        showToast("All conference tables populated in Firestore!");
+        setSeedResult({ 
+          success: true, 
+          message: "All 5 core conference collections (Committees, Secretariat, FAQs, Schedule, Country Matrix) were successfully written to Firestore." 
+        });
+        await refreshCollectionStats();
+      } else {
+        showToast("Error during database seeding.");
+        setSeedResult({ 
+          success: false, 
+          message: res.message || "Encountered errors during seeding." 
+        });
+      }
+    } catch (err: any) {
+      console.error("Seeding error:", err);
+      showToast("Seeding failed: " + (err?.message || "Unknown error"));
+      setSeedResult({ success: false, message: err?.message || "Operation failed" });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const handleSeedIndividual = async (type: "committees" | "secretariat" | "faqs" | "schedule" | "country_matrix") => {
+    if (!isAdmin) return;
+    setIsSeeding(true);
+    try {
+      if (type === "committees") await seedCommittees(db);
+      else if (type === "secretariat") await seedSecretariat(db);
+      else if (type === "faqs") await seedFAQs(db);
+      else if (type === "schedule") await seedSchedule(db);
+      else if (type === "country_matrix") await seedCountryMatrix(db);
+      showToast(`Successfully seeded ${type} table to Firestore!`);
+      await refreshCollectionStats();
+    } catch (err: any) {
+      console.error(`Error seeding ${type}:`, err);
+      showToast(`Failed to seed ${type}: ` + (err?.message || "Unknown error"));
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const [isPurging, setIsPurging] = useState(false);
+
+  const handlePurgeSampleData = async () => {
+    if (!isAdmin) return;
+    if (!window.confirm("Are you sure you want to remove all example and test records from the database? Real delegate, inquiry, and application submissions will not be affected.")) {
+      return;
+    }
+    setIsPurging(true);
+    setSeedResult(null);
+    try {
+      const res = await purgeSampleData(db);
+      showToast(res.message);
+      setSeedResult({ success: true, message: res.message });
+      await refreshCollectionStats();
+    } catch (err: any) {
+      console.error("Purge error:", err);
+      showToast("Purge failed: " + (err?.message || "Unknown error"));
+      setSeedResult({ success: false, message: err?.message || "Purge failed" });
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
+
+  // Listener for contact queries solely from Firestore
   useEffect(() => {
     if (!isAdmin) return;
 
-    const fetchServerQueries = async () => {
-      try {
-        const res = await fetch("/api/queries");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.queries && Array.isArray(data.queries)) {
-            setContactQueries((prev) => {
-              const map = new Map<string, ContactQuery>();
-              data.queries.forEach((q: ContactQuery) => {
-                if (q.id) map.set(q.id, q);
-              });
-              prev.forEach((q) => {
-                if (q.id) map.set(q.id, q);
-              });
-              const merged = Array.from(map.values());
-              merged.sort((a, b) => {
-                const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
-                const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
-                return timeB - timeA;
-              });
-              return merged;
-            });
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching queries from server:", err);
-      }
-    };
-
-    fetchServerQueries();
-
-    // Also listen to Firestore contact_queries
     const q = query(collection(db, "contact_queries"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: ContactQuery[] = [];
@@ -145,26 +372,14 @@ export default function AdminDashboard() {
         } as ContactQuery);
       });
 
-      if (list.length > 0) {
-        setContactQueries((prev) => {
-          const map = new Map<string, ContactQuery>();
-          prev.forEach((q) => {
-            if (q.id) map.set(q.id, q);
-          });
-          list.forEach((q) => {
-            if (q.id) map.set(q.id, q);
-          });
-          const merged = Array.from(map.values());
-          merged.sort((a, b) => {
-            const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
-            const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
-            return timeB - timeA;
-          });
-          return merged;
-        });
-      }
+      list.sort((a, b) => {
+        const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
+        const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+      setContactQueries(list);
     }, (error) => {
-      console.log("Firestore contact_queries subscription status:", error instanceof Error ? error.message : "Using server bridge");
+      console.warn("Firestore contact_queries subscription status:", error instanceof Error ? error.message : "Access error");
     });
 
     return () => unsubscribe();
@@ -245,9 +460,166 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, [isAdmin]);
 
+  // Sync EB Registrations solely from Firestore
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const q = query(collection(db, "eb_registrations"));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const list: EBRegistration[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() } as EBRegistration);
+      });
+      list.sort((a, b) => new Date(b.timestamp || b.createdAt || 0).getTime() - new Date(a.timestamp || a.createdAt || 0).getTime());
+      setEbRegistrations(list);
+    }, (err) => {
+      console.warn("Firestore EB subscription status:", err);
+    });
+
+    return () => unsub();
+  }, [isAdmin]);
+
+  // Sync Campus Ambassador Registrations solely from Firestore
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const q = query(collection(db, "campus_ambassador_registrations"));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const list: CampusAmbassadorRegistration[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push({ id: docSnap.id, ...docSnap.data() } as CampusAmbassadorRegistration);
+      });
+      list.sort((a, b) => new Date(b.timestamp || b.createdAt || 0).getTime() - new Date(a.timestamp || a.createdAt || 0).getTime());
+      setCaRegistrations(list);
+    }, (err) => {
+      console.warn("Firestore CA subscription status:", err);
+    });
+
+    return () => unsub();
+  }, [isAdmin]);
+
+  const handleUpdateEbStatus = async (id: string, newStatus: EBRegistration["status"]) => {
+    try {
+      setIsUpdatingEbStatus(true);
+      await updateDoc(doc(db, "eb_registrations", id), { status: newStatus });
+      setEbRegistrations((prev) => prev.map((item) => item.id === id ? { ...item, status: newStatus } : item));
+      if (selectedEb?.id === id) {
+        setSelectedEb((prev) => prev ? { ...prev, status: newStatus } : null);
+      }
+      showToast(`Status updated to ${newStatus}`);
+    } catch (err) {
+      console.error("Error updating EB status:", err);
+      showToast("Failed to update status. Check permissions.");
+    } finally {
+      setIsUpdatingEbStatus(false);
+    }
+  };
+
+  const handleDeleteEb = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "eb_registrations", id));
+      setEbRegistrations((prev) => prev.filter((item) => item.id !== id));
+      setConfirmEbDeleteId(null);
+      if (selectedEb?.id === id) setSelectedEb(null);
+      showToast("EB application removed.");
+    } catch (err) {
+      console.error("Error deleting EB registration:", err);
+      showToast("Failed to remove application. Check permissions.");
+    }
+  };
+
+  const exportEbToExcel = () => {
+    const dataToExport = ebRegistrations.map((r) => ({
+      "Dossier ID": r.id,
+      "Full Name": r.name,
+      "Email": r.email,
+      "Phone": r.phone,
+      "Institution": r.institution,
+      "Course": r.course,
+      "Year": r.yearOfStudy,
+      "City/State": r.cityState,
+      "1st Pref Committee": r.pref1Committee,
+      "1st Pref Role": r.pref1Role,
+      "2nd Pref Committee": r.pref2Committee,
+      "2nd Pref Role": r.pref2Role,
+      "Delegate Experience": r.munDelegateCount,
+      "EB Experience": r.munEbCount,
+      "Status": r.status,
+      "Proposed Agenda": r.proposedAgendas,
+      "Motivation": r.motivation,
+      "CV Link": r.cvUrl || "N/A",
+      "Photo Link": r.photoUrl || "N/A",
+      "Study Guide Sample": r.sampleStudyGuideLink || "N/A",
+      "Timestamp": r.timestamp
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "EB Applications");
+    XLSX.writeFile(workbook, `IISTMUN_2027_EB_Applications_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    showToast("Exported EB Applications to Excel!");
+  };
+
+  const handleUpdateCaStatus = async (id: string, newStatus: CampusAmbassadorRegistration["status"]) => {
+    try {
+      setIsUpdatingCaStatus(true);
+      await updateDoc(doc(db, "campus_ambassador_registrations", id), { status: newStatus });
+      setCaRegistrations((prev) => prev.map((item) => item.id === id ? { ...item, status: newStatus } : item));
+      if (selectedCa?.id === id) {
+        setSelectedCa((prev) => prev ? { ...prev, status: newStatus } : null);
+      }
+      showToast(`Status updated to ${newStatus}`);
+    } catch (err) {
+      console.error("Error updating CA status:", err);
+      showToast("Failed to update status. Check permissions.");
+    } finally {
+      setIsUpdatingCaStatus(false);
+    }
+  };
+
+  const handleDeleteCa = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "campus_ambassador_registrations", id));
+      setCaRegistrations((prev) => prev.filter((item) => item.id !== id));
+      setConfirmCaDeleteId(null);
+      if (selectedCa?.id === id) setSelectedCa(null);
+      showToast("Campus Ambassador registration removed.");
+    } catch (err) {
+      console.error("Error deleting CA registration:", err);
+      showToast("Failed to remove registration. Check permissions.");
+    }
+  };
+
+  const exportCaToExcel = () => {
+    const dataToExport = caRegistrations.map((r) => ({
+      "Fellowship ID": r.id,
+      "Ambassador Name": r.name,
+      "Email": r.email,
+      "WhatsApp Phone": r.phone,
+      "Institution": r.institution,
+      "Course": r.course,
+      "Year": r.yearOfStudy,
+      "City/State": r.cityState,
+      "Target Mobilization": r.targetMobilization,
+      "College Clubs": r.collegeClubs,
+      "Social Handles": r.socialHandles,
+      "Prior CA Experience": r.priorCaExperience,
+      "Status": r.status,
+      "Motivation": r.motivation,
+      "Promotion Plan": r.promotionPlan,
+      "Photo Link": r.photoUrl || "N/A",
+      "ID Proof Link": r.idProofUrl || "N/A",
+      "Timestamp": r.timestamp
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Campus Ambassadors");
+    XLSX.writeFile(workbook, `IISTMUN_2027_Campus_Ambassadors_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    showToast("Exported Campus Ambassadors to Excel!");
+  };
+
   const updatePortfolioStatus = async (
     country: string,
-    committee: "copuos" | "disec" | "aippm" | "unsc",
+    committee: CommitteeId | string,
     newStatus: PortfolioStatus
   ) => {
     try {
@@ -262,17 +634,10 @@ export default function AdminDashboard() {
 
   const getPortfolioStatus = (
     countryName: string,
-    committee: "copuos" | "disec" | "aippm" | "unsc",
+    committee: CommitteeId | string,
     defaultStatus: PortfolioStatus
   ) => {
-    return portfolioOverrides[countryName]?.[committee] ?? defaultStatus;
-  };
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4000);
+    return (portfolioOverrides[countryName]?.[committee as CommitteeId] ?? defaultStatus) || "N/A";
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -507,16 +872,7 @@ export default function AdminDashboard() {
   const handleDeleteQuery = async (id: string) => {
     try {
       setIsDeletingQuery(true);
-      // Delete from server storage
-      await fetch(`/api/queries/${id}`, { method: "DELETE" });
-
-      // Delete from Firestore if exists
-      try {
-        await deleteDoc(doc(db, "contact_queries", id));
-      } catch {
-        // Handled via server
-      }
-
+      await deleteDoc(doc(db, "contact_queries", id));
       setContactQueries((prev) => prev.filter((q) => q.id !== id));
       setConfirmQueryDeleteId(null);
       if (selectedQuery?.id === id) {
@@ -525,7 +881,7 @@ export default function AdminDashboard() {
       showToast("Query dispatch successfully purged.");
     } catch (err) {
       console.error("Error deleting contact query:", err);
-      showToast("Failed to remove query.");
+      showToast("Failed to delete query. Check permissions.");
     } finally {
       setIsDeletingQuery(false);
     }
@@ -547,6 +903,37 @@ export default function AdminDashboard() {
       r.pref3Committee === filterCommittee;
 
     return matchesSearch && matchesType && matchesCommittee;
+  });
+
+  // Filter EB registrations
+  const filteredEb = ebRegistrations.filter((r) => {
+    const q = ebSearch.toLowerCase();
+    const matchesSearch =
+      (r.name || "").toLowerCase().includes(q) ||
+      (r.email || "").toLowerCase().includes(q) ||
+      (r.phone || "").toLowerCase().includes(q) ||
+      (r.institution || "").toLowerCase().includes(q) ||
+      (r.id || "").toLowerCase().includes(q);
+    const matchesCommittee =
+      ebCommitteeFilter === "all" ||
+      r.pref1Committee === ebCommitteeFilter ||
+      r.pref2Committee === ebCommitteeFilter;
+    const matchesStatus = ebStatusFilter === "all" || r.status === ebStatusFilter;
+    return matchesSearch && matchesCommittee && matchesStatus;
+  });
+
+  // Filter CA registrations
+  const filteredCa = caRegistrations.filter((r) => {
+    const q = caSearch.toLowerCase();
+    const matchesSearch =
+      (r.name || "").toLowerCase().includes(q) ||
+      (r.email || "").toLowerCase().includes(q) ||
+      (r.phone || "").toLowerCase().includes(q) ||
+      (r.institution || "").toLowerCase().includes(q) ||
+      (r.cityState || "").toLowerCase().includes(q) ||
+      (r.id || "").toLowerCase().includes(q);
+    const matchesStatus = caStatusFilter === "all" || r.status === caStatusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   // Count helper statistics
@@ -638,78 +1025,98 @@ export default function AdminDashboard() {
         </div>
 
         {/* Dashboard Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-10">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 mb-10">
           <div 
             onClick={() => setActiveSubTab("registrations")}
-            className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm cursor-pointer hover:border-[#C9A86A] transition-all"
+            className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm cursor-pointer hover:border-[#C9A86A] transition-all"
           >
-            <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium">TOTAL ACCREDITATIONS</span>
-            <div className="flex justify-between items-end mt-2">
-              <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{totalCount}</span>
-              <div className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
-                <Users className="h-4 w-4" />
+            <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium block">DELEGATES</span>
+            <div className="flex justify-between items-end mt-1.5">
+              <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{totalCount}</span>
+              <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                <Users className="h-3.5 w-3.5" />
+              </div>
+            </div>
+          </div>
+          <div 
+            onClick={() => setActiveSubTab("eb")}
+            className={`border p-4 text-left shadow-sm cursor-pointer transition-all ${
+              activeSubTab === "eb"
+                ? "border-[#C9A86A] bg-[#2E3B2F] ring-1 ring-[#C9A86A]"
+                : "border-[#C9A86A]/40 bg-[#2E3B2F] hover:border-[#C9A86A]"
+            }`}
+          >
+            <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#C9A86A] font-semibold block">EB APPLICANTS</span>
+            <div className="flex justify-between items-end mt-1.5">
+              <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{ebRegistrations.length}</span>
+              <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                <ShieldCheck className="h-3.5 w-3.5" />
+              </div>
+            </div>
+          </div>
+          <div 
+            onClick={() => setActiveSubTab("campus-ambassador")}
+            className={`border p-4 text-left shadow-sm cursor-pointer transition-all ${
+              activeSubTab === "campus-ambassador"
+                ? "border-[#8BA06F] bg-[#2E3B2F] ring-1 ring-[#8BA06F]"
+                : "border-[#8BA06F]/40 bg-[#2E3B2F] hover:border-[#8BA06F]"
+            }`}
+          >
+            <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#8BA06F] font-semibold block">AMBASSADORS</span>
+            <div className="flex justify-between items-end mt-1.5">
+              <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{caRegistrations.length}</span>
+              <div className="p-1.5 bg-[#1A1F1A] border border-[#8BA06F]/30 text-[#8BA06F]">
+                <Users className="h-3.5 w-3.5" />
+              </div>
+            </div>
+          </div>
+          <div 
+            onClick={() => setActiveSubTab("workshop")}
+            className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm cursor-pointer hover:border-[#C9A86A] transition-all"
+          >
+            <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium block">WORKSHOP</span>
+            <div className="flex justify-between items-end mt-1.5">
+              <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{workshopRegistrations.length}</span>
+              <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#8A9A7E]">
+                <GraduationCap className="h-3.5 w-3.5" />
               </div>
             </div>
           </div>
           <div 
             onClick={() => setActiveSubTab("registrations")}
-            className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm cursor-pointer hover:border-[#C9A86A] transition-all"
+            className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm cursor-pointer hover:border-[#C9A86A] transition-all"
           >
-            <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium">INDIVIDUAL DELEGATES</span>
-            <div className="flex justify-between items-end mt-2">
-              <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{individualCount}</span>
-              <div className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#8A9A7E]">
-                <User className="h-4 w-4" />
-              </div>
-            </div>
-          </div>
-          <div 
-            onClick={() => setActiveSubTab("registrations")}
-            className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm cursor-pointer hover:border-[#C9A86A] transition-all"
-          >
-            <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium">DOUBLE DELEGATIONS</span>
-            <div className="flex justify-between items-end mt-2">
-              <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{doubleCount}</span>
-              <div className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
-                <Compass className="h-4 w-4" />
-              </div>
-            </div>
-          </div>
-          <div 
-            onClick={() => setActiveSubTab("registrations")}
-            className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-5 text-left shadow-sm cursor-pointer hover:border-[#C9A86A] transition-all"
-          >
-            <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium">INSTITUTION CONTINGENTS</span>
-            <div className="flex justify-between items-end mt-2">
-              <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{contingentCount}</span>
-              <div className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#8A9A7E]">
-                <Building2 className="h-4 w-4" />
+            <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#8A9A7E] font-medium block">CONTINGENTS</span>
+            <div className="flex justify-between items-end mt-1.5">
+              <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{contingentCount}</span>
+              <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#8A9A7E]">
+                <Building2 className="h-3.5 w-3.5" />
               </div>
             </div>
           </div>
           <div 
             onClick={() => setActiveSubTab("queries")}
-            className={`border p-5 text-left shadow-sm cursor-pointer transition-all ${
+            className={`border p-4 text-left shadow-sm cursor-pointer transition-all ${
               activeSubTab === "queries"
                 ? "border-[#C9A86A] bg-[#2E3B2F] ring-1 ring-[#C9A86A]"
                 : "border-[#C9A86A]/40 bg-[#2E3B2F] hover:border-[#C9A86A]"
             }`}
           >
-            <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-[#C9A86A] font-bold">CONTACT INQUIRIES</span>
-            <div className="flex justify-between items-end mt-2">
-              <span className="font-serif text-3xl font-normal text-[#EDE6D3]">{contactQueries.length}</span>
-              <div className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
-                <Mail className="h-4 w-4" />
+            <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#C9A86A] font-bold block">INQUIRIES</span>
+            <div className="flex justify-between items-end mt-1.5">
+              <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{contactQueries.length}</span>
+              <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                <Mail className="h-3.5 w-3.5" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Admin Navigation Sub-Tabs */}
-        <div className="flex border-b border-[#C9A86A]/25 mb-8">
+        <div className="flex border-b border-[#C9A86A]/25 mb-8 overflow-x-auto scrollbar-none gap-1">
           <button
             onClick={() => setActiveSubTab("registrations")}
-            className={`px-6 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer ${
+            className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeSubTab === "registrations"
                 ? "border-[#C9A86A] text-[#C9A86A] font-semibold"
                 : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
@@ -718,8 +1125,40 @@ export default function AdminDashboard() {
             Delegate Registrations ({filtered.length})
           </button>
           <button
+            onClick={() => setActiveSubTab("eb")}
+            className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeSubTab === "eb"
+                ? "border-[#C9A86A] text-[#C9A86A] font-semibold"
+                : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
+            }`}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>Executive Board ({ebRegistrations.length})</span>
+            {ebRegistrations.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-[#C9A86A] text-[#1A1F1A] text-[9px] font-bold">
+                {ebRegistrations.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveSubTab("campus-ambassador")}
+            className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeSubTab === "campus-ambassador"
+                ? "border-[#8BA06F] text-[#8BA06F] font-semibold"
+                : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
+            }`}
+          >
+            <Users className="h-3.5 w-3.5" />
+            <span>Campus Ambassadors ({caRegistrations.length})</span>
+            {caRegistrations.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-[#8BA06F] text-[#1A1F1A] text-[9px] font-bold">
+                {caRegistrations.length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setActiveSubTab("workshop")}
-            className={`px-6 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer ${
+            className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeSubTab === "workshop"
                 ? "border-[#C9A86A] text-[#C9A86A] font-semibold"
                 : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
@@ -729,7 +1168,7 @@ export default function AdminDashboard() {
           </button>
           <button
             onClick={() => setActiveSubTab("queries")}
-            className={`px-6 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+            className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeSubTab === "queries"
                 ? "border-[#C9A86A] text-[#C9A86A] font-semibold"
                 : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
@@ -742,6 +1181,17 @@ export default function AdminDashboard() {
                 {contactQueries.length}
               </span>
             )}
+          </button>
+          <button
+            onClick={() => setActiveSubTab("database")}
+            className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeSubTab === "database"
+                ? "border-[#C9A86A] text-[#C9A86A] font-semibold"
+                : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
+            }`}
+          >
+            <Database className="h-3.5 w-3.5" />
+            <span>Firestore Database</span>
           </button>
         </div>
 
@@ -785,10 +1235,13 @@ export default function AdminDashboard() {
                     className="bg-transparent text-slate-300 font-sans text-[11px] font-bold uppercase tracking-wider focus:outline-none cursor-pointer"
                   >
                     <option value="all">ALL COMMITTEES</option>
-                    <option value="copuos">COPUOS (Space Committee)</option>
-                    <option value="disec">UNGA (DISEC)</option>
-                    <option value="unsc">UN Security Council</option>
-                    <option value="aippm">AIPPM Meet</option>
+                    <option value="uncopuos">UNCOPUOS</option>
+                    <option value="unhrc">UNHRC</option>
+                    <option value="unodc">UNODC</option>
+                    <option value="nes75">NES'75</option>
+                    <option value="unga">UNGA</option>
+                    <option value="undp">UNDP</option>
+                    <option value="ip">IP</option>
                   </select>
                 </div>
               </div>
@@ -934,6 +1387,494 @@ export default function AdminDashboard() {
           </>
         )}
 
+        {/* ========================================================
+            SUB-TAB: EXECUTIVE BOARD (EB) APPLICATIONS
+           ======================================================== */}
+        {activeSubTab === "eb" && (
+          <div className="space-y-8 animate-fade-in text-left">
+            {/* Header & Export Actions */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#C9A86A]/20 pb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                    // PRESIDIUM RECRUITMENT
+                  </span>
+                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E]">
+                    Executive Board Desk
+                  </span>
+                </div>
+                <h2 className="font-serif text-2xl sm:text-3xl font-normal text-[#EDE6D3] tracking-wide">
+                  Executive Board Applications Dossier
+                </h2>
+                <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                  Review candidates, attached photographs &amp; CVs, agendas, and assign presidium appointments.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={exportEbToExcel}
+                  disabled={ebRegistrations.length === 0}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  title="Download all filtered applications as an Excel spreadsheet (.xlsx)"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  <span>Download Excel (.xlsx)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E]">TOTAL APPLICANTS</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{ebRegistrations.length}</span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-amber-300">SHORTLISTED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {ebRegistrations.filter(r => r.status === "Shortlisted").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-amber-500/30 text-amber-300">
+                    <Award className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-cyan-300">INTERVIEW SCHEDULED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {ebRegistrations.filter(r => r.status === "Interview Scheduled").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-cyan-500/30 text-cyan-300">
+                    <Calendar className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-emerald-400">ACCEPTED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {ebRegistrations.filter(r => r.status === "Accepted").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-emerald-500/30 text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E]">PENDING REVIEW</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {ebRegistrations.filter(r => r.status === "Pending").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#8A9A7E]">
+                    <Calendar className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="flex flex-col lg:flex-row gap-4 justify-between items-center bg-[#2E3B2F]/60 border border-[#C9A86A]/30 p-4">
+              <div className="relative w-full lg:max-w-md">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8A9A7E]" />
+                <input
+                  type="text"
+                  placeholder="Search EB candidates by name, email, institution, ID..."
+                  value={ebSearch}
+                  onChange={(e) => setEbSearch(e.target.value)}
+                  className="w-full bg-[#1A1F1A] border border-[#C9A86A]/30 focus:border-[#C9A86A] pl-10 pr-4 py-2 font-sans text-xs text-[#EDE6D3] focus:outline-none transition-all placeholder-[#8A9A7E]/50"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-3 w-full lg:w-auto justify-end">
+                <div className="flex items-center gap-2 bg-[#1A1F1A] border border-[#C9A86A]/30 px-3 py-1.5">
+                  <Filter className="h-3 w-3 text-[#C9A86A]" />
+                  <select
+                    value={ebCommitteeFilter}
+                    onChange={(e) => setEbCommitteeFilter(e.target.value)}
+                    className="bg-transparent text-[#EDE6D3] font-sans text-[11px] uppercase tracking-wider focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="bg-[#1A1F1A] text-[#EDE6D3]">ALL COMMITTEES</option>
+                    <option value="uncopuos" className="bg-[#1A1F1A] text-[#EDE6D3]">UNCOPUOS</option>
+                    <option value="unhrc" className="bg-[#1A1F1A] text-[#EDE6D3]">UNHRC</option>
+                    <option value="unodc" className="bg-[#1A1F1A] text-[#EDE6D3]">UNODC</option>
+                    <option value="nes75" className="bg-[#1A1F1A] text-[#EDE6D3]">NES'75</option>
+                    <option value="unga" className="bg-[#1A1F1A] text-[#EDE6D3]">UNGA</option>
+                    <option value="undp" className="bg-[#1A1F1A] text-[#EDE6D3]">UNDP</option>
+                    <option value="ip" className="bg-[#1A1F1A] text-[#EDE6D3]">INTERNATIONAL PRESS (IP)</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2 bg-[#1A1F1A] border border-[#C9A86A]/30 px-3 py-1.5">
+                  <select
+                    value={ebStatusFilter}
+                    onChange={(e) => setEbStatusFilter(e.target.value)}
+                    className="bg-transparent text-[#EDE6D3] font-sans text-[11px] uppercase tracking-wider focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="bg-[#1A1F1A] text-[#EDE6D3]">ALL STATUSES</option>
+                    <option value="Pending" className="bg-[#1A1F1A] text-[#EDE6D3]">PENDING</option>
+                    <option value="Shortlisted" className="bg-[#1A1F1A] text-amber-300">SHORTLISTED</option>
+                    <option value="Interview Scheduled" className="bg-[#1A1F1A] text-cyan-300">INTERVIEW SCHEDULED</option>
+                    <option value="Accepted" className="bg-[#1A1F1A] text-emerald-400">ACCEPTED</option>
+                    <option value="Rejected" className="bg-[#1A1F1A] text-rose-400">REJECTED</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* EB Table */}
+            <div className="border border-[#C9A86A]/30 bg-[#1A1F1A]/80 overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[950px]">
+                  <thead>
+                    <tr className="border-b border-[#C9A86A]/30 bg-[#2E3B2F] font-sans text-[10px] uppercase tracking-[0.16em] text-[#C9A86A] font-semibold">
+                      <th className="p-3.5">Candidate</th>
+                      <th className="p-3.5">Dossier ID</th>
+                      <th className="p-3.5">Institution</th>
+                      <th className="p-3.5">1st Preference</th>
+                      <th className="p-3.5">2nd Preference</th>
+                      <th className="p-3.5">Track Record</th>
+                      <th className="p-3.5">Status</th>
+                      <th className="p-3.5 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#8A9A7E]/15 font-sans text-xs">
+                    {filteredEb.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="p-10 text-center text-[#8A9A7E]">
+                          No Executive Board applications match your current filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredEb.map((item) => (
+                        <tr key={item.id} className="hover:bg-[#2E3B2F]/40 transition-colors">
+                          <td className="p-3.5">
+                            <div className="flex items-center gap-3">
+                              {item.photoUrl ? (
+                                <img
+                                  src={item.photoUrl}
+                                  alt={item.name}
+                                  className="h-9 w-9 rounded-full object-cover border border-[#C9A86A]/50 shrink-0"
+                                />
+                              ) : (
+                                <div className="h-9 w-9 rounded-full bg-[#2E3B2F] border border-[#C9A86A]/40 flex items-center justify-center font-serif text-xs text-[#C9A86A] shrink-0">
+                                  {item.name?.[0] || "E"}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <span className="font-medium text-[#EDE6D3] block truncate">{item.name}</span>
+                                <span className="font-mono text-[10px] text-[#8A9A7E] block truncate">{item.email}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3.5 font-mono text-xs text-[#C9A86A]">{item.id}</td>
+                          <td className="p-3.5">
+                            <span className="text-[#EDE6D3] block truncate max-w-[180px]">{item.institution}</span>
+                            <span className="text-[10px] text-[#8A9A7E] block">{item.course} • {item.yearOfStudy}</span>
+                          </td>
+                          <td className="p-3.5">
+                            <span className="text-[#C9A86A] font-medium block uppercase text-[11px]">{item.pref1Role}</span>
+                            <span className="text-[10px] text-[#8A9A7E] uppercase">{item.pref1Committee}</span>
+                          </td>
+                          <td className="p-3.5">
+                            <span className="text-[#EDE6D3] block uppercase text-[11px]">{item.pref2Role}</span>
+                            <span className="text-[10px] text-[#8A9A7E] uppercase">{item.pref2Committee}</span>
+                          </td>
+                          <td className="p-3.5 font-mono text-[11px] text-[#8A9A7E]">
+                            <div>Del: {item.munDelegateCount}</div>
+                            <div>EB: {item.munEbCount}</div>
+                          </td>
+                          <td className="p-3.5">
+                            <select
+                              value={item.status}
+                              onChange={(e) => handleUpdateEbStatus(item.id, e.target.value as any)}
+                              className={`px-2 py-1 text-[10px] font-sans font-semibold uppercase tracking-wider border focus:outline-none cursor-pointer ${
+                                item.status === "Accepted"
+                                  ? "bg-emerald-950/60 text-emerald-400 border-emerald-500/40"
+                                  : item.status === "Shortlisted"
+                                  ? "bg-amber-950/60 text-amber-300 border-amber-500/40"
+                                  : item.status === "Interview Scheduled"
+                                  ? "bg-cyan-950/60 text-cyan-300 border-cyan-500/40"
+                                  : item.status === "Rejected"
+                                  ? "bg-rose-950/60 text-rose-400 border-rose-500/40"
+                                  : "bg-[#1A1F1A] text-[#EDE6D3] border-[#8A9A7E]/40"
+                              }`}
+                            >
+                              <option value="Pending" className="bg-[#1A1F1A] text-[#EDE6D3]">Pending</option>
+                              <option value="Shortlisted" className="bg-[#1A1F1A] text-amber-300">Shortlisted</option>
+                              <option value="Interview Scheduled" className="bg-[#1A1F1A] text-cyan-300">Interview Scheduled</option>
+                              <option value="Accepted" className="bg-[#1A1F1A] text-emerald-400">Accepted</option>
+                              <option value="Rejected" className="bg-[#1A1F1A] text-rose-400">Rejected</option>
+                            </select>
+                          </td>
+                          <td className="p-3.5 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => setSelectedEb(item)}
+                                className="p-1.5 border border-[#C9A86A]/40 bg-[#2E3B2F] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-[#EDE6D3] transition-colors cursor-pointer"
+                                title="Inspect Dossier"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setConfirmEbDeleteId(item.id)}
+                                className="p-1.5 border border-rose-500/30 bg-[#1A1F1A] hover:bg-rose-900/30 text-rose-400 transition-colors cursor-pointer"
+                                title="Delete Dossier"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            SUB-TAB: CAMPUS AMBASSADOR APPLICATIONS
+           ======================================================== */}
+        {activeSubTab === "campus-ambassador" && (
+          <div className="space-y-8 animate-fade-in text-left">
+            {/* Header & Export Actions */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#8BA06F]/20 pb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#8BA06F] font-bold">
+                    // OUTREACH FELLOWSHIP
+                  </span>
+                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E]">
+                    Campus Ambassador Network
+                  </span>
+                </div>
+                <h2 className="font-serif text-2xl sm:text-3xl font-normal text-[#EDE6D3] tracking-wide">
+                  Campus Ambassador Registrations
+                </h2>
+                <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                  Track student representatives from institutions nationwide mobilized for IISTMUN 2027.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={exportCaToExcel}
+                  disabled={caRegistrations.length === 0}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8BA06F] hover:bg-[#a1b783] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  title="Download all campus ambassadors as an Excel spreadsheet (.xlsx)"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  <span>Download Excel (.xlsx)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+              <div className="border border-[#8BA06F]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E]">TOTAL AMBASSADORS</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{caRegistrations.length}</span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#8BA06F]/30 text-[#8BA06F]">
+                    <Users className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#8BA06F]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-emerald-400">VERIFIED &amp; ACTIVE</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {caRegistrations.filter(r => r.status === "Verified" || r.status === "Accepted").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-emerald-500/30 text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#8BA06F]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-amber-300">SHORTLISTED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {caRegistrations.filter(r => r.status === "Shortlisted").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-amber-500/30 text-amber-300">
+                    <Award className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#8BA06F]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E]">PENDING REVIEW</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {caRegistrations.filter(r => r.status === "Pending").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#8A9A7E]">
+                    <Calendar className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Search and Filters */}
+            <div className="flex flex-col lg:flex-row gap-4 justify-between items-center bg-[#2E3B2F]/60 border border-[#8BA06F]/30 p-4">
+              <div className="relative w-full lg:max-w-md">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8A9A7E]" />
+                <input
+                  type="text"
+                  placeholder="Search ambassadors by name, phone, institution, city..."
+                  value={caSearch}
+                  onChange={(e) => setCaSearch(e.target.value)}
+                  className="w-full bg-[#1A1F1A] border border-[#8BA06F]/30 focus:border-[#8BA06F] pl-10 pr-4 py-2 font-sans text-xs text-[#EDE6D3] focus:outline-none transition-all placeholder-[#8A9A7E]/50"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-3 w-full lg:w-auto justify-end">
+                <div className="flex items-center gap-2 bg-[#1A1F1A] border border-[#8BA06F]/30 px-3 py-1.5">
+                  <Filter className="h-3 w-3 text-[#8BA06F]" />
+                  <select
+                    value={caStatusFilter}
+                    onChange={(e) => setCaStatusFilter(e.target.value)}
+                    className="bg-transparent text-[#EDE6D3] font-sans text-[11px] uppercase tracking-wider focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="bg-[#1A1F1A] text-[#EDE6D3]">ALL STATUSES</option>
+                    <option value="Pending" className="bg-[#1A1F1A] text-[#EDE6D3]">PENDING</option>
+                    <option value="Verified" className="bg-[#1A1F1A] text-emerald-400">VERIFIED</option>
+                    <option value="Shortlisted" className="bg-[#1A1F1A] text-amber-300">SHORTLISTED</option>
+                    <option value="Accepted" className="bg-[#1A1F1A] text-cyan-300">ACCEPTED</option>
+                    <option value="Rejected" className="bg-[#1A1F1A] text-rose-400">REJECTED</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* CA Table */}
+            <div className="border border-[#8BA06F]/30 bg-[#1A1F1A]/80 overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[900px]">
+                  <thead>
+                    <tr className="border-b border-[#8BA06F]/30 bg-[#2E3B2F] font-sans text-[10px] uppercase tracking-[0.16em] text-[#8BA06F] font-semibold">
+                      <th className="p-3.5">Ambassador</th>
+                      <th className="p-3.5">Fellowship ID</th>
+                      <th className="p-3.5">Institution &amp; City</th>
+                      <th className="p-3.5">Target Mobilization</th>
+                      <th className="p-3.5">Clubs &amp; Socials</th>
+                      <th className="p-3.5">Status</th>
+                      <th className="p-3.5 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#8A9A7E]/15 font-sans text-xs">
+                    {filteredCa.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-10 text-center text-[#8A9A7E]">
+                          No Campus Ambassador registrations match your current filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredCa.map((item) => (
+                        <tr key={item.id} className="hover:bg-[#2E3B2F]/40 transition-colors">
+                          <td className="p-3.5">
+                            <div className="flex items-center gap-3">
+                              {item.photoUrl ? (
+                                <img
+                                  src={item.photoUrl}
+                                  alt={item.name}
+                                  className="h-9 w-9 rounded-full object-cover border border-[#8BA06F]/50 shrink-0"
+                                />
+                              ) : (
+                                <div className="h-9 w-9 rounded-full bg-[#2E3B2F] border border-[#8BA06F]/40 flex items-center justify-center font-serif text-xs text-[#8BA06F] shrink-0">
+                                  {item.name?.[0] || "C"}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <span className="font-medium text-[#EDE6D3] block truncate">{item.name}</span>
+                                <span className="font-mono text-[10px] text-[#8A9A7E] block truncate">{item.email}</span>
+                                <span className="font-mono text-[10px] text-[#8BA06F] block truncate">{item.phone}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3.5 font-mono text-xs text-[#8BA06F]">{item.id}</td>
+                          <td className="p-3.5">
+                            <span className="text-[#EDE6D3] block truncate max-w-[200px]">{item.institution}</span>
+                            <span className="text-[10px] text-[#8A9A7E] block">{item.cityState}</span>
+                          </td>
+                          <td className="p-3.5">
+                            <span className="inline-block px-2.5 py-1 text-[10px] font-mono border border-[#8BA06F]/40 bg-[#8BA06F]/15 text-[#EDE6D3]">
+                              {item.targetMobilization}
+                            </span>
+                          </td>
+                          <td className="p-3.5">
+                            <span className="text-[#EDE6D3] block text-[11px] truncate max-w-[150px]">{item.collegeClubs || "N/A"}</span>
+                            <span className="text-[10px] font-mono text-[#8A9A7E] block truncate max-w-[150px]">{item.socialHandles || "N/A"}</span>
+                          </td>
+                          <td className="p-3.5">
+                            <select
+                              value={item.status}
+                              onChange={(e) => handleUpdateCaStatus(item.id, e.target.value as any)}
+                              className={`px-2 py-1 text-[10px] font-sans font-semibold uppercase tracking-wider border focus:outline-none cursor-pointer ${
+                                item.status === "Verified" || item.status === "Accepted"
+                                  ? "bg-emerald-950/60 text-emerald-400 border-emerald-500/40"
+                                  : item.status === "Shortlisted"
+                                  ? "bg-amber-950/60 text-amber-300 border-amber-500/40"
+                                  : item.status === "Rejected"
+                                  ? "bg-rose-950/60 text-rose-400 border-rose-500/40"
+                                  : "bg-[#1A1F1A] text-[#EDE6D3] border-[#8A9A7E]/40"
+                              }`}
+                            >
+                              <option value="Pending" className="bg-[#1A1F1A] text-[#EDE6D3]">Pending</option>
+                              <option value="Verified" className="bg-[#1A1F1A] text-emerald-400">Verified</option>
+                              <option value="Shortlisted" className="bg-[#1A1F1A] text-amber-300">Shortlisted</option>
+                              <option value="Accepted" className="bg-[#1A1F1A] text-cyan-300">Accepted</option>
+                              <option value="Rejected" className="bg-[#1A1F1A] text-rose-400">Rejected</option>
+                            </select>
+                          </td>
+                          <td className="p-3.5 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => setSelectedCa(item)}
+                                className="p-1.5 border border-[#8BA06F]/40 bg-[#2E3B2F] hover:bg-[#8BA06F] hover:text-[#1A1F1A] text-[#EDE6D3] transition-colors cursor-pointer"
+                                title="Inspect Ambassador Profile"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setConfirmCaDeleteId(item.id)}
+                                className="p-1.5 border border-rose-500/30 bg-[#1A1F1A] hover:bg-rose-900/30 text-rose-400 transition-colors cursor-pointer"
+                                title="Delete Ambassador Record"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeSubTab === "workshop" && (
           <div className="space-y-12 animate-fade-in text-left">
             {/* Section 1: Portfolio Allocator (Matrix) */}
@@ -961,17 +1902,20 @@ export default function AdminDashboard() {
               {/* Matrix Table */}
               <div className="bg-slate-950/20 border border-slate-900 rounded-3xl overflow-hidden backdrop-blur-sm">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse min-w-[900px]">
+                  <table className="w-full text-left border-collapse min-w-[1100px]">
                     <thead>
                       <tr className="border-b border-slate-900 bg-slate-950/40 font-mono text-[9px] uppercase tracking-widest text-slate-400 font-bold">
                         <th className="p-4 pl-6 flex items-center gap-2">
                           <Globe className="h-4 w-4 text-cyan-400" />
                           Portfolio / Nation
                         </th>
-                        <th className="p-4">COPUOS</th>
-                        <th className="p-4">UNGA DISEC</th>
-                        <th className="p-4">AIPPM (India)</th>
-                        <th className="p-4">UNSC</th>
+                        <th className="p-3">UNCOPUOS</th>
+                        <th className="p-3">UNHRC</th>
+                        <th className="p-3">UNODC</th>
+                        <th className="p-3">NES'75</th>
+                        <th className="p-3">UNGA</th>
+                        <th className="p-3">UNDP</th>
+                        <th className="p-3">IP</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-900/60 font-sans text-xs">
@@ -979,36 +1923,60 @@ export default function AdminDashboard() {
                         row.country.toLowerCase().includes(portfolioSearch.toLowerCase())
                       ).map((row) => (
                         <tr key={row.country} className="hover:bg-slate-900/10 transition-colors">
-                          <td className="p-4 pl-6 font-bold text-white">{row.country}</td>
-                          <td className="p-4">
+                          <td className="p-4 pl-6 font-bold text-white whitespace-nowrap">{row.country}</td>
+                          <td className="p-3">
                             <PortfolioStatusSelector
                               country={row.country}
-                              committee="copuos"
-                              currentStatus={getPortfolioStatus(row.country, "copuos", row.copuos)}
+                              committee="uncopuos"
+                              currentStatus={getPortfolioStatus(row.country, "uncopuos", row.uncopuos || "Available")}
                               onUpdate={updatePortfolioStatus}
                             />
                           </td>
-                          <td className="p-4">
+                          <td className="p-3">
                             <PortfolioStatusSelector
                               country={row.country}
-                              committee="disec"
-                              currentStatus={getPortfolioStatus(row.country, "disec", row.disec)}
+                              committee="unhrc"
+                              currentStatus={getPortfolioStatus(row.country, "unhrc", row.unhrc || "Available")}
                               onUpdate={updatePortfolioStatus}
                             />
                           </td>
-                          <td className="p-4">
+                          <td className="p-3">
                             <PortfolioStatusSelector
                               country={row.country}
-                              committee="aippm"
-                              currentStatus={getPortfolioStatus(row.country, "aippm", row.aippm)}
+                              committee="unodc"
+                              currentStatus={getPortfolioStatus(row.country, "unodc", row.unodc || "Available")}
                               onUpdate={updatePortfolioStatus}
                             />
                           </td>
-                          <td className="p-4">
+                          <td className="p-3">
                             <PortfolioStatusSelector
                               country={row.country}
-                              committee="unsc"
-                              currentStatus={getPortfolioStatus(row.country, "unsc", row.unsc)}
+                              committee="nes75"
+                              currentStatus={getPortfolioStatus(row.country, "nes75", row.nes75 || "Reserved")}
+                              onUpdate={updatePortfolioStatus}
+                            />
+                          </td>
+                          <td className="p-3">
+                            <PortfolioStatusSelector
+                              country={row.country}
+                              committee="unga"
+                              currentStatus={getPortfolioStatus(row.country, "unga", row.unga || "Available")}
+                              onUpdate={updatePortfolioStatus}
+                            />
+                          </td>
+                          <td className="p-3">
+                            <PortfolioStatusSelector
+                              country={row.country}
+                              committee="undp"
+                              currentStatus={getPortfolioStatus(row.country, "undp", row.undp || "Available")}
+                              onUpdate={updatePortfolioStatus}
+                            />
+                          </td>
+                          <td className="p-3">
+                            <PortfolioStatusSelector
+                              country={row.country}
+                              committee="ip"
+                              currentStatus={getPortfolioStatus(row.country, "ip", row.ip || "Reserved")}
                               onUpdate={updatePortfolioStatus}
                             />
                           </td>
@@ -1375,6 +2343,499 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* Firestore Database Management View */}
+        {activeSubTab === "database" && (
+          <div className="space-y-8 animate-fade-in text-left">
+            {/* Database Overview Banner */}
+            <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] p-6 sm:p-8 relative shadow-2xl">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                      // CLOUD FIRESTORE MASTER CONTROL
+                    </span>
+                    <span className="px-2 py-0.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#EDE6D3] font-mono text-[9px]">
+                      Named DB: ai-studio-iistmun2026-eec64fd6-f326-409b-be6b-3f273a2e6e5d
+                    </span>
+                  </div>
+                  <h2 className="font-serif text-2xl sm:text-3xl font-normal text-[#EDE6D3]">
+                    Conference Database & Collections
+                  </h2>
+                  <p className="font-sans text-xs sm:text-sm text-[#8A9A7E] mt-2 max-w-2xl leading-relaxed">
+                    All website interfaces, public portals, schedules, country matrices, and registration records
+                    communicate directly and exclusively with Google Cloud Firestore. No static JSON storage is utilized.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap sm:flex-nowrap gap-3 shrink-0">
+                  <button
+                    onClick={refreshCollectionStats}
+                    disabled={loadingCounts}
+                    className="flex items-center gap-2 px-4 py-2.5 border border-[#C9A86A]/40 bg-[#1A1F1A] hover:border-[#C9A86A] hover:text-[#C9A86A] text-[#EDE6D3] text-xs font-sans font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${loadingCounts ? "animate-spin" : ""}`} />
+                    <span>{loadingCounts ? "Scanning..." : "Scan Collections"}</span>
+                  </button>
+                  <button
+                    onClick={handleSeedAll}
+                    disabled={isSeeding}
+                    className="flex items-center gap-2 px-4 py-2.5 border border-[#C9A86A]/50 bg-[#1A1F1A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-[#EDE6D3] text-xs font-sans font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Layers className={`h-4 w-4 ${isSeeding ? "animate-spin" : ""}`} />
+                    <span>Seed Content (5 Tables)</span>
+                  </button>
+                  <button
+                    onClick={handlePurgeSampleData}
+                    disabled={isPurging || isSeeding}
+                    className="flex items-center gap-2 px-4 py-2.5 border border-rose-500/50 bg-[#1A1F1A] hover:bg-rose-950/50 text-rose-300 text-xs font-sans font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50"
+                    title="Remove any example or sample records from the database"
+                  >
+                    <Trash2 className={`h-4 w-4 ${isPurging ? "animate-spin" : ""}`} />
+                    <span>{isPurging ? "Purging..." : "Purge Example Data"}</span>
+                  </button>
+
+                </div>
+              </div>
+
+              {/* Seed Feedback Alert */}
+              {seedResult && (
+                <div
+                  className={`mt-6 p-4 border flex items-start justify-between gap-3 ${
+                    seedResult.success
+                      ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-200"
+                      : "bg-rose-950/40 border-rose-500/40 text-rose-200"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {seedResult.success ? (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
+                    )}
+                    <div>
+                      <p className="font-sans text-xs font-semibold">
+                        {seedResult.success ? "Database Synchronized" : "Sync Error"}
+                      </p>
+                      <p className="font-sans text-xs opacity-90 mt-0.5">{seedResult.message}</p>
+                      {!seedResult.success && (
+                        <div className="mt-3 pt-3 border-t border-rose-500/30 text-[11px] text-rose-200 space-y-1">
+                          <p className="font-bold text-[#C9A86A] uppercase tracking-wider text-[10px]">
+                            Required Step: Deploy Security Rules
+                          </p>
+                          <p>
+                            Cloud Firestore denies writes to new collections (<code className="text-[#EDE6D3]">committees</code>, <code className="text-[#EDE6D3]">secretariat</code>, etc.) until the security rules are published in the cloud console:
+                          </p>
+                          <ol className="list-decimal pl-4 space-y-0.5 mt-1 text-[#EDE6D3]">
+                            <li>
+                              Click the <strong className="text-[#C9A86A]">"Copy firestore.rules"</strong> button below.
+                            </li>
+                            <li>
+                              Open{" "}
+                              <a
+                                href="https://console.firebase.google.com/project/gen-lang-client-0802094651/firestore/rules"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[#C9A86A] underline font-medium hover:text-white"
+                              >
+                                Firebase Console &rarr; Firestore Database &rarr; Rules
+                              </a>
+                            </li>
+                            <li>
+                              Paste and click <strong className="text-white">"Publish"</strong>, then return here and re-click <strong className="text-white">"Seed All (+ Forms & Records)"</strong>.
+                            </li>
+                          </ol>
+                          <div className="pt-3 flex flex-wrap items-center gap-2">
+                            <button
+                              onClick={handleCopyRules}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1A1F1A] border border-[#C9A86A] text-[#C9A86A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-xs font-sans font-semibold transition-all cursor-pointer shadow"
+                            >
+                              {copiedRules ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                              <span>{copiedRules ? "Copied to Clipboard!" : "Copy firestore.rules"}</span>
+                            </button>
+                            <a
+                              href="https://console.firebase.google.com/project/gen-lang-client-0802094651/firestore/rules"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2E3B2F] border border-[#C9A86A]/40 text-[#EDE6D3] hover:text-white text-xs font-sans font-semibold transition-all"
+                            >
+                              <span>Open Firebase Rules Console &rarr;</span>
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSeedResult(null)}
+                    className="text-current opacity-60 hover:opacity-100 p-1"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Section 1: Master Conference Content Tables */}
+            <div>
+              <div className="border-b border-[#C9A86A]/20 pb-3 mb-6">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold block">
+                  // SECTION 01: PUBLIC MASTER TABLES
+                </span>
+                <h3 className="font-serif text-xl font-normal text-[#EDE6D3] mt-1">
+                  Conference Content Collections (Live Website Subscriptions)
+                </h3>
+                <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                  These tables hold the core information displayed across website pages. If a collection is empty, click "Seed Table" to populate it with official IISTMUN 2026 data.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Committees */}
+                <div className="bg-[#2E3B2F] border border-[#C9A86A]/30 p-5 flex flex-col justify-between hover:border-[#C9A86A] transition-all">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        collection: committees
+                      </span>
+                      <span className={`px-2 py-0.5 text-[10px] font-mono font-bold ${
+                        (collectionCounts.committees ?? 0) > 0
+                          ? "bg-emerald-950/60 text-emerald-300 border border-emerald-500/40"
+                          : "bg-amber-950/60 text-amber-300 border border-amber-500/40"
+                      }`}>
+                        {collectionCounts.committees ?? "..."} docs
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-lg text-[#EDE6D3]">Committees & Agendas</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
+                      UNCOPUOS, UNHRC, UNODC, NES'75, UNGA, UNDP, and IP committee briefs, agendas, background guides, and chair details rendered live in <code className="text-[#C9A86A]">Committees.tsx</code>.
+                    </p>
+                  </div>
+                  <div className="pt-4 mt-4 border-t border-[#C9A86A]/20 flex items-center justify-between">
+                    <span className="font-sans text-[11px] text-[#8A9A7E]">Read: Public | Write: Admin</span>
+                    <button
+                      onClick={() => handleSeedIndividual("committees")}
+                      disabled={isSeeding}
+                      className="px-3 py-1.5 border border-[#C9A86A]/50 bg-[#1A1F1A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-xs font-sans text-[#EDE6D3] font-semibold transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      Seed Table
+                    </button>
+                  </div>
+                </div>
+
+                {/* Secretariat */}
+                <div className="bg-[#2E3B2F] border border-[#C9A86A]/30 p-5 flex flex-col justify-between hover:border-[#C9A86A] transition-all">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        collection: secretariat
+                      </span>
+                      <span className={`px-2 py-0.5 text-[10px] font-mono font-bold ${
+                        (collectionCounts.secretariat ?? 0) > 0
+                          ? "bg-emerald-950/60 text-emerald-300 border border-emerald-500/40"
+                          : "bg-amber-950/60 text-amber-300 border border-amber-500/40"
+                      }`}>
+                        {collectionCounts.secretariat ?? "..."} docs
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-lg text-[#EDE6D3]">Secretariat Staff</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
+                      Official Secretary-General, Director-Generals, and Charge d'Affaires roster and portraits rendered live in <code className="text-[#C9A86A]">Secretariat.tsx</code>.
+                    </p>
+                  </div>
+                  <div className="pt-4 mt-4 border-t border-[#C9A86A]/20 flex items-center justify-between">
+                    <span className="font-sans text-[11px] text-[#8A9A7E]">Read: Public | Write: Admin</span>
+                    <button
+                      onClick={() => handleSeedIndividual("secretariat")}
+                      disabled={isSeeding}
+                      className="px-3 py-1.5 border border-[#C9A86A]/50 bg-[#1A1F1A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-xs font-sans text-[#EDE6D3] font-semibold transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      Seed Table
+                    </button>
+                  </div>
+                </div>
+
+                {/* FAQs */}
+                <div className="bg-[#2E3B2F] border border-[#C9A86A]/30 p-5 flex flex-col justify-between hover:border-[#C9A86A] transition-all">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        collection: faqs
+                      </span>
+                      <span className={`px-2 py-0.5 text-[10px] font-mono font-bold ${
+                        (collectionCounts.faqs ?? 0) > 0
+                          ? "bg-emerald-950/60 text-emerald-300 border border-emerald-500/40"
+                          : "bg-amber-950/60 text-amber-300 border border-amber-500/40"
+                      }`}>
+                        {collectionCounts.faqs ?? "..."} docs
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-lg text-[#EDE6D3]">Conference FAQs</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
+                      Categorized delegate questions, accommodation guides, payment instructions, and rules of procedure rendered live in <code className="text-[#C9A86A]">FAQs.tsx</code>.
+                    </p>
+                  </div>
+                  <div className="pt-4 mt-4 border-t border-[#C9A86A]/20 flex items-center justify-between">
+                    <span className="font-sans text-[11px] text-[#8A9A7E]">Read: Public | Write: Admin</span>
+                    <button
+                      onClick={() => handleSeedIndividual("faqs")}
+                      disabled={isSeeding}
+                      className="px-3 py-1.5 border border-[#C9A86A]/50 bg-[#1A1F1A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-xs font-sans text-[#EDE6D3] font-semibold transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      Seed Table
+                    </button>
+                  </div>
+                </div>
+
+                {/* Schedule */}
+                <div className="bg-[#2E3B2F] border border-[#C9A86A]/30 p-5 flex flex-col justify-between hover:border-[#C9A86A] transition-all">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        collection: schedule
+                      </span>
+                      <span className={`px-2 py-0.5 text-[10px] font-mono font-bold ${
+                        (collectionCounts.schedule ?? 0) > 0
+                          ? "bg-emerald-950/60 text-emerald-300 border border-emerald-500/40"
+                          : "bg-amber-950/60 text-amber-300 border border-amber-500/40"
+                      }`}>
+                        {collectionCounts.schedule ?? "..."} docs
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-lg text-[#EDE6D3]">Schedule & Itinerary</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
+                      Day-by-day session timeline, committee debates, social night, and valedictory ceremony rendered live in <code className="text-[#C9A86A]">Schedule.tsx</code>.
+                    </p>
+                  </div>
+                  <div className="pt-4 mt-4 border-t border-[#C9A86A]/20 flex items-center justify-between">
+                    <span className="font-sans text-[11px] text-[#8A9A7E]">Read: Public | Write: Admin</span>
+                    <button
+                      onClick={() => handleSeedIndividual("schedule")}
+                      disabled={isSeeding}
+                      className="px-3 py-1.5 border border-[#C9A86A]/50 bg-[#1A1F1A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-xs font-sans text-[#EDE6D3] font-semibold transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      Seed Table
+                    </button>
+                  </div>
+                </div>
+
+                {/* Country Matrix */}
+                <div className="bg-[#2E3B2F] border border-[#C9A86A]/30 p-5 flex flex-col justify-between hover:border-[#C9A86A] transition-all md:col-span-2">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        collection: country_matrix
+                      </span>
+                      <span className={`px-2 py-0.5 text-[10px] font-mono font-bold ${
+                        (collectionCounts.country_matrix ?? 0) > 0
+                          ? "bg-emerald-950/60 text-emerald-300 border border-emerald-500/40"
+                          : "bg-amber-950/60 text-amber-300 border border-amber-500/40"
+                      }`}>
+                        {collectionCounts.country_matrix ?? "..."} docs
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-lg text-[#EDE6D3]">Master Country Matrix (193 Nations)</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
+                      Complete baseline portfolio seats across UNCOPUOS, UNHRC, UNODC, NES'75, UNGA, UNDP, and IP. Rendered live in <code className="text-[#C9A86A]">CountryMatrix.tsx</code> and merged with dynamic reservation states in <code className="text-[#C9A86A]">portfolio_states</code>.
+                    </p>
+                  </div>
+                  <div className="pt-4 mt-4 border-t border-[#C9A86A]/20 flex items-center justify-between">
+                    <span className="font-sans text-[11px] text-[#8A9A7E]">Read: Public | Write: Admin</span>
+                    <button
+                      onClick={() => handleSeedIndividual("country_matrix")}
+                      disabled={isSeeding}
+                      className="px-4 py-1.5 border border-[#C9A86A]/50 bg-[#1A1F1A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-xs font-sans text-[#EDE6D3] font-semibold transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      Seed Full Country Matrix
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Transactional Collections (Inquiries, Registrations, Overrides) */}
+            <div className="pt-6">
+              <div className="border-b border-[#C9A86A]/20 pb-3 mb-6">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold block">
+                  // SECTION 02: TRANSACTIONAL REGISTRIES
+                </span>
+                <h3 className="font-serif text-xl font-normal text-[#EDE6D3] mt-1">
+                  Live Intake & Submission Records (Direct Ingestion)
+                </h3>
+                <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                  Public registrations and inquiries submitted via portals are streamed in real time to these collections.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Delegate Registrations */}
+                <div className="bg-[#2E3B2F]/60 border border-[#C9A86A]/30 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        registrations
+                      </span>
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-[#1A1F1A] text-[#EDE6D3] border border-[#C9A86A]/30">
+                        {collectionCounts.registrations ?? registrations.length} records
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-base text-[#EDE6D3]">Delegates & Contingents</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                      Submitted via Registration Modal. Stores delegate credentials, committee choices, contingent tickets, and payment verification.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#C9A86A]/20">
+                    <button
+                      onClick={() => setActiveSubTab("registrations")}
+                      className="text-xs font-sans text-[#C9A86A] hover:underline cursor-pointer"
+                    >
+                      View in Ledger &rarr;
+                    </button>
+                    <span className="text-[10px] font-mono text-[#8A9A7E]">Live Submissions</span>
+                  </div>
+                </div>
+
+                {/* Executive Board */}
+                <div className="bg-[#2E3B2F]/60 border border-[#C9A86A]/30 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        eb_registrations
+                      </span>
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-[#1A1F1A] text-[#EDE6D3] border border-[#C9A86A]/30">
+                        {collectionCounts.eb_registrations ?? ebRegistrations.length} applications
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-base text-[#EDE6D3]">Executive Board Dossiers</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                      Submitted via RegisterPortal. Stores EB candidatures, past chairing accolades, study guide samples, and agendas.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#C9A86A]/20">
+                    <button
+                      onClick={() => setActiveSubTab("eb")}
+                      className="text-xs font-sans text-[#C9A86A] hover:underline cursor-pointer"
+                    >
+                      View Dossiers &rarr;
+                    </button>
+                    <span className="text-[10px] font-mono text-[#8A9A7E]">Live Submissions</span>
+                  </div>
+                </div>
+
+                {/* Campus Ambassadors */}
+                <div className="bg-[#2E3B2F]/60 border border-[#C9A86A]/30 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        campus_ambassador_registrations
+                      </span>
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-[#1A1F1A] text-[#EDE6D3] border border-[#C9A86A]/30">
+                        {collectionCounts.campus_ambassador_registrations ?? caRegistrations.length} ambassadors
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-base text-[#EDE6D3]">Campus Ambassadors</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                      Submitted via RegisterPortal. Stores campus leads, mobilization targets, social profiles, and promo strategies.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#C9A86A]/20">
+                    <button
+                      onClick={() => setActiveSubTab("campus-ambassador")}
+                      className="text-xs font-sans text-[#C9A86A] hover:underline cursor-pointer"
+                    >
+                      View Ambassadors &rarr;
+                    </button>
+                    <span className="text-[10px] font-mono text-[#8A9A7E]">Live Submissions</span>
+                  </div>
+                </div>
+
+                {/* Diplomacy Workshop */}
+                <div className="bg-[#2E3B2F]/60 border border-[#C9A86A]/30 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        workshop_registrations
+                      </span>
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-[#1A1F1A] text-[#EDE6D3] border border-[#C9A86A]/30">
+                        {collectionCounts.workshop_registrations ?? workshopRegistrations.length} cohorts
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-base text-[#EDE6D3]">Diplomacy Workshop</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                      Stores school delegations, student counts, teacher-in-charge contacts, and training requests.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#C9A86A]/20">
+                    <button
+                      onClick={() => setActiveSubTab("workshop")}
+                      className="text-xs font-sans text-[#C9A86A] hover:underline cursor-pointer"
+                    >
+                      View Cohorts &rarr;
+                    </button>
+                    <span className="text-[10px] font-mono text-[#8A9A7E]">Live Submissions</span>
+                  </div>
+                </div>
+
+                {/* Contact Inquiries */}
+                <div className="bg-[#2E3B2F]/60 border border-[#C9A86A]/30 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        contact_queries
+                      </span>
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-[#1A1F1A] text-[#EDE6D3] border border-[#C9A86A]/30">
+                        {collectionCounts.contact_queries ?? contactQueries.length} dispatches
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-base text-[#EDE6D3]">Contact Queries</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                      Submitted via Home page contact desk. Stores participant inquiries, sponsorships, and secretariat messages.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#C9A86A]/20">
+                    <button
+                      onClick={() => setActiveSubTab("queries")}
+                      className="text-xs font-sans text-[#C9A86A] hover:underline cursor-pointer"
+                    >
+                      View Inquiries &rarr;
+                    </button>
+                    <span className="text-[10px] font-mono text-[#8A9A7E]">Live Submissions</span>
+                  </div>
+                </div>
+
+
+                {/* Portfolio States & Sent Emails */}
+                <div className="bg-[#2E3B2F]/60 border border-[#C9A86A]/30 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        portfolio_states & sent_emails
+                      </span>
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-[#1A1F1A] text-[#EDE6D3] border border-[#C9A86A]/30">
+                        {(collectionCounts.portfolio_states ?? 0) + (collectionCounts.sent_emails ?? 0)} records
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-base text-[#EDE6D3]">Overrides & Mail Receipts</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                      <code className="text-[#C9A86A]">portfolio_states</code> ({collectionCounts.portfolio_states ?? 0}) stores live seat statuses (Available/Assigned/Reserved). <code className="text-[#C9A86A]">sent_emails</code> ({collectionCounts.sent_emails ?? 0}) logs confirmation emails.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#C9A86A]/20">
+                    <span className="text-[11px] text-[#8A9A7E]">System Managed</span>
+                    <button
+                      onClick={() => setActiveSubTab("registrations")}
+                      className="text-xs font-sans text-[#C9A86A] hover:underline cursor-pointer"
+                    >
+                      Inspect Overrides &rarr;
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Inspection Modal */}
         {selectedReg && (
           <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in" id="admin-inspector-modal">
@@ -1668,6 +3129,606 @@ export default function AdminDashboard() {
                     ) : (
                       "Purge"
                     )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EB Application Detailed Inspection Modal */}
+        {selectedEb && (
+          <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in">
+            <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
+              <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-3xl w-full p-6 sm:p-8 relative shadow-2xl my-8 text-left">
+                <div className="absolute right-4 top-4">
+                  <button
+                    onClick={() => setSelectedEb(null)}
+                    className="p-1.5 border border-[#C9A86A]/40 bg-[#1A1F1A] hover:border-[#C9A86A] text-[#EDE6D3] hover:text-[#C9A86A] transition-all cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Header */}
+                <div className="border-b border-[#C9A86A]/30 pb-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  {selectedEb.photoUrl ? (
+                    <img
+                      src={selectedEb.photoUrl}
+                      alt={selectedEb.name}
+                      className="w-16 h-16 rounded-sm object-cover border-2 border-[#C9A86A] shadow-md flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-sm bg-[#1A1F1A] border-2 border-[#C9A86A]/50 flex items-center justify-center text-[#C9A86A] flex-shrink-0 font-serif text-2xl font-bold">
+                      {selectedEb.name.charAt(0)}
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                        // EB APPLICATION DOSSIER: {selectedEb.id}
+                      </span>
+                      <span className={`px-2 py-0.5 text-[9px] font-bold font-sans uppercase border ${
+                        selectedEb.status === "Accepted"
+                          ? "bg-emerald-950/60 text-emerald-300 border-emerald-500/40"
+                          : selectedEb.status === "Shortlisted"
+                          ? "bg-blue-950/60 text-blue-300 border-blue-500/40"
+                          : selectedEb.status === "Interview Scheduled"
+                          ? "bg-purple-950/60 text-purple-300 border-purple-500/40"
+                          : selectedEb.status === "Rejected"
+                          ? "bg-rose-950/60 text-rose-300 border-rose-500/40"
+                          : "bg-amber-950/60 text-amber-300 border-amber-500/40"
+                      }`}>
+                        {selectedEb.status}
+                      </span>
+                    </div>
+
+                    <h3 className="font-serif text-2xl font-normal text-[#EDE6D3] truncate">
+                      {selectedEb.name}
+                    </h3>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-0.5">
+                      {selectedEb.institution} • {selectedEb.course} ({selectedEb.yearOfStudy})
+                    </p>
+                  </div>
+                </div>
+
+                {/* Body Content */}
+                <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+                  {/* Contact Info & Academic */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4">
+                    <div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Email Address</span>
+                      <a href={`mailto:${selectedEb.email}`} className="text-xs font-mono text-[#EDE6D3] hover:text-[#C9A86A] flex items-center gap-1.5 mt-0.5">
+                        <Mail className="h-3 w-3 text-[#C9A86A]" />
+                        {selectedEb.email}
+                      </a>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Phone / WhatsApp</span>
+                      <a href={`tel:${selectedEb.phone}`} className="text-xs font-mono text-[#EDE6D3] hover:text-[#C9A86A] flex items-center gap-1.5 mt-0.5">
+                        <Phone className="h-3 w-3 text-[#C9A86A]" />
+                        {selectedEb.phone}
+                      </a>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">City & State</span>
+                      <span className="text-xs text-[#EDE6D3] flex items-center gap-1.5 mt-0.5">
+                        <MapPin className="h-3 w-3 text-[#8A9A7E]" />
+                        {selectedEb.cityState}
+                      </span>
+                    </div>
+                    {selectedEb.linkedinProfile && (
+                      <div>
+                        <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">LinkedIn Profile</span>
+                        <a
+                          href={selectedEb.linkedinProfile.startsWith("http") ? selectedEb.linkedinProfile : `https://${selectedEb.linkedinProfile}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-[#C9A86A] hover:underline flex items-center gap-1.5 mt-0.5 truncate"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          {selectedEb.linkedinProfile}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Role & Committee Preferences */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-[#1A1F1A] border-l-2 border-[#C9A86A] p-3.5">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold block">
+                        First Preference
+                      </span>
+                      <div className="mt-1 font-serif text-base text-[#EDE6D3]">
+                        {selectedEb.pref1Role}
+                      </div>
+                      <div className="font-sans text-xs text-[#8A9A7E]">
+                        Committee: <strong className="text-[#EDE6D3]">{selectedEb.pref1Committee}</strong>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#1A1F1A] border-l-2 border-[#8A9A7E] p-3.5">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] font-bold block">
+                        Second Preference
+                      </span>
+                      <div className="mt-1 font-serif text-base text-[#EDE6D3]">
+                        {selectedEb.pref2Role}
+                      </div>
+                      <div className="font-sans text-xs text-[#8A9A7E]">
+                        Committee: <strong className="text-[#EDE6D3]">{selectedEb.pref2Committee}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* MUN Experience */}
+                  <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4">
+                    <div className="flex items-center gap-4 border-b border-[#8A9A7E]/20 pb-2 mb-3">
+                      <div>
+                        <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Delegate Experience</span>
+                        <span className="text-sm font-serif font-bold text-[#C9A86A]">{selectedEb.munDelegateCount} Conferences</span>
+                      </div>
+                      <div className="h-6 w-px bg-[#8A9A7E]/30" />
+                      <div>
+                        <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">EB / Dais Experience</span>
+                        <span className="text-sm font-serif font-bold text-[#C9A86A]">{selectedEb.munEbCount} Conferences</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                        Experience Summary & Dais History:
+                      </span>
+                      <div className="font-sans text-xs text-[#EDE6D3] whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto bg-[#141814] p-3 border border-[#8A9A7E]/20">
+                        {selectedEb.experienceSummary || "No detailed history submitted."}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Proposed Agendas & Motivation */}
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                        Proposed Committee Agendas:
+                      </span>
+                      <div className="font-sans text-xs text-[#EDE6D3] whitespace-pre-wrap leading-relaxed bg-[#1A1F1A] p-3.5 border border-[#8A9A7E]/20">
+                        {selectedEb.proposedAgendas}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                        Motivation & Academic Vision:
+                      </span>
+                      <div className="font-sans text-xs text-[#EDE6D3] whitespace-pre-wrap leading-relaxed bg-[#1A1F1A] p-3.5 border border-[#8A9A7E]/20">
+                        {selectedEb.motivation}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Documents & File Attachments */}
+                  <div className="bg-[#1A1F1A] border border-[#C9A86A]/30 p-4">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-[#C9A86A] font-bold block mb-3">
+                      // ATTACHED CREDENTIALS & FILES
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* CV File */}
+                      <div className="border border-[#8A9A7E]/30 p-3 bg-[#141814] flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <FileText className="h-5 w-5 text-[#C9A86A] flex-shrink-0" />
+                          <div className="min-w-0">
+                            <span className="text-xs text-[#EDE6D3] font-medium block truncate">
+                              {selectedEb.cvName || "Curriculum Vitae"}
+                            </span>
+                            <span className="text-[10px] font-mono text-[#8A9A7E]">Executive CV / Resume</span>
+                          </div>
+                        </div>
+                        {selectedEb.cvUrl ? (
+                          <a
+                            href={selectedEb.cvUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={selectedEb.cvName || `${selectedEb.name}_CV`}
+                            className="px-3 py-1.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-[10px] font-bold font-sans uppercase tracking-wider transition-colors inline-flex items-center gap-1 flex-shrink-0"
+                          >
+                            <Download className="h-3 w-3" />
+                            <span>View / Download</span>
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-[#8A9A7E] italic">Not attached</span>
+                        )}
+                      </div>
+
+                      {/* Photo */}
+                      <div className="border border-[#8A9A7E]/30 p-3 bg-[#141814] flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <ImageIcon className="h-5 w-5 text-[#C9A86A] flex-shrink-0" />
+                          <div className="min-w-0">
+                            <span className="text-xs text-[#EDE6D3] font-medium block truncate">
+                              {selectedEb.photoName || "Official Photo"}
+                            </span>
+                            <span className="text-[10px] font-mono text-[#8A9A7E]">High-res Portrait</span>
+                          </div>
+                        </div>
+                        {selectedEb.photoUrl ? (
+                          <a
+                            href={selectedEb.photoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 border border-[#C9A86A] text-[#C9A86A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-[10px] font-bold font-sans uppercase tracking-wider transition-colors inline-flex items-center gap-1 flex-shrink-0"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            <span>Full Image</span>
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-[#8A9A7E] italic">Not attached</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedEb.sampleStudyGuideLink && (
+                      <div className="mt-3 pt-3 border-t border-[#8A9A7E]/20">
+                        <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block mb-1">
+                          Sample Study Guide / Background Guide Link:
+                        </span>
+                        <a
+                          href={selectedEb.sampleStudyGuideLink.startsWith("http") ? selectedEb.sampleStudyGuideLink : `https://${selectedEb.sampleStudyGuideLink}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-[#C9A86A] hover:underline flex items-center gap-1.5 break-all"
+                        >
+                          <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                          {selectedEb.sampleStudyGuideLink}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Status Update & Action Footer */}
+                <div className="mt-6 pt-5 border-t border-[#C9A86A]/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] mr-1">
+                      Set Status:
+                    </span>
+                    {(["Shortlisted", "Interview Scheduled", "Accepted", "Rejected", "Pending"] as const).map((statusOption) => (
+                      <button
+                        key={statusOption}
+                        disabled={isUpdatingEbStatus || selectedEb.status === statusOption}
+                        onClick={() => handleUpdateEbStatus(selectedEb.id, statusOption)}
+                        className={`px-2.5 py-1 text-[10px] font-sans font-bold uppercase tracking-wider border transition-all cursor-pointer disabled:opacity-40 ${
+                          selectedEb.status === statusOption
+                            ? "bg-[#C9A86A] text-[#1A1F1A] border-[#C9A86A]"
+                            : "bg-[#1A1F1A] text-[#EDE6D3] border-[#8A9A7E]/30 hover:border-[#C9A86A]"
+                        }`}
+                      >
+                        {statusOption}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2 justify-end">
+                    <button
+                      onClick={() => setConfirmEbDeleteId(selectedEb.id)}
+                      className="px-3.5 py-2 border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 text-xs font-sans uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => setSelectedEb(null)}
+                      className="px-5 py-2 border border-[#C9A86A]/40 bg-[#1A1F1A] text-[#EDE6D3] hover:text-[#C9A86A] text-xs font-sans uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EB Delete Confirmation Modal */}
+        {confirmEbDeleteId && (
+          <div className="fixed inset-0 z-[110] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in">
+            <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
+              <div className="bg-[#2E3B2F] border-2 border-rose-500/50 max-w-sm w-full p-6 text-center relative shadow-2xl my-8">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center bg-[#1A1F1A] border border-rose-500/40 text-rose-400 mb-4">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <h3 className="font-serif text-xl font-normal text-[#EDE6D3]">Purge EB Application?</h3>
+                <p className="mt-2 font-sans text-[#8A9A7E] text-xs leading-relaxed">
+                  Are you certain you want to purge application record <strong className="text-[#EDE6D3] font-mono">{confirmEbDeleteId}</strong>? All submitted dossiers and uploaded file associations will be deleted.
+                </p>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setConfirmEbDeleteId(null)}
+                    className="flex-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] hover:bg-[#1A1F1A]/80 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleDeleteEb(confirmEbDeleteId)}
+                    className="flex-1 bg-rose-700 hover:bg-rose-600 py-2.5 text-xs font-semibold uppercase tracking-wider text-white shadow-md transition-all cursor-pointer"
+                  >
+                    Purge
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Campus Ambassador Detailed Inspection Modal */}
+        {selectedCa && (
+          <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in">
+            <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
+              <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-3xl w-full p-6 sm:p-8 relative shadow-2xl my-8 text-left">
+                <div className="absolute right-4 top-4">
+                  <button
+                    onClick={() => setSelectedCa(null)}
+                    className="p-1.5 border border-[#C9A86A]/40 bg-[#1A1F1A] hover:border-[#C9A86A] text-[#EDE6D3] hover:text-[#C9A86A] transition-all cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Header */}
+                <div className="border-b border-[#C9A86A]/30 pb-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  {selectedCa.photoUrl ? (
+                    <img
+                      src={selectedCa.photoUrl}
+                      alt={selectedCa.name}
+                      className="w-16 h-16 rounded-sm object-cover border-2 border-[#C9A86A] shadow-md flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-sm bg-[#1A1F1A] border-2 border-[#C9A86A]/50 flex items-center justify-center text-[#C9A86A] flex-shrink-0 font-serif text-2xl font-bold">
+                      {selectedCa.name.charAt(0)}
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                        // CA FELLOWSHIP REGISTRATION: {selectedCa.id}
+                      </span>
+                      <span className={`px-2 py-0.5 text-[9px] font-bold font-sans uppercase border ${
+                        selectedCa.status === "Accepted"
+                          ? "bg-emerald-950/60 text-emerald-300 border-emerald-500/40"
+                          : selectedCa.status === "Verified"
+                          ? "bg-blue-950/60 text-blue-300 border-blue-500/40"
+                          : selectedCa.status === "Shortlisted"
+                          ? "bg-purple-950/60 text-purple-300 border-purple-500/40"
+                          : selectedCa.status === "Rejected"
+                          ? "bg-rose-950/60 text-rose-300 border-rose-500/40"
+                          : "bg-amber-950/60 text-amber-300 border-amber-500/40"
+                      }`}>
+                        {selectedCa.status}
+                      </span>
+                    </div>
+
+                    <h3 className="font-serif text-2xl font-normal text-[#EDE6D3] truncate">
+                      {selectedCa.name}
+                    </h3>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-0.5">
+                      {selectedCa.institution} • {selectedCa.course} ({selectedCa.yearOfStudy})
+                    </p>
+                  </div>
+                </div>
+
+                {/* Body Content */}
+                <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+                  {/* Contact Info */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4">
+                    <div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Email Address</span>
+                      <a href={`mailto:${selectedCa.email}`} className="text-xs font-mono text-[#EDE6D3] hover:text-[#C9A86A] flex items-center gap-1.5 mt-0.5">
+                        <Mail className="h-3 w-3 text-[#C9A86A]" />
+                        {selectedCa.email}
+                      </a>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Phone / WhatsApp</span>
+                      <a href={`tel:${selectedCa.phone}`} className="text-xs font-mono text-[#EDE6D3] hover:text-[#C9A86A] flex items-center gap-1.5 mt-0.5">
+                        <Phone className="h-3 w-3 text-[#C9A86A]" />
+                        {selectedCa.phone}
+                      </a>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">City & State</span>
+                      <span className="text-xs text-[#EDE6D3] flex items-center gap-1.5 mt-0.5">
+                        <MapPin className="h-3 w-3 text-[#8A9A7E]" />
+                        {selectedCa.cityState}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Target Mobilization</span>
+                      <span className="text-xs font-bold text-[#C9A86A] flex items-center gap-1.5 mt-0.5">
+                        <Users className="h-3 w-3 text-[#C9A86A]" />
+                        {selectedCa.targetMobilization} Delegates Expected
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Campus & Social Background */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-3.5">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                        Active College Clubs & Societies:
+                      </span>
+                      <div className="font-sans text-xs text-[#EDE6D3]">
+                        {selectedCa.collegeClubs || "None specified"}
+                      </div>
+                    </div>
+
+                    <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-3.5">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                        Social Handles / Profiles:
+                      </span>
+                      <div className="font-sans text-xs text-[#EDE6D3] break-all">
+                        {selectedCa.socialHandles || "None specified"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Prior Experience */}
+                  <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                      Prior Campus Ambassador / Outreach Experience:
+                    </span>
+                    <div className="font-sans text-xs text-[#EDE6D3] whitespace-pre-wrap leading-relaxed">
+                      {selectedCa.priorCaExperience || "First-time campus ambassador applicant."}
+                    </div>
+                  </div>
+
+                  {/* Promotion Plan & Motivation */}
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                        Mobilization & Promotion Strategy:
+                      </span>
+                      <div className="font-sans text-xs text-[#EDE6D3] whitespace-pre-wrap leading-relaxed bg-[#1A1F1A] p-3.5 border border-[#8A9A7E]/20">
+                        {selectedCa.promotionPlan}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                        Motivation for Joining Fellowship:
+                      </span>
+                      <div className="font-sans text-xs text-[#EDE6D3] whitespace-pre-wrap leading-relaxed bg-[#1A1F1A] p-3.5 border border-[#8A9A7E]/20">
+                        {selectedCa.motivation}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Documents & File Attachments */}
+                  <div className="bg-[#1A1F1A] border border-[#C9A86A]/30 p-4">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-[#C9A86A] font-bold block mb-3">
+                      // ATTACHED VERIFICATION ASSETS
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Photo */}
+                      <div className="border border-[#8A9A7E]/30 p-3 bg-[#141814] flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <ImageIcon className="h-5 w-5 text-[#C9A86A] flex-shrink-0" />
+                          <div className="min-w-0">
+                            <span className="text-xs text-[#EDE6D3] font-medium block truncate">
+                              {selectedCa.photoName || "Ambassador Photo"}
+                            </span>
+                            <span className="text-[10px] font-mono text-[#8A9A7E]">Profile Portrait</span>
+                          </div>
+                        </div>
+                        {selectedCa.photoUrl ? (
+                          <a
+                            href={selectedCa.photoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 border border-[#C9A86A] text-[#C9A86A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-[10px] font-bold font-sans uppercase tracking-wider transition-colors inline-flex items-center gap-1 flex-shrink-0"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            <span>View Photo</span>
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-[#8A9A7E] italic">Not attached</span>
+                        )}
+                      </div>
+
+                      {/* ID Proof */}
+                      <div className="border border-[#8A9A7E]/30 p-3 bg-[#141814] flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <FileText className="h-5 w-5 text-[#C9A86A] flex-shrink-0" />
+                          <div className="min-w-0">
+                            <span className="text-xs text-[#EDE6D3] font-medium block truncate">
+                              {selectedCa.idProofName || "College ID / Student Card"}
+                            </span>
+                            <span className="text-[10px] font-mono text-[#8A9A7E]">Institutional Proof</span>
+                          </div>
+                        </div>
+                        {selectedCa.idProofUrl ? (
+                          <a
+                            href={selectedCa.idProofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={selectedCa.idProofName || `${selectedCa.name}_IDProof`}
+                            className="px-3 py-1.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-[10px] font-bold font-sans uppercase tracking-wider transition-colors inline-flex items-center gap-1 flex-shrink-0"
+                          >
+                            <Download className="h-3 w-3" />
+                            <span>View / Download</span>
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-[#8A9A7E] italic">Not attached</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Update & Action Footer */}
+                <div className="mt-6 pt-5 border-t border-[#C9A86A]/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] mr-1">
+                      Set Status:
+                    </span>
+                    {(["Verified", "Shortlisted", "Accepted", "Rejected", "Pending"] as const).map((statusOption) => (
+                      <button
+                        key={statusOption}
+                        disabled={isUpdatingCaStatus || selectedCa.status === statusOption}
+                        onClick={() => handleUpdateCaStatus(selectedCa.id, statusOption)}
+                        className={`px-2.5 py-1 text-[10px] font-sans font-bold uppercase tracking-wider border transition-all cursor-pointer disabled:opacity-40 ${
+                          selectedCa.status === statusOption
+                            ? "bg-[#C9A86A] text-[#1A1F1A] border-[#C9A86A]"
+                            : "bg-[#1A1F1A] text-[#EDE6D3] border-[#8A9A7E]/30 hover:border-[#C9A86A]"
+                        }`}
+                      >
+                        {statusOption}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2 justify-end">
+                    <button
+                      onClick={() => setConfirmCaDeleteId(selectedCa.id)}
+                      className="px-3.5 py-2 border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 text-xs font-sans uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => setSelectedCa(null)}
+                      className="px-5 py-2 border border-[#C9A86A]/40 bg-[#1A1F1A] text-[#EDE6D3] hover:text-[#C9A86A] text-xs font-sans uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CA Delete Confirmation Modal */}
+        {confirmCaDeleteId && (
+          <div className="fixed inset-0 z-[110] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in">
+            <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
+              <div className="bg-[#2E3B2F] border-2 border-rose-500/50 max-w-sm w-full p-6 text-center relative shadow-2xl my-8">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center bg-[#1A1F1A] border border-rose-500/40 text-rose-400 mb-4">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <h3 className="font-serif text-xl font-normal text-[#EDE6D3]">Purge CA Registration?</h3>
+                <p className="mt-2 font-sans text-[#8A9A7E] text-xs leading-relaxed">
+                  Are you certain you want to purge campus ambassador record <strong className="text-[#EDE6D3] font-mono">{confirmCaDeleteId}</strong>? This action cannot be undone.
+                </p>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setConfirmCaDeleteId(null)}
+                    className="flex-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] hover:bg-[#1A1F1A]/80 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCa(confirmCaDeleteId)}
+                    className="flex-1 bg-rose-700 hover:bg-rose-600 py-2.5 text-xs font-semibold uppercase tracking-wider text-white shadow-md transition-all cursor-pointer"
+                  >
+                    Purge
                   </button>
                 </div>
               </div>

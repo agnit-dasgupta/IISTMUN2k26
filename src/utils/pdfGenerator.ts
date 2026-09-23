@@ -172,7 +172,7 @@ export async function downloadBoardingPassPDF(options: PDFExportOptions): Promis
       pdf.setFontSize(11);
       pdf.setTextColor(168, 85, 247);
       pdf.text(
-        `${(details.chamber || "COPUOS").toUpperCase()} — Preferred: ${
+        `${(details.chamber || "UNCOPUOS").toUpperCase()} — Preferred: ${
           details.preferredCountry || "India"
         }`,
         25,

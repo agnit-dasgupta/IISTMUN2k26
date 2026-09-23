@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from "react";
 import { COUNTRY_MATRIX } from "../data";
-import { CountryMatrixRow, PortfolioStatus } from "../types";
+import { CountryMatrixRow, PortfolioStatus, CommitteeId } from "../types";
 import { Search, CheckCircle2, AlertCircle, ShieldAlert, Filter, Table, Globe, Sparkles, Clock, Ban, Compass } from "lucide-react";
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -13,18 +13,33 @@ import SatelliteCarousel from "./SatelliteCarousel";
 import { motion } from "motion/react";
 
 interface CountryMatrixProps {
-  onSelectPreference?: (country: string, committee: "copuos" | "disec" | "aippm" | "unsc") => void;
+  onSelectPreference?: (country: string, committee: CommitteeId) => void;
 }
 
+const COMMITTEES_LIST: CommitteeId[] = ["uncopuos", "unhrc", "unodc", "nes75", "unga", "undp", "ip"];
+
 export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps) {
+  const [matrixRows, setMatrixRows] = useState<CountryMatrixRow[]>(COUNTRY_MATRIX);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | PortfolioStatus>("All");
-  const [activeCommitteeCol, setActiveCommitteeCol] = useState<"all" | "copuos" | "disec" | "aippm" | "unsc">("all");
-  const [portfolioOverrides, setPortfolioOverrides] = useState<Record<string, Partial<Record<"copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>>({});
+  const [activeCommitteeCol, setActiveCommitteeCol] = useState<"all" | CommitteeId>("all");
+  const [portfolioOverrides, setPortfolioOverrides] = useState<Record<string, Partial<Record<CommitteeId | "copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>>({});
   const [viewMode, setViewMode] = useState<"ledger" | "constellation">("ledger");
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "portfolio_states"), (snapshot) => {
+    const unsubMatrix = onSnapshot(collection(db, "country_matrix"), (snapshot) => {
+      if (!snapshot.empty) {
+        const rows: CountryMatrixRow[] = [];
+        snapshot.forEach((docSnap) => {
+          rows.push(docSnap.data() as CountryMatrixRow);
+        });
+        setMatrixRows(rows);
+      }
+    }, (err) => {
+      console.warn("Firestore country_matrix subscription notice:", err);
+    });
+
+    const unsubscribeOverrides = onSnapshot(collection(db, "portfolio_states"), (snapshot) => {
       const overrides: typeof portfolioOverrides = {};
       snapshot.forEach((doc) => {
         overrides[doc.id] = doc.data() as any;
@@ -34,11 +49,14 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
       console.error("Error loading portfolio overrides:", error instanceof Error ? error.message : "Fetch error");
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubMatrix();
+      unsubscribeOverrides();
+    };
   }, []);
 
-  const getPortfolioStatus = (row: CountryMatrixRow, committee: "copuos" | "disec" | "aippm" | "unsc"): PortfolioStatus => {
-    return portfolioOverrides[row.country]?.[committee] ?? row[committee];
+  const getPortfolioStatus = (row: CountryMatrixRow, committee: CommitteeId): PortfolioStatus => {
+    return (portfolioOverrides[row.country]?.[committee] ?? row[committee]) || "N/A";
   };
 
   const getStatusBadge = (status: PortfolioStatus) => {
@@ -83,23 +101,15 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
     }
   };
 
-  const filteredMatrix = COUNTRY_MATRIX.filter((row) => {
+  const filteredMatrix = matrixRows.filter((row) => {
     const matchesSearch = row.country.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (statusFilter === "All") return matchesSearch;
 
-    const statusCopuos = getPortfolioStatus(row, "copuos");
-    const statusDisec = getPortfolioStatus(row, "disec");
-    const statusAippm = getPortfolioStatus(row, "aippm");
-    const statusUnsc = getPortfolioStatus(row, "unsc");
-
     if (activeCommitteeCol === "all") {
       return (
         matchesSearch &&
-        (statusCopuos === statusFilter ||
-          statusDisec === statusFilter ||
-          statusAippm === statusFilter ||
-          statusUnsc === statusFilter)
+        COMMITTEES_LIST.some((c) => getPortfolioStatus(row, c) === statusFilter)
       );
     } else {
       const activeStatus = getPortfolioStatus(row, activeCommitteeCol);
@@ -127,10 +137,10 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
             </span>
           </div>
           <h1 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide mt-2">
-            Country & Leader Allocation Ledger
+            Country &amp; Leader Allocation Ledger
           </h1>
           <p className="mt-3 max-w-2xl font-sans text-xs sm:text-sm text-[#8A9A7E] leading-relaxed font-light">
-            Search for preferred sovereign states or parliamentary leaders across our four chambers. Verify real-time availability and select portfolios for your delegation application.
+            Live portfolio and country availability across all seven simulation chambers.
           </p>
 
           {/* View Mode Toggle */}
@@ -212,10 +222,13 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
                     className="bg-transparent font-sans text-[10px] uppercase tracking-wider text-[#EDE6D3] pr-2 py-0.5 outline-none border-none cursor-pointer"
                   >
                     <option value="all" className="bg-[#1A1F1A] text-[#EDE6D3]">All Councils</option>
-                    <option value="copuos" className="bg-[#1A1F1A] text-[#EDE6D3]">COPUOS</option>
-                    <option value="disec" className="bg-[#1A1F1A] text-[#EDE6D3]">UNGA DISEC</option>
-                    <option value="aippm" className="bg-[#1A1F1A] text-[#EDE6D3]">AIPPM</option>
-                    <option value="unsc" className="bg-[#1A1F1A] text-[#EDE6D3]">UNSC</option>
+                    <option value="uncopuos" className="bg-[#1A1F1A] text-[#EDE6D3]">UNCOPUOS</option>
+                    <option value="unhrc" className="bg-[#1A1F1A] text-[#EDE6D3]">UNHRC</option>
+                    <option value="unodc" className="bg-[#1A1F1A] text-[#EDE6D3]">UNODC</option>
+                    <option value="nes75" className="bg-[#1A1F1A] text-[#EDE6D3]">NES'75</option>
+                    <option value="unga" className="bg-[#1A1F1A] text-[#EDE6D3]">UNGA</option>
+                    <option value="undp" className="bg-[#1A1F1A] text-[#EDE6D3]">UNDP</option>
+                    <option value="ip" className="bg-[#1A1F1A] text-[#EDE6D3]">IP</option>
                   </select>
                 </div>
               </div>
@@ -223,24 +236,33 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
 
             {/* Matrix Table */}
             <div className="overflow-x-auto border border-[#C9A86A]/30 bg-[#2E3B2F] shadow-xl">
-              <table className="w-full min-w-[700px] border-collapse text-left font-sans text-xs">
+              <table className="w-full min-w-[900px] border-collapse text-left font-sans text-xs">
                 <thead>
                   <tr className="border-b border-[#C9A86A]/30 bg-[#1A1F1A] font-sans text-[10px] uppercase tracking-[0.18em] text-[#C9A86A]">
-                    <th className="px-6 py-4 font-semibold flex items-center gap-2">
+                    <th className="px-4 py-4 font-semibold flex items-center gap-2">
                       <Globe className="h-4 w-4 text-[#C9A86A]" />
                       Nation / Portfolio
                     </th>
-                    <th className={`px-6 py-4 font-semibold ${activeCommitteeCol === "copuos" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
-                      UN COPUOS
+                    <th className={`px-3 py-4 font-semibold ${activeCommitteeCol === "uncopuos" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
+                      UNCOPUOS
                     </th>
-                    <th className={`px-6 py-4 font-semibold ${activeCommitteeCol === "disec" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
-                      UNGA DISEC
+                    <th className={`px-3 py-4 font-semibold ${activeCommitteeCol === "unhrc" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
+                      UNHRC
                     </th>
-                    <th className={`px-6 py-4 font-semibold ${activeCommitteeCol === "aippm" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
-                      AIPPM (India)
+                    <th className={`px-3 py-4 font-semibold ${activeCommitteeCol === "unodc" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
+                      UNODC
                     </th>
-                    <th className={`px-6 py-4 font-semibold ${activeCommitteeCol === "unsc" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
-                      UNSC
+                    <th className={`px-3 py-4 font-semibold ${activeCommitteeCol === "nes75" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
+                      NES'75
+                    </th>
+                    <th className={`px-3 py-4 font-semibold ${activeCommitteeCol === "unga" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
+                      UNGA
+                    </th>
+                    <th className={`px-3 py-4 font-semibold ${activeCommitteeCol === "undp" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
+                      UNDP
+                    </th>
+                    <th className={`px-3 py-4 font-semibold ${activeCommitteeCol === "ip" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
+                      IP
                     </th>
                   </tr>
                 </thead>
@@ -251,30 +273,42 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
                         key={row.country}
                         className="hover:bg-[#1A1F1A]/50 transition-colors"
                       >
-                        <td className="px-6 py-3.5 font-serif text-sm text-[#EDE6D3] font-normal">
+                        <td className="px-4 py-3.5 font-serif text-sm text-[#EDE6D3] font-normal whitespace-nowrap">
                           {row.country}
                         </td>
 
-                        <td className={`px-6 py-3.5 ${activeCommitteeCol === "copuos" ? "bg-[#C9A86A]/5" : ""}`}>
-                          {getStatusBadge(getPortfolioStatus(row, "copuos"))}
+                        <td className={`px-3 py-3.5 ${activeCommitteeCol === "uncopuos" ? "bg-[#C9A86A]/5" : ""}`}>
+                          {getStatusBadge(getPortfolioStatus(row, "uncopuos"))}
                         </td>
 
-                        <td className={`px-6 py-3.5 ${activeCommitteeCol === "disec" ? "bg-[#C9A86A]/5" : ""}`}>
-                          {getStatusBadge(getPortfolioStatus(row, "disec"))}
+                        <td className={`px-3 py-3.5 ${activeCommitteeCol === "unhrc" ? "bg-[#C9A86A]/5" : ""}`}>
+                          {getStatusBadge(getPortfolioStatus(row, "unhrc"))}
                         </td>
 
-                        <td className={`px-6 py-3.5 ${activeCommitteeCol === "aippm" ? "bg-[#C9A86A]/5" : ""}`}>
-                          {getStatusBadge(getPortfolioStatus(row, "aippm"))}
+                        <td className={`px-3 py-3.5 ${activeCommitteeCol === "unodc" ? "bg-[#C9A86A]/5" : ""}`}>
+                          {getStatusBadge(getPortfolioStatus(row, "unodc"))}
                         </td>
 
-                        <td className={`px-6 py-3.5 ${activeCommitteeCol === "unsc" ? "bg-[#C9A86A]/5" : ""}`}>
-                          {getStatusBadge(getPortfolioStatus(row, "unsc"))}
+                        <td className={`px-3 py-3.5 ${activeCommitteeCol === "nes75" ? "bg-[#C9A86A]/5" : ""}`}>
+                          {getStatusBadge(getPortfolioStatus(row, "nes75"))}
+                        </td>
+
+                        <td className={`px-3 py-3.5 ${activeCommitteeCol === "unga" ? "bg-[#C9A86A]/5" : ""}`}>
+                          {getStatusBadge(getPortfolioStatus(row, "unga"))}
+                        </td>
+
+                        <td className={`px-3 py-3.5 ${activeCommitteeCol === "undp" ? "bg-[#C9A86A]/5" : ""}`}>
+                          {getStatusBadge(getPortfolioStatus(row, "undp"))}
+                        </td>
+
+                        <td className={`px-3 py-3.5 ${activeCommitteeCol === "ip" ? "bg-[#C9A86A]/5" : ""}`}>
+                          {getStatusBadge(getPortfolioStatus(row, "ip"))}
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-[#8A9A7E] font-sans">
+                      <td colSpan={8} className="px-6 py-12 text-center text-[#8A9A7E] font-sans">
                         No portfolios found matching your search parameters.
                       </td>
                     </tr>
