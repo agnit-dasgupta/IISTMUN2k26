@@ -6,14 +6,15 @@ import {defineConfig, Plugin} from 'vite';
 
 function viteUploadPlugin(): Plugin {
   const handleUpload = (req: any, res: any, next: any) => {
-    if (req.url === '/api/upload' && req.method === 'POST') {
+    if (req.url && req.url.startsWith('/api/upload') && req.method === 'POST') {
       let body = '';
       req.on('data', (chunk: any) => {
         body += chunk;
       });
       req.on('end', () => {
         try {
-          const { fileName, fileData } = JSON.parse(body);
+          const payload = typeof req.body === 'object' && req.body !== null ? req.body : JSON.parse(body || '{}');
+          const { fileName, fileData } = payload;
           if (!fileName || !fileData) {
             res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');

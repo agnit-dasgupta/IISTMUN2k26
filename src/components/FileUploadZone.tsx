@@ -15,6 +15,8 @@ import {
   Link2,
   ExternalLink
 } from "lucide-react";
+import { storage } from "../firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 interface FileUploadZoneProps {
   label: string;
@@ -31,7 +33,10 @@ interface FileUploadZoneProps {
 }
 
 /**
- * Reads a File object and optimizes images via canvas for instantaneous upload & compact storage
+ * Reads a File object and optimizes images via canvas for instantaneous upload & compact storage.
+ * - Passport photos are resized to max 450x450 at 0.65 JPEG quality (~15-25 KB).
+ * - Scanned document images are resized to max 900x900 at 0.70 JPEG quality (~50-80 KB).
+ * - PDFs and Word documents are read directly.
  */
 async function readFileAsOptimizedData(file: File, fileType: "image" | "document"): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -39,17 +44,17 @@ async function readFileAsOptimizedData(file: File, fileType: "image" | "document
     reader.onerror = () => reject(new Error("Unable to read selected file"));
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      if (fileType !== "image") {
+      const isImg = file.type.startsWith("image/");
+      if (!isImg) {
         return resolve(dataUrl);
       }
 
-      // Optimize image dimensions and JPEG compression (max 600px, 0.75 quality)
-      // This produces crisp ~25-45KB portraits that will never exceed Firestore limits
       const img = new Image();
       img.onerror = () => resolve(dataUrl);
       img.onload = () => {
         try {
-          const maxDim = 600;
+          const maxDim = fileType === "image" ? 450 : 900;
+          const quality = fileType === "image" ? 0.65 : 0.70;
           let { width, height } = img;
           if (width > maxDim || height > maxDim) {
             if (width > height) {
@@ -66,7 +71,7 @@ async function readFileAsOptimizedData(file: File, fileType: "image" | "document
           const ctx = canvas.getContext("2d");
           if (!ctx) return resolve(dataUrl);
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL("image/jpeg", 0.75));
+          resolve(canvas.toDataURL("image/jpeg", quality));
         } catch {
           resolve(dataUrl);
         }
@@ -81,7 +86,7 @@ export default function FileUploadZone({
   label,
   sublabel,
   accept,
-  maxSizeMB = 8,
+  maxSizeMB = 10,
   fileType,
   valueUrl,
   valueName,
@@ -95,6 +100,7 @@ export default function FileUploadZone({
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadWarning, setUploadWarning] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -112,10 +118,11 @@ export default function FileUploadZone({
 
   const processFile = async (file: File) => {
     setUploadError(null);
+    setUploadWarning(null);
 
-    // Validate file size
+    // Validate file size (maxSizeMB)
     if (file.size > maxSizeMB * 1024 * 1024) {
-      setUploadError(`File is too large. Maximum allowed size is ${maxSizeMB}MB.`);
+      setUploadError(`File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum allowed size is ${maxSizeMB}MB.`);
       return;
     }
 
@@ -126,18 +133,21 @@ export default function FileUploadZone({
     }
 
     setIsUploading(true);
-    setUploadProgress(25);
+    setUploadProgress(20);
 
     try {
       // 1. Read & optimize file data
-      setUploadProgress(50);
+      setUploadProgress(45);
       const fileData = await readFileAsOptimizedData(file, fileType);
-      setUploadProgress(75);
+      let finalUrl = fileData;
+      setUploadProgress(70);
 
-      // 2. Post to /api/upload endpoint
+      let uploadedToServer = false;
+
+      // 2. Try POST /api/upload
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
 
         const response = await fetch("/api/upload", {
           method: "POST",
@@ -153,29 +163,43 @@ export default function FileUploadZone({
         if (response.ok) {
           const resJson = await response.json();
           if (resJson.url) {
-            setUploadProgress(100);
-            onChange(resJson.url, file.name);
-            return;
+            finalUrl = resJson.url;
+            uploadedToServer = true;
           }
         }
-        throw new Error(`Upload server returned status ${response.status}`);
       } catch (uploadErr) {
-        console.warn("Upload server unavailable, evaluating fallback:", uploadErr);
+        // Server endpoint not reachable or running on static hosting; fallback to fileData
+      }
 
-        // Fallback safety check:
-        // Compressed images (~30-60KB) can safely fallback to Base64 in Firestore.
-        if (fileType === "image" && fileData.length < 200000) {
-          setUploadProgress(100);
-          onChange(fileData, file.name);
-          return;
+      // 3. Try Firebase Cloud Storage if /api/upload was not reachable
+      if (!uploadedToServer && storage && storage.app?.options?.storageBucket) {
+        try {
+          const uniqueName = `uploads/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+          const storageRef = ref(storage, uniqueName);
+          const uploadPromise = uploadBytes(storageRef, file);
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Timeout")), 3000)
+          );
+          const snap = await Promise.race([uploadPromise, timeoutPromise]);
+          const dlUrl = await getDownloadURL((snap as any).ref);
+          if (dlUrl) {
+            finalUrl = dlUrl;
+            uploadedToServer = true;
+          }
+        } catch {
+          // Cloud storage not enabled or offline; fallback to fileData
         }
+      }
 
-        // For large documents or when Base64 exceeds 200KB, DO NOT store raw Base64
-        // in Firestore as it would violate Firestore's 1MB document limit.
-        setUploadError(
-          "Upload server could not save document to disk. Please paste a Google Drive / OneDrive link below."
+      // 4. ALWAYS accept the file and call onChange!
+      setUploadProgress(100);
+      onChange(finalUrl, file.name);
+
+      // 5. Informational warning only if a large PDF (> 800KB) is using in-memory Base64
+      if (!uploadedToServer && file.size > 800 * 1024) {
+        setUploadWarning(
+          `Notice: File is ${(file.size / 1024 / 1024).toFixed(1)}MB. If form submission reports a size limit, please compress your PDF (<750KB) or provide a Google Drive link.`
         );
-        setActiveMode("link");
       }
     } catch (err: any) {
       console.error("Error processing file:", err);
@@ -240,7 +264,7 @@ export default function FileUploadZone({
           {required && <span className="text-rose-400 font-bold">*</span>}
         </label>
 
-        {/* Mode Selector for Documents */}
+        {/* Optional Mode Selector for Documents */}
         {!valueUrl && fileType === "document" && (
           <div className="flex items-center gap-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] p-0.5 text-[10px] font-mono">
             <button
@@ -252,7 +276,7 @@ export default function FileUploadZone({
                   : "text-[#8A9A7E] hover:text-[#EDE6D3]"
               }`}
             >
-              File Upload
+              Upload File
             </button>
             <button
               type="button"
@@ -264,7 +288,7 @@ export default function FileUploadZone({
               }`}
             >
               <Link2 className="h-2.5 w-2.5" />
-              <span>Google Drive Link</span>
+              <span>Or Drive Link</span>
             </button>
           </div>
         )}
@@ -390,12 +414,12 @@ export default function FileUploadZone({
               </div>
               <div className="space-y-0.5">
                 <span className="font-sans text-xs text-[#EDE6D3] font-medium block">
-                  Click to browse or drag & drop {fileType === "image" ? "photo" : "CV"} here
+                  Click to browse or drag & drop {fileType === "image" ? "photo" : "file"} here
                 </span>
                 <span className="font-sans text-[11px] text-[#8A9A7E] block">
                   {fileType === "image"
                     ? "Supports JPG, PNG, WEBP (Auto-optimized)"
-                    : "Supports PDF, DOC, DOCX (Max 8MB)"}
+                    : "Supports PDF, DOC, DOCX, Images (Max 10MB)"}
                 </span>
               </div>
             </div>
@@ -407,6 +431,13 @@ export default function FileUploadZone({
         <div className="flex items-center gap-1.5 text-rose-400 text-xs mt-1">
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           <span>{uploadError || error}</span>
+        </div>
+      )}
+
+      {uploadWarning && !uploadError && (
+        <div className="flex items-center gap-1.5 text-amber-300 text-xs mt-1 bg-amber-950/20 p-2 border border-amber-500/30">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+          <span>{uploadWarning}</span>
         </div>
       )}
     </div>

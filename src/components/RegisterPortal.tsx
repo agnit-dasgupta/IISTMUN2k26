@@ -224,7 +224,7 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
 
     // Validate payload size does not exceed Firestore's 1,048,576 bytes (1 MiB) limit
     const payloadBytes = new Blob([JSON.stringify(payload)]).size;
-    if (payloadBytes > 950000) {
+    if (payloadBytes > 1030000) {
       alert(
         `Application payload (${(payloadBytes / 1024 / 1024).toFixed(2)} MB) exceeds the Firestore document limit (1 MB). ` +
         `Please attach a smaller photo or provide a Google Drive / OneDrive link for your CV.`
@@ -291,7 +291,7 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
 
     // Validate payload size does not exceed Firestore's 1,048,576 bytes (1 MiB) limit
     const caPayloadBytes = new Blob([JSON.stringify(payload)]).size;
-    if (caPayloadBytes > 950000) {
+    if (caPayloadBytes > 1030000) {
       alert(
         `Application payload (${(caPayloadBytes / 1024 / 1024).toFixed(2)} MB) exceeds the Firestore document limit (1 MB). ` +
         `Please attach a smaller photo or provide a Google Drive / OneDrive link for your ID proof.`
