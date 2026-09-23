@@ -368,7 +368,7 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
             </div>
             <div className="flex items-center gap-1.5">
               <Phone className="h-3.5 w-3.5 text-[#C9A86A]" />
-              <span>Niranjan Patil (SG): +91 0000000000</span>
+              <span>Niranjan Patil (SG): +91 9881416709</span>
             </div>
           </div>
         </div>
