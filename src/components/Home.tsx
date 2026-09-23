@@ -595,11 +595,11 @@ export default function Home({ setActiveTab }: HomeProps) {
                   </div>
                   <div className="font-serif text-sm text-[#EDE6D3] font-medium">Niranjan Patil</div>
                   <a
-                    href="tel:+918179694807"
+                    href="tel:+919881416709"
                     className="font-mono text-xs text-[#C9A86A] hover:underline flex items-center gap-1.5 pt-1"
                   >
                     <Phone className="h-3 w-3 text-[#8BA06F]" />
-                    <span>+91 94000 00000</span>
+                    <span>+91 9881416709</span>
                   </a>
                 </div>
 
@@ -607,17 +607,35 @@ export default function Home({ setActiveTab }: HomeProps) {
                 <div className="p-3.5 bg-[#2E3B2F]/40 border border-[#8BA06F]/30 space-y-1.5 group hover:border-[#8BA06F] transition-colors">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-[#8BA06F] font-semibold">
-                      Deputy Sec-Gen
+                      Deputy Secretary-General
                     </span>
                     <span className="text-[9px] font-mono text-[#8A9A7E]">DSG</span>
                   </div>
                   <div className="font-serif text-sm text-[#EDE6D3] font-medium"> Ananya Bhat</div>
                   <a
-                    href="tel:+918179694807"
+                    href="tel:+91 70382 90052"
                     className="font-mono text-xs text-[#8BA06F] hover:underline flex items-center gap-1.5 pt-1"
                   >
                     <Phone className="h-3 w-3 text-[#8BA06F]" />
-                    <span>+91 81796 94807</span>
+                    <span>+91 70382 90052</span>
+                  </a>
+                </div>
+
+                {/* Director - General */}
+                <div className="p-3.5 bg-[#2E3B2F]/40 border border-[#8BA06F]/30 space-y-1.5 group hover:border-[#8BA06F] transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#8BA06F] font-semibold">
+                      Director - General
+                    </span>
+                    <span className="text-[9px] font-mono text-[#8A9A7E]">DG</span>
+                  </div>
+                  <div className="font-serif text-sm text-[#EDE6D3] font-medium">Parth Ray</div>
+                  <a
+                    href="tel:+91 84214 01994"
+                    className="font-mono text-xs text-[#8BA06F] hover:underline flex items-center gap-1.5 pt-1"
+                  >
+                    <Phone className="h-3 w-3 text-[#8BA06F]" />
+                    <span>+91 84214 01994</span>
                   </a>
                 </div>
               </div>
