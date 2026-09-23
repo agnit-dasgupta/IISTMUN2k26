@@ -4,7 +4,17 @@
  */
 
 import React, { useState, useRef } from "react";
-import { UploadCloud, CheckCircle2, AlertCircle, X, FileText, Image as ImageIcon, Loader2 } from "lucide-react";
+import {
+  UploadCloud,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  FileText,
+  Image as ImageIcon,
+  Loader2,
+  Link2,
+  ExternalLink
+} from "lucide-react";
 
 interface FileUploadZoneProps {
   label: string;
@@ -21,7 +31,7 @@ interface FileUploadZoneProps {
 }
 
 /**
- * Reads a File object and optimizes large images via canvas for instantaneous upload
+ * Reads a File object and optimizes images via canvas for instantaneous upload & compact storage
  */
 async function readFileAsOptimizedData(file: File, fileType: "image" | "document"): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -33,12 +43,13 @@ async function readFileAsOptimizedData(file: File, fileType: "image" | "document
         return resolve(dataUrl);
       }
 
-      // If it's an image, optimize dimensions so it uploads instantaneously
+      // Optimize image dimensions and JPEG compression (max 600px, 0.75 quality)
+      // This produces crisp ~25-45KB portraits that will never exceed Firestore limits
       const img = new Image();
-      img.onerror = () => resolve(dataUrl); // Fallback to raw dataUrl on any decode error
+      img.onerror = () => resolve(dataUrl);
       img.onload = () => {
         try {
-          const maxDim = 1200;
+          const maxDim = 600;
           let { width, height } = img;
           if (width > maxDim || height > maxDim) {
             if (width > height) {
@@ -55,7 +66,7 @@ async function readFileAsOptimizedData(file: File, fileType: "image" | "document
           const ctx = canvas.getContext("2d");
           if (!ctx) return resolve(dataUrl);
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL("image/jpeg", 0.88));
+          resolve(canvas.toDataURL("image/jpeg", 0.75));
         } catch {
           resolve(dataUrl);
         }
@@ -79,6 +90,8 @@ export default function FileUploadZone({
   onClear,
   error
 }: FileUploadZoneProps) {
+  const [activeMode, setActiveMode] = useState<"file" | "link">("file");
+  const [cloudLinkInput, setCloudLinkInput] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -106,26 +119,25 @@ export default function FileUploadZone({
       return;
     }
 
-    // Validate basic mime type
+    // Validate image format
     if (fileType === "image" && !file.type.startsWith("image/")) {
       setUploadError("Please upload a valid image file (JPG, PNG, WEBP).");
       return;
     }
 
     setIsUploading(true);
-    setUploadProgress(20);
+    setUploadProgress(25);
 
     try {
       // 1. Read & optimize file data
-      setUploadProgress(40);
+      setUploadProgress(50);
       const fileData = await readFileAsOptimizedData(file, fileType);
-      setUploadProgress(70);
+      setUploadProgress(75);
 
-      // 2. Upload directly to /api/upload endpoint with 6s timeout
-      let uploadedUrl = fileData;
+      // 2. Post to /api/upload endpoint
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
 
         const response = await fetch("/api/upload", {
           method: "POST",
@@ -141,18 +153,32 @@ export default function FileUploadZone({
         if (response.ok) {
           const resJson = await response.json();
           if (resJson.url) {
-            uploadedUrl = resJson.url;
+            setUploadProgress(100);
+            onChange(resJson.url, file.name);
+            return;
           }
         }
+        throw new Error(`Upload server returned status ${response.status}`);
       } catch (uploadErr) {
-        console.warn("Server upload endpoint fallback used:", uploadErr);
-        // uploadedUrl remains fileData (base64 data URL)
-      }
+        console.warn("Upload server unavailable, evaluating fallback:", uploadErr);
 
-      setUploadProgress(100);
-      onChange(uploadedUrl, file.name);
+        // Fallback safety check:
+        // Compressed images (~30-60KB) can safely fallback to Base64 in Firestore.
+        if (fileType === "image" && fileData.length < 200000) {
+          setUploadProgress(100);
+          onChange(fileData, file.name);
+          return;
+        }
+
+        // For large documents or when Base64 exceeds 200KB, DO NOT store raw Base64
+        // in Firestore as it would violate Firestore's 1MB document limit.
+        setUploadError(
+          "Upload server could not save document to disk. Please paste a Google Drive / OneDrive link below."
+        );
+        setActiveMode("link");
+      }
     } catch (err: any) {
-      console.error("Error processing file upload:", err);
+      console.error("Error processing file:", err);
       setUploadError(err.message || "Failed to process file.");
     } finally {
       setIsUploading(false);
@@ -173,21 +199,77 @@ export default function FileUploadZone({
     if (e.target.files && e.target.files.length > 0) {
       processFile(e.target.files[0]);
     }
-    // Reset file input value so selecting the same file again triggers onChange
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
+  const handleApplyCloudLink = (e: React.FormEvent) => {
+    e.preventDefault();
+    const link = cloudLinkInput.trim();
+    if (!link) {
+      setUploadError("Please enter a valid URL.");
+      return;
+    }
+    if (!link.startsWith("http://") && !link.startsWith("https://")) {
+      setUploadError("Please include http:// or https:// in the link.");
+      return;
+    }
+
+    setUploadError(null);
+    let displayName = "Cloud Attachment";
+    try {
+      const urlObj = new URL(link);
+      displayName = `${urlObj.hostname.replace("www.", "")} link`;
+    } catch {
+      // ignore
+    }
+
+    onChange(link, displayName);
+    setCloudLinkInput("");
+  };
+
+  const isCloudLink = valueUrl && (valueUrl.startsWith("http://") || valueUrl.startsWith("https://")) && !valueUrl.startsWith("data:");
+
   return (
     <div className="space-y-1.5 text-left">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <label className="font-sans text-xs uppercase tracking-wider text-[#C9A86A] font-medium flex items-center gap-1.5">
           {fileType === "image" ? <ImageIcon className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
           <span>{label}</span>
           {required && <span className="text-rose-400 font-bold">*</span>}
         </label>
-        {sublabel && (
+
+        {/* Mode Selector for Documents */}
+        {!valueUrl && fileType === "document" && (
+          <div className="flex items-center gap-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] p-0.5 text-[10px] font-mono">
+            <button
+              type="button"
+              onClick={() => { setActiveMode("file"); setUploadError(null); }}
+              className={`px-2 py-0.5 transition-colors cursor-pointer ${
+                activeMode === "file"
+                  ? "bg-[#C9A86A] text-[#1A1F1A] font-bold"
+                  : "text-[#8A9A7E] hover:text-[#EDE6D3]"
+              }`}
+            >
+              File Upload
+            </button>
+            <button
+              type="button"
+              onClick={() => { setActiveMode("link"); setUploadError(null); }}
+              className={`px-2 py-0.5 transition-colors cursor-pointer flex items-center gap-1 ${
+                activeMode === "link"
+                  ? "bg-[#C9A86A] text-[#1A1F1A] font-bold"
+                  : "text-[#8A9A7E] hover:text-[#EDE6D3]"
+              }`}
+            >
+              <Link2 className="h-2.5 w-2.5" />
+              <span>Google Drive Link</span>
+            </button>
+          </div>
+        )}
+
+        {sublabel && !valueUrl && activeMode === "file" && (
           <span className="font-mono text-[10px] text-[#8A9A7E]">
             {sublabel}
           </span>
@@ -206,13 +288,17 @@ export default function FileUploadZone({
       {valueUrl ? (
         <div className="relative border border-[#C9A86A]/60 bg-[#2E3B2F]/40 p-3.5 flex items-center justify-between gap-3 shadow-inner">
           <div className="flex items-center gap-3 min-w-0">
-            {fileType === "image" ? (
+            {fileType === "image" && !isCloudLink ? (
               <div className="relative h-12 w-12 shrink-0 rounded overflow-hidden border border-[#C9A86A]/40 bg-[#1A1F1A]">
                 <img
                   src={valueUrl}
                   alt={valueName || "Uploaded Photo"}
                   className="h-full w-full object-cover"
                 />
+              </div>
+            ) : isCloudLink ? (
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-[#C9A86A]/40 bg-[#1A1F1A] text-[#C9A86A]">
+                <ExternalLink className="h-6 w-6" />
               </div>
             ) : (
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-[#C9A86A]/40 bg-[#1A1F1A] text-[#C9A86A]">
@@ -224,11 +310,11 @@ export default function FileUploadZone({
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                 <span className="font-sans text-xs text-[#EDE6D3] font-medium truncate block">
-                  {valueName || (fileType === "image" ? "Photograph Uploaded" : "Document Attached")}
+                  {valueName || (fileType === "image" ? "Photograph Attached" : "Document Attached")}
                 </span>
               </div>
-              <span className="font-mono text-[10px] text-[#8A9A7E] block mt-0.5">
-                Ready for submission • Click remove to replace
+              <span className="font-mono text-[10px] text-[#8A9A7E] block mt-0.5 truncate">
+                {isCloudLink ? valueUrl : "Ready for submission • Click remove to replace"}
               </span>
             </div>
           </div>
@@ -241,6 +327,33 @@ export default function FileUploadZone({
           >
             <X className="h-4 w-4" />
           </button>
+        </div>
+      ) : activeMode === "link" ? (
+        /* Cloud Link Input Field */
+        <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-3.5 space-y-2">
+          <div className="flex items-center gap-2 text-xs text-[#EDE6D3]">
+            <Link2 className="h-4 w-4 text-[#C9A86A] shrink-0" />
+            <span>Paste Google Drive, OneDrive, or Dropbox Public Link:</span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={cloudLinkInput}
+              onChange={(e) => setCloudLinkInput(e.target.value)}
+              placeholder="https://drive.google.com/file/d/..."
+              className="flex-1 bg-[#2E3B2F]/60 border border-[#8A9A7E]/30 px-3 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleApplyCloudLink}
+              className="px-3.5 py-2 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              Attach Link
+            </button>
+          </div>
+          <span className="text-[10px] font-mono text-[#8A9A7E] block">
+            Note: Ensure link sharing permission is set to "Anyone with the link can view".
+          </span>
         </div>
       ) : (
         /* Drag & Drop zone */
@@ -261,7 +374,7 @@ export default function FileUploadZone({
             <div className="py-2 flex flex-col items-center justify-center space-y-2">
               <Loader2 className="h-7 w-7 text-[#C9A86A] animate-spin" />
               <span className="font-sans text-xs text-[#EDE6D3] font-medium">
-                Uploading & Encoding File... {uploadProgress}%
+                Uploading & Processing File... {uploadProgress}%
               </span>
               <div className="w-48 h-1 bg-[#1A1F1A] rounded-full overflow-hidden border border-[#C9A86A]/30">
                 <div
@@ -281,7 +394,7 @@ export default function FileUploadZone({
                 </span>
                 <span className="font-sans text-[11px] text-[#8A9A7E] block">
                   {fileType === "image"
-                    ? "Supports JPG, PNG, WEBP (Max 8MB)"
+                    ? "Supports JPG, PNG, WEBP (Auto-optimized)"
                     : "Supports PDF, DOC, DOCX (Max 8MB)"}
                 </span>
               </div>

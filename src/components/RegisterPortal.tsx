@@ -222,6 +222,17 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
       linkedinProfile: ebForm.linkedinProfile.trim() || ""
     };
 
+    // Validate payload size does not exceed Firestore's 1,048,576 bytes (1 MiB) limit
+    const payloadBytes = new Blob([JSON.stringify(payload)]).size;
+    if (payloadBytes > 950000) {
+      alert(
+        `Application payload (${(payloadBytes / 1024 / 1024).toFixed(2)} MB) exceeds the Firestore document limit (1 MB). ` +
+        `Please attach a smaller photo or provide a Google Drive / OneDrive link for your CV.`
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       // Save directly and solely to Firebase Firestore
       await setDoc(doc(db, "eb_registrations", regId), payload);
@@ -229,7 +240,12 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
       window.scrollTo({ top: 100, behavior: "smooth" });
     } catch (err: any) {
       console.error("Submission failed:", err);
-      alert("Submission encountered an issue. Please retry or contact support.");
+      const isSizeError = err?.message?.includes("exceeds the maximum allowed size");
+      alert(
+        isSizeError
+          ? "Submission failed: Attached files exceed the 1MB database document limit. Please use a Google Drive cloud link for your CV."
+          : `Submission encountered an issue (${err?.message || "unknown error"}). Please retry or contact support.`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -273,6 +289,17 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
       targetMobilization: caForm.targetMobilization
     };
 
+    // Validate payload size does not exceed Firestore's 1,048,576 bytes (1 MiB) limit
+    const caPayloadBytes = new Blob([JSON.stringify(payload)]).size;
+    if (caPayloadBytes > 950000) {
+      alert(
+        `Application payload (${(caPayloadBytes / 1024 / 1024).toFixed(2)} MB) exceeds the Firestore document limit (1 MB). ` +
+        `Please attach a smaller photo or provide a Google Drive / OneDrive link for your ID proof.`
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       // Save directly and solely to Firebase Firestore
       await setDoc(doc(db, "campus_ambassador_registrations", regId), payload);
@@ -280,7 +307,12 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
       window.scrollTo({ top: 100, behavior: "smooth" });
     } catch (err: any) {
       console.error("Submission failed:", err);
-      alert("Submission encountered an issue. Please retry or contact support.");
+      const isSizeError = err?.message?.includes("exceeds the maximum allowed size");
+      alert(
+        isSizeError
+          ? "Submission failed: Attached files exceed the 1MB database document limit. Please use a Google Drive cloud link for your ID proof."
+          : `Submission encountered an issue (${err?.message || "unknown error"}). Please retry or contact support.`
+      );
     } finally {
       setIsSubmitting(false);
     }

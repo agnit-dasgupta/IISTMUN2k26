@@ -613,11 +613,11 @@ export default function Home({ setActiveTab }: HomeProps) {
                   </div>
                   <div className="font-serif text-sm text-[#EDE6D3] font-medium"> Ananya Bhat</div>
                   <a
-                    href="tel:+91 70382 90052"
+                    href="tel:+917038290052"
                     className="font-mono text-xs text-[#8BA06F] hover:underline flex items-center gap-1.5 pt-1"
                   >
                     <Phone className="h-3 w-3 text-[#8BA06F]" />
-                    <span>+91 70382 90052</span>
+                    <span>+917038290052</span>
                   </a>
                 </div>
 
