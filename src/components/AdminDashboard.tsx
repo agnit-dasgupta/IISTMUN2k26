@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { collection, onSnapshot, query, deleteDoc, doc, setDoc, updateDoc } from "firebase/firestore";
 import { useFirebase } from "../FirebaseContext";
@@ -42,7 +42,8 @@ import {
   Database,
   RefreshCw,
   Layers,
-  Copy
+  Copy,
+  ChevronDown
 } from "lucide-react";
 
 export const FIRESTORE_RULES_TEXT = `rules_version = '2';
@@ -261,6 +262,22 @@ export default function AdminDashboard() {
   const [selectedQuery, setSelectedQuery] = useState<ContactQuery | null>(null);
   const [confirmQueryDeleteId, setConfirmQueryDeleteId] = useState<string | null>(null);
   const [isDeletingQuery, setIsDeletingQuery] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    }
+    if (showExportMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showExportMenu]);
 
 
   const adminEmails = ["agnit.dg@gmail.com", "iist.mun.club@gmail.com"];
@@ -528,35 +545,82 @@ export default function AdminDashboard() {
     }
   };
 
-  const exportEbToExcel = () => {
-    const dataToExport = ebRegistrations.map((r) => ({
-      "Dossier ID": r.id,
-      "Full Name": r.name,
-      "Email": r.email,
-      "Phone": r.phone,
-      "Institution": r.institution,
-      "Course": r.course,
-      "Year": r.yearOfStudy,
-      "City/State": r.cityState,
-      "1st Pref Committee": r.pref1Committee,
-      "1st Pref Role": r.pref1Role,
-      "2nd Pref Committee": r.pref2Committee,
-      "2nd Pref Role": r.pref2Role,
-      "Delegate Experience": r.munDelegateCount,
-      "EB Experience": r.munEbCount,
-      "Status": r.status,
-      "Proposed Agenda": r.proposedAgendas,
-      "Motivation": r.motivation,
-      "CV Link": r.cvUrl || "N/A",
-      "Photo Link": r.photoUrl || "N/A",
-      "Study Guide Sample": r.sampleStudyGuideLink || "N/A",
-      "Timestamp": r.timestamp
+  const exportEbToExcel = (itemsToExport?: EBRegistration[], customLabel?: string) => {
+    const list = itemsToExport ?? ebRegistrations;
+    if (list.length === 0) {
+      showToast("No Executive Board applications available to export.");
+      return;
+    }
+
+    const dataToExport = list.map((r, idx) => ({
+      "Sl. No": idx + 1,
+      "Dossier ID": r.id || `EB-${idx + 1}`,
+      "Full Name": r.name || "N/A",
+      "Email Address": r.email || "N/A",
+      "Phone Number": r.phone || "N/A",
+      "Institution": r.institution || "N/A",
+      "Course / Major": r.course || "N/A",
+      "Year of Study": r.yearOfStudy || "N/A",
+      "City & State": r.cityState || "N/A",
+      "Current Status": r.status || "Pending",
+      "1st Pref Committee": r.pref1Committee?.toUpperCase() || "N/A",
+      "1st Pref Role": r.pref1Role || "N/A",
+      "2nd Pref Committee": r.pref2Committee?.toUpperCase() || "N/A",
+      "2nd Pref Role": r.pref2Role || "N/A",
+      "Delegate MUNs Count": r.munDelegateCount || "0",
+      "Executive Board MUNs Count": r.munEbCount || "0",
+      "Detailed Experience Summary": r.experienceSummary || "N/A",
+      "Proposed Agendas": r.proposedAgendas || "N/A",
+      "Motivation Statement": r.motivation || "N/A",
+      "Sample Study Guide": r.sampleStudyGuideLink || "N/A",
+      "LinkedIn Profile": r.linkedinProfile || "N/A",
+      "CV / Resume Document": r.cvUrl
+        ? (r.cvUrl.startsWith("http") ? r.cvUrl : (r.cvName ? `Attached (${r.cvName})` : "Attached Document"))
+        : "N/A",
+      "Portrait Photo": r.photoUrl
+        ? (r.photoUrl.startsWith("http") ? r.photoUrl : (r.photoName ? `Attached (${r.photoName})` : "Attached Image"))
+        : "N/A",
+      "Admin Notes": r.adminNotes || "",
+      "Submission Timestamp": r.timestamp || "N/A"
     }));
+
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+
+    // Auto-fit / configure generous column widths for Microsoft Excel / Google Sheets
+    worksheet["!cols"] = [
+      { wch: 8 },  // Sl. No
+      { wch: 18 }, // Dossier ID
+      { wch: 24 }, // Full Name
+      { wch: 28 }, // Email Address
+      { wch: 16 }, // Phone Number
+      { wch: 32 }, // Institution
+      { wch: 20 }, // Course / Major
+      { wch: 14 }, // Year of Study
+      { wch: 20 }, // City & State
+      { wch: 20 }, // Current Status
+      { wch: 20 }, // 1st Pref Committee
+      { wch: 20 }, // 1st Pref Role
+      { wch: 20 }, // 2nd Pref Committee
+      { wch: 20 }, // 2nd Pref Role
+      { wch: 18 }, // Delegate MUNs Count
+      { wch: 24 }, // Executive Board MUNs Count
+      { wch: 45 }, // Experience Summary
+      { wch: 45 }, // Proposed Agendas
+      { wch: 45 }, // Motivation Statement
+      { wch: 30 }, // Sample Study Guide
+      { wch: 30 }, // LinkedIn Profile
+      { wch: 35 }, // CV Document
+      { wch: 35 }, // Portrait Photo
+      { wch: 25 }, // Admin Notes
+      { wch: 22 }  // Submission Timestamp
+    ];
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "EB Applications");
-    XLSX.writeFile(workbook, `IISTMUN_2027_EB_Applications_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    showToast("Exported EB Applications to Excel!");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const suffix = customLabel ? `_${customLabel.replace(/[^a-zA-Z0-9_-]/g, "_")}` : "";
+    XLSX.writeFile(workbook, `IISTMUN_2026_EB_Applications${suffix}_${dateStr}.xlsx`);
+    showToast(`Exported ${list.length} Executive Board application(s) to Excel!`);
   };
 
   const handleUpdateCaStatus = async (id: string, newStatus: CampusAmbassadorRegistration["status"]) => {
@@ -589,32 +653,138 @@ export default function AdminDashboard() {
     }
   };
 
-  const exportCaToExcel = () => {
-    const dataToExport = caRegistrations.map((r) => ({
-      "Fellowship ID": r.id,
-      "Ambassador Name": r.name,
-      "Email": r.email,
-      "WhatsApp Phone": r.phone,
-      "Institution": r.institution,
-      "Course": r.course,
-      "Year": r.yearOfStudy,
-      "City/State": r.cityState,
-      "Target Mobilization": r.targetMobilization,
-      "College Clubs": r.collegeClubs,
-      "Social Handles": r.socialHandles,
-      "Prior CA Experience": r.priorCaExperience,
-      "Status": r.status,
-      "Motivation": r.motivation,
-      "Promotion Plan": r.promotionPlan,
-      "Photo Link": r.photoUrl || "N/A",
-      "ID Proof Link": r.idProofUrl || "N/A",
-      "Timestamp": r.timestamp
+  const exportCaToExcel = (itemsToExport?: CampusAmbassadorRegistration[], customLabel?: string) => {
+    const list = itemsToExport ?? caRegistrations;
+    if (list.length === 0) {
+      showToast("No Campus Ambassador registrations available to export.");
+      return;
+    }
+
+    const dataToExport = list.map((r, idx) => ({
+      "Sl. No": idx + 1,
+      "Fellowship ID": r.id || `CA-${idx + 1}`,
+      "Ambassador Name": r.name || "N/A",
+      "Email Address": r.email || "N/A",
+      "WhatsApp Phone": r.phone || "N/A",
+      "Institution": r.institution || "N/A",
+      "Course / Degree": r.course || "N/A",
+      "Year of Study": r.yearOfStudy || "N/A",
+      "City & State": r.cityState || "N/A",
+      "Current Status": r.status || "Pending",
+      "Target Mobilization": r.targetMobilization || "N/A",
+      "College Clubs & Positions": r.collegeClubs || "N/A",
+      "Social Media Handles": r.socialHandles || "N/A",
+      "Prior Ambassador Experience": r.priorCaExperience || "N/A",
+      "Motivation Statement": r.motivation || "N/A",
+      "Campus Outreach Plan": r.promotionPlan || "N/A",
+      "ID Proof Document": r.idProofUrl
+        ? (r.idProofUrl.startsWith("http") ? r.idProofUrl : (r.idProofName ? `Attached (${r.idProofName})` : "Attached ID Proof"))
+        : "N/A",
+      "Portrait Photo": r.photoUrl
+        ? (r.photoUrl.startsWith("http") ? r.photoUrl : (r.photoName ? `Attached (${r.photoName})` : "Attached Image"))
+        : "N/A",
+      "Admin Notes": r.adminNotes || "",
+      "Submission Timestamp": r.timestamp || "N/A"
     }));
+
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+
+    worksheet["!cols"] = [
+      { wch: 8 },  // Sl. No
+      { wch: 18 }, // Fellowship ID
+      { wch: 24 }, // Ambassador Name
+      { wch: 28 }, // Email Address
+      { wch: 16 }, // WhatsApp Phone
+      { wch: 32 }, // Institution
+      { wch: 20 }, // Course / Degree
+      { wch: 14 }, // Year of Study
+      { wch: 20 }, // City & State
+      { wch: 18 }, // Current Status
+      { wch: 22 }, // Target Mobilization
+      { wch: 35 }, // College Clubs
+      { wch: 30 }, // Social Handles
+      { wch: 35 }, // Prior Experience
+      { wch: 45 }, // Motivation
+      { wch: 45 }, // Outreach Plan
+      { wch: 35 }, // ID Proof
+      { wch: 35 }, // Portrait Photo
+      { wch: 25 }, // Admin Notes
+      { wch: 22 }  // Submission Timestamp
+    ];
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Campus Ambassadors");
-    XLSX.writeFile(workbook, `IISTMUN_2027_Campus_Ambassadors_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    showToast("Exported Campus Ambassadors to Excel!");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const suffix = customLabel ? `_${customLabel.replace(/[^a-zA-Z0-9_-]/g, "_")}` : "";
+    XLSX.writeFile(workbook, `IISTMUN_2026_Campus_Ambassadors${suffix}_${dateStr}.xlsx`);
+    showToast(`Exported ${list.length} Campus Ambassador registration(s) to Excel!`);
+  };
+
+  const exportDelegatesToExcel = (itemsToExport?: RegistrationDetails[]) => {
+    const list = itemsToExport ?? registrations;
+    if (list.length === 0) {
+      showToast("No delegate registrations available to export.");
+      return;
+    }
+
+    const dataToExport = list.map((r, idx) => ({
+      "Sl. No": idx + 1,
+      "Ticket ID": r.id || "",
+      "Delegate Name": r.name || "",
+      "Email Address": r.email || "",
+      "Phone Number": r.phone || "",
+      "Registration Type": r.regType ? r.regType.toUpperCase() : "INDIVIDUAL",
+      "Role": r.role || "Delegate",
+      "Institution": r.institution || "",
+      "Course / Class": r.course || "",
+      "MUN Experience": r.munExperience || "",
+      "Pref 1 Committee": r.pref1Committee?.toUpperCase() || "",
+      "Pref 1 Country": r.pref1Country || "",
+      "Pref 2 Committee": r.pref2Committee?.toUpperCase() || "",
+      "Pref 2 Country": r.pref2Country || "",
+      "Pref 3 Committee": r.pref3Committee?.toUpperCase() || "",
+      "Pref 3 Country": r.pref3Country || "",
+      "Partner Name": r.partnerName || "",
+      "Partner Email": r.partnerEmail || "",
+      "Partner Role": r.partnerRole || "",
+      "Partner ID": r.partnerId || "",
+      "Contingent Size": r.contingentSize || "",
+      "Motivation": r.motivation || "",
+      "Registration Timestamp": r.timestamp || ""
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    worksheet["!cols"] = [
+      { wch: 8 },  // Sl. No
+      { wch: 16 }, // Ticket ID
+      { wch: 24 }, // Delegate Name
+      { wch: 28 }, // Email Address
+      { wch: 16 }, // Phone Number
+      { wch: 18 }, // Reg Type
+      { wch: 14 }, // Role
+      { wch: 30 }, // Institution
+      { wch: 18 }, // Course
+      { wch: 16 }, // Experience
+      { wch: 18 }, // Pref 1 Comm
+      { wch: 20 }, // Pref 1 Country
+      { wch: 18 }, // Pref 2 Comm
+      { wch: 20 }, // Pref 2 Country
+      { wch: 18 }, // Pref 3 Comm
+      { wch: 20 }, // Pref 3 Country
+      { wch: 22 }, // Partner Name
+      { wch: 26 }, // Partner Email
+      { wch: 14 }, // Partner Role
+      { wch: 16 }, // Partner ID
+      { wch: 16 }, // Contingent Size
+      { wch: 40 }, // Motivation
+      { wch: 22 }  // Timestamp
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Delegate Registrations");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(workbook, `IISTMUN_2026_Delegates_${dateStr}.xlsx`);
+    showToast(`Exported ${list.length} delegate registration(s) to Excel!`);
   };
 
   const updatePortfolioStatus = async (
@@ -993,34 +1163,190 @@ export default function AdminDashboard() {
               Archival monitoring of registered candidates, delegations, portfolios, and workshop cohorts.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2.5 items-center">
             <button
               onClick={() => setActiveSubTab("queries")}
-              className={`flex items-center gap-2 px-4 py-2 border transition-all cursor-pointer text-xs font-sans font-semibold uppercase tracking-wider ${
+              className={`flex items-center gap-2 px-3.5 py-2 border transition-all cursor-pointer text-xs font-sans font-semibold uppercase tracking-wider ${
                 activeSubTab === "queries"
                   ? "border-[#C9A86A] bg-[#C9A86A] text-[#1A1F1A]"
                   : "border-[#C9A86A]/40 bg-[#2E3B2F] text-[#EDE6D3] hover:bg-[#C9A86A] hover:text-[#1A1F1A]"
               }`}
             >
               <Mail className="h-3.5 w-3.5" />
-              <span>Contact Queries ({contactQueries.length})</span>
+              <span>Queries ({contactQueries.length})</span>
             </button>
+
+            {/* Direct 1-Click EB Excel Download */}
             <button
-              onClick={exportToCSV}
-              disabled={registrations.length === 0}
-              className="flex items-center gap-2 px-4 py-2 border border-[#C9A86A]/40 bg-[#2E3B2F] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-xs font-sans font-semibold uppercase tracking-wider text-[#EDE6D3] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => exportEbToExcel()}
+              disabled={ebRegistrations.length === 0}
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#C9A86A] bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-sans font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              title="Download Executive Board Applications as Excel spreadsheet (.xlsx)"
             >
-              <Download className="h-3.5 w-3.5" />
-              Export CSV
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              <span>EB Excel</span>
+              <span className="px-1.5 py-0.5 bg-[#1A1F1A] text-[#C9A86A] text-[10px] font-bold">
+                {ebRegistrations.length}
+              </span>
             </button>
+
+            {/* Direct 1-Click Campus Ambassador Excel Download */}
             <button
-              onClick={exportToJSON}
-              disabled={registrations.length === 0}
-              className="flex items-center gap-2 px-4 py-2 border border-[#C9A86A]/40 bg-[#2E3B2F] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-xs font-sans font-semibold uppercase tracking-wider text-[#EDE6D3] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => exportCaToExcel()}
+              disabled={caRegistrations.length === 0}
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#8BA06F] bg-[#8BA06F] hover:bg-[#a1b783] text-[#1A1F1A] text-xs font-sans font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              title="Download Campus Ambassador Registrations as Excel spreadsheet (.xlsx)"
             >
-              <FileText className="h-3.5 w-3.5" />
-              Export JSON
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              <span>Ambassadors Excel</span>
+              <span className="px-1.5 py-0.5 bg-[#1A1F1A] text-[#8BA06F] text-[10px] font-bold">
+                {caRegistrations.length}
+              </span>
             </button>
+
+            {/* Export Registries Dropdown */}
+            <div className="relative" ref={exportDropdownRef}>
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="flex items-center gap-1.5 px-3.5 py-2 border border-[#C9A86A]/40 bg-[#2E3B2F] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-xs font-sans font-semibold uppercase tracking-wider text-[#EDE6D3] transition-all cursor-pointer"
+                title="View all export options (Excel, CSV, JSON)"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Export Ledger</span>
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${showExportMenu ? "rotate-180" : ""}`} />
+              </button>
+
+              {showExportMenu && (
+                <div className="absolute right-0 mt-2 w-72 bg-[#1A1F1A] border-2 border-[#C9A86A] shadow-2xl z-50 py-2 divide-y divide-[#8A9A7E]/20 text-left">
+                  <div className="px-3 py-1.5 bg-[#2E3B2F]/60">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold block">
+                      EXCEL SPREADSHEETS (.XLSX)
+                    </span>
+                  </div>
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        exportEbToExcel();
+                        setShowExportMenu(false);
+                      }}
+                      disabled={ebRegistrations.length === 0}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-[#EDE6D3] hover:bg-[#2E3B2F] hover:text-[#C9A86A] transition-colors text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileSpreadsheet className="h-4 w-4 text-[#C9A86A]" />
+                        <span>Executive Board Registrations</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] bg-[#2E3B2F] px-1.5 py-0.5 rounded">
+                        {ebRegistrations.length}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        exportCaToExcel();
+                        setShowExportMenu(false);
+                      }}
+                      disabled={caRegistrations.length === 0}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-[#EDE6D3] hover:bg-[#2E3B2F] hover:text-[#8BA06F] transition-colors text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileSpreadsheet className="h-4 w-4 text-[#8BA06F]" />
+                        <span>Campus Ambassadors</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] bg-[#2E3B2F] px-1.5 py-0.5 rounded">
+                        {caRegistrations.length}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        exportDelegatesToExcel();
+                        setShowExportMenu(false);
+                      }}
+                      disabled={registrations.length === 0}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-[#EDE6D3] hover:bg-[#2E3B2F] hover:text-[#C9A86A] transition-colors text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileSpreadsheet className="h-4 w-4 text-cyan-400" />
+                        <span>Delegate Registrations (.xlsx)</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] bg-[#2E3B2F] px-1.5 py-0.5 rounded">
+                        {registrations.length}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        exportQueriesToExcel();
+                        setShowExportMenu(false);
+                      }}
+                      disabled={contactQueries.length === 0}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-[#EDE6D3] hover:bg-[#2E3B2F] hover:text-[#C9A86A] transition-colors text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-amber-400" />
+                        <span>Contact Queries (.xlsx)</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] bg-[#2E3B2F] px-1.5 py-0.5 rounded">
+                        {contactQueries.length}
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="px-3 py-1.5 bg-[#2E3B2F]/60">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold block">
+                      DELEGATE RAW FORMATS
+                    </span>
+                  </div>
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        exportToCSV();
+                        setShowExportMenu(false);
+                      }}
+                      disabled={registrations.length === 0}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-[#EDE6D3] hover:bg-[#2E3B2F] transition-colors text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Download className="h-4 w-4 text-emerald-400" />
+                        <span>Delegates as CSV</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E]">.csv</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        exportToJSON();
+                        setShowExportMenu(false);
+                      }}
+                      disabled={registrations.length === 0}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-[#EDE6D3] hover:bg-[#2E3B2F] transition-colors text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-purple-400" />
+                        <span>Delegates as JSON</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E]">.json</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        exportWorkshopToCSV();
+                        setShowExportMenu(false);
+                      }}
+                      disabled={workshopRegistrations.length === 0}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-[#EDE6D3] hover:bg-[#2E3B2F] transition-colors text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center gap-2">
+                        <GraduationCap className="h-4 w-4 text-blue-400" />
+                        <span>Workshop Cohort CSV</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E]">.csv</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1040,13 +1366,27 @@ export default function AdminDashboard() {
           </div>
           <div 
             onClick={() => setActiveSubTab("eb")}
-            className={`border p-4 text-left shadow-sm cursor-pointer transition-all ${
+            className={`border p-4 text-left shadow-sm cursor-pointer transition-all relative group ${
               activeSubTab === "eb"
                 ? "border-[#C9A86A] bg-[#2E3B2F] ring-1 ring-[#C9A86A]"
                 : "border-[#C9A86A]/40 bg-[#2E3B2F] hover:border-[#C9A86A]"
             }`}
           >
-            <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#C9A86A] font-semibold block">EB APPLICANTS</span>
+            <div className="flex justify-between items-center">
+              <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#C9A86A] font-semibold block">EB APPLICANTS</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  exportEbToExcel();
+                }}
+                disabled={ebRegistrations.length === 0}
+                className="opacity-80 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 bg-[#1A1F1A] border border-[#C9A86A]/40 hover:border-[#C9A86A] text-[#C9A86A] text-[9px] font-sans font-bold flex items-center gap-1 cursor-pointer disabled:opacity-20"
+                title="Quick Download EB Excel (.xlsx)"
+              >
+                <Download className="h-2.5 w-2.5" />
+                <span>XLSX</span>
+              </button>
+            </div>
             <div className="flex justify-between items-end mt-1.5">
               <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{ebRegistrations.length}</span>
               <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
@@ -1056,13 +1396,27 @@ export default function AdminDashboard() {
           </div>
           <div 
             onClick={() => setActiveSubTab("campus-ambassador")}
-            className={`border p-4 text-left shadow-sm cursor-pointer transition-all ${
+            className={`border p-4 text-left shadow-sm cursor-pointer transition-all relative group ${
               activeSubTab === "campus-ambassador"
                 ? "border-[#8BA06F] bg-[#2E3B2F] ring-1 ring-[#8BA06F]"
                 : "border-[#8BA06F]/40 bg-[#2E3B2F] hover:border-[#8BA06F]"
             }`}
           >
-            <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#8BA06F] font-semibold block">AMBASSADORS</span>
+            <div className="flex justify-between items-center">
+              <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#8BA06F] font-semibold block">AMBASSADORS</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  exportCaToExcel();
+                }}
+                disabled={caRegistrations.length === 0}
+                className="opacity-80 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 bg-[#1A1F1A] border border-[#8BA06F]/40 hover:border-[#8BA06F] text-[#8BA06F] text-[9px] font-sans font-bold flex items-center gap-1 cursor-pointer disabled:opacity-20"
+                title="Quick Download Campus Ambassador Excel (.xlsx)"
+              >
+                <Download className="h-2.5 w-2.5" />
+                <span>XLSX</span>
+              </button>
+            </div>
             <div className="flex justify-between items-end mt-1.5">
               <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{caRegistrations.length}</span>
               <div className="p-1.5 bg-[#1A1F1A] border border-[#8BA06F]/30 text-[#8BA06F]">
@@ -1414,14 +1768,25 @@ export default function AdminDashboard() {
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-3">
                 <button
-                  onClick={exportEbToExcel}
+                  onClick={() => exportEbToExcel()}
                   disabled={ebRegistrations.length === 0}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-                  title="Download all filtered applications as an Excel spreadsheet (.xlsx)"
+                  title="Download all Executive Board applications as an Excel spreadsheet (.xlsx)"
                 >
                   <FileSpreadsheet className="h-4 w-4" />
-                  <span>Download Excel (.xlsx)</span>
+                  <span>Download EB Excel ({ebRegistrations.length})</span>
                 </button>
+                {filteredEb.length !== ebRegistrations.length && (
+                  <button
+                    onClick={() => exportEbToExcel(filteredEb, "Filtered")}
+                    disabled={filteredEb.length === 0}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 border border-[#C9A86A] bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#C9A86A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    title="Download currently filtered EB applications as an Excel spreadsheet"
+                  >
+                    <Filter className="h-3.5 w-3.5" />
+                    <span>Download Filtered ({filteredEb.length})</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1675,14 +2040,25 @@ export default function AdminDashboard() {
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-3">
                 <button
-                  onClick={exportCaToExcel}
+                  onClick={() => exportCaToExcel()}
                   disabled={caRegistrations.length === 0}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8BA06F] hover:bg-[#a1b783] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                   title="Download all campus ambassadors as an Excel spreadsheet (.xlsx)"
                 >
                   <FileSpreadsheet className="h-4 w-4" />
-                  <span>Download Excel (.xlsx)</span>
+                  <span>Download Ambassador Excel ({caRegistrations.length})</span>
                 </button>
+                {filteredCa.length !== caRegistrations.length && (
+                  <button
+                    onClick={() => exportCaToExcel(filteredCa, "Filtered")}
+                    disabled={filteredCa.length === 0}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 border border-[#8BA06F] bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#8BA06F] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    title="Download currently filtered Campus Ambassadors as an Excel spreadsheet"
+                  >
+                    <Filter className="h-3.5 w-3.5" />
+                    <span>Download Filtered ({filteredCa.length})</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -3409,6 +3785,14 @@ export default function AdminDashboard() {
 
                   <div className="flex items-center gap-2 justify-end">
                     <button
+                      onClick={() => exportEbToExcel([selectedEb], selectedEb.id)}
+                      className="px-4 py-2 border border-[#C9A86A] bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-sans font-semibold uppercase tracking-wider transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      title="Download this candidate's dossier as an Excel file (.xlsx)"
+                    >
+                      <FileSpreadsheet className="h-3.5 w-3.5" />
+                      <span>Export Dossier Excel</span>
+                    </button>
+                    <button
                       onClick={() => setConfirmEbDeleteId(selectedEb.id)}
                       className="px-3.5 py-2 border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 text-xs font-sans uppercase tracking-wider transition-colors cursor-pointer"
                     >
@@ -3686,6 +4070,14 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="flex items-center gap-2 justify-end">
+                    <button
+                      onClick={() => exportCaToExcel([selectedCa], selectedCa.id)}
+                      className="px-4 py-2 border border-[#8BA06F] bg-[#8BA06F] hover:bg-[#a1b783] text-[#1A1F1A] text-xs font-sans font-semibold uppercase tracking-wider transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      title="Download this ambassador's registration as an Excel file (.xlsx)"
+                    >
+                      <FileSpreadsheet className="h-3.5 w-3.5" />
+                      <span>Export Ambassador Excel</span>
+                    </button>
                     <button
                       onClick={() => setConfirmCaDeleteId(selectedCa.id)}
                       className="px-3.5 py-2 border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 text-xs font-sans uppercase tracking-wider transition-colors cursor-pointer"
