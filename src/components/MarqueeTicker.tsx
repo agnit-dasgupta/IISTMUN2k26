@@ -23,26 +23,26 @@ export default function MarqueeTicker({ setActiveTab }: MarqueeTickerProps) {
   const tickerItems = [
     {
       badge: "NOW OPEN",
-      lead: "EB and Campus Ambassador registrations open.",
+      lead: "Campus Ambassador registrations actively open.",
       cta: "Click here to register",
       icon: Award,
     },
     {
       badge: "IIST MUN 2027",
-      lead: "EB and Campus Ambassador registrations open.",
-      cta: "Click here to register",
+      lead: "Executive Board applications closed • Campus Ambassador live.",
+      cta: "Join Fellowship",
       icon: Orbit,
     },
     {
       badge: "APPLICATIONS LIVE",
-      lead: "EB and Campus Ambassador registrations open.",
-      cta: "Click here to register",
+      lead: "Campus Ambassador network registrations open.",
+      cta: "Apply Now",
       icon: Sparkles,
     },
     {
-      badge: "EXECUTIVE BOARD & CA",
-      lead: "EB and Campus Ambassador registrations open.",
-      cta: "Click here to register",
+      badge: "CAMPUS AMBASSADOR",
+      lead: "Lead your college delegation • EB registrations closed.",
+      cta: "Register Now",
       icon: ShieldCheck,
     },
   ];
@@ -59,8 +59,8 @@ export default function MarqueeTicker({ setActiveTab }: MarqueeTickerProps) {
       className="relative z-30 w-full overflow-hidden border-b border-[#C9A86A]/30 bg-[#162117]/95 backdrop-blur-md py-2.5 sm:py-3 select-none font-sans cursor-pointer group hover:bg-[#1A261B] transition-colors"
       id="live-marquee-ticker"
       role="region"
-      aria-label="Announcement: EB and Campus Ambassador registrations open"
-      title="Click here to register for Executive Board or Campus Ambassador"
+      aria-label="Announcement: Campus Ambassador registrations open, Executive Board registrations closed"
+      title="Click here to register for Campus Ambassador"
     >
       {/* Left/Right Edge Gradient Fades for cinematic entry & exit */}
       <div className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-28 bg-gradient-to-r from-[#162117] to-transparent z-10" />

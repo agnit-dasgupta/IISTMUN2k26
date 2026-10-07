@@ -95,11 +95,11 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
-    // Executive Board (EB) applications (Public/user creation, Admin manage)
+    // Executive Board (EB) applications (Registrations closed; only Admin manage)
     match /eb_registrations/{applicationId} {
       allow get: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow list: if isAdmin();
-      allow create: if true;
+      allow create: if isAdmin();
       allow update, delete: if isAdmin();
     }
 

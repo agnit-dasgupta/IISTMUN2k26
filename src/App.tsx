@@ -47,10 +47,10 @@ export default function App() {
       case "faq":
         return <FAQs />;
       case "register-portal":
-      case "register-portal-eb":
-        return <RegisterPortal initialPortalTab="eb" setActiveTab={setActiveTab} />;
       case "register-portal-ca":
         return <RegisterPortal initialPortalTab="campus-ambassador" setActiveTab={setActiveTab} />;
+      case "register-portal-eb":
+        return <RegisterPortal initialPortalTab="eb" setActiveTab={setActiveTab} />;
       case "register":
         return <Registration 
           initialPreference={initialPreference} 
@@ -183,8 +183,8 @@ export default function App() {
               <ul className="space-y-2 font-sans text-xs text-[#8A9A7E]">
                 <li>
                   <button onClick={() => { setActiveTab("register-portal-eb"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
-                    <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">Executive Board (EB)</span>
-                    <span className="block text-[10px] text-[#8A9A7E]/70">Apply Now &bull; Presidium Roles</span>
+                    <span className="text-[#8A9A7E] group-hover:text-[#EDE6D3] transition-colors font-medium">Executive Board (EB)</span>
+                    <span className="block text-[10px] text-rose-400/80">Closed &bull; Applications Concluded</span>
                   </button>
                 </li>
                 <li>

@@ -25,7 +25,8 @@ import {
   ArrowLeft,
   Sparkles,
   ExternalLink,
-  HelpCircle
+  HelpCircle,
+  Lock
 } from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { db, handleFirestoreError, OperationType } from "../firebase";
@@ -34,12 +35,14 @@ import { EBRegistration, CampusAmbassadorRegistration } from "../types";
 import FileUploadZone from "./FileUploadZone";
 import { motion, AnimatePresence } from "motion/react";
 
+export const EB_REGISTRATIONS_OPEN = false;
+
 interface RegisterPortalProps {
   initialPortalTab?: "eb" | "campus-ambassador";
   setActiveTab: (tab: string) => void;
 }
 
-export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }: RegisterPortalProps) {
+export default function RegisterPortal({ initialPortalTab = "campus-ambassador", setActiveTab }: RegisterPortalProps) {
   const { user } = useFirebase();
   const [selectedForm, setSelectedForm] = useState<"eb" | "campus-ambassador">(initialPortalTab);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -181,6 +184,10 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
 
   const handleSubmitEB = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!EB_REGISTRATIONS_OPEN) {
+      alert("Executive Board registrations are now closed. No new applications are being accepted.");
+      return;
+    }
     if (!validateEB()) {
       window.scrollTo({ top: 300, behavior: "smooth" });
       return;
@@ -346,8 +353,8 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
             <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#C9A86A] bg-[#2E3B2F] border border-[#C9A86A]/40 px-2.5 py-1">
               CONVOCATION DISPATCH • 14TH EDITION
             </span>
-            <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E] border border-[#8A9A7E]/30 px-2.5 py-1">
-              APPLICATIONS NOW OPEN
+            <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8BA06F] border border-[#8BA06F]/40 bg-[#8BA06F]/10 px-2.5 py-1">
+              CAMPUS AMBASSADOR OPEN • EB CLOSED
             </span>
           </div>
 
@@ -357,8 +364,8 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
           </h1>
 
           <p className="font-sans text-xs sm:text-sm text-[#EDE6D3]/80 leading-relaxed font-light">
-            Welcome to the recruitment portal of <strong className="text-[#EDE6D3]">IIST Model United Nations 2027</strong>.
-            Choose your path: apply to preside as an <span className="text-[#C9A86A] font-medium">Executive Board member</span> to guide substantive debate, or join the prestigious <span className="text-[#8BA06F] font-medium">Campus Ambassador Network</span> to mobilize leadership from your academic institution.
+            Welcome to the leadership portal of <strong className="text-[#EDE6D3]">IIST Model United Nations 2027</strong>.
+            Executive Board applications have concluded. Join the prestigious <span className="text-[#8BA06F] font-medium">Campus Ambassador Network</span> to represent IISTMUN at your academic institution and lead student contingents.
           </p>
 
           <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-mono text-[#8A9A7E]">
@@ -397,13 +404,18 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
             <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C9A86A]">
               SECTION A
             </span>
-            <ShieldCheck className={`h-5 w-5 ${selectedForm === "eb" ? "text-[#C9A86A]" : "text-[#8A9A7E]"}`} />
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[9px] uppercase tracking-wider text-rose-300 bg-rose-950/70 border border-rose-500/40 px-2 py-0.5">
+                CLOSED
+              </span>
+              <ShieldCheck className={`h-5 w-5 ${selectedForm === "eb" ? "text-[#C9A86A]" : "text-[#8A9A7E]"}`} />
+            </div>
           </div>
           <h2 className="font-serif text-lg sm:text-xl text-[#EDE6D3] font-medium block">
             Executive Board (EB) Registration
           </h2>
           <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
-            Apply for Chairperson, Vice-Chair, Director, Rapporteur, or International Press leadership.
+            Registrations closed • Presidium reviews &amp; dais allocations underway.
           </p>
           {selectedForm === "eb" && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#C9A86A]" />
@@ -426,7 +438,12 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
             <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#8BA06F]">
               SECTION B
             </span>
-            <Users className={`h-5 w-5 ${selectedForm === "campus-ambassador" ? "text-[#8BA06F]" : "text-[#8A9A7E]"}`} />
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[9px] uppercase tracking-wider text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-2 py-0.5">
+                NOW OPEN
+              </span>
+              <Users className={`h-5 w-5 ${selectedForm === "campus-ambassador" ? "text-[#8BA06F]" : "text-[#8A9A7E]"}`} />
+            </div>
           </div>
           <h2 className="font-serif text-lg sm:text-xl text-[#EDE6D3] font-medium block">
             Campus Ambassador Registration
@@ -613,9 +630,85 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
         </motion.div>
       )}
 
-      {/* FORM 1: EXECUTIVE BOARD REGISTRATION */}
+      {/* FORM 1: EXECUTIVE BOARD REGISTRATION / CLOSURE NOTICE */}
       {!submittedEB && !submittedCA && selectedForm === "eb" && (
-        <form onSubmit={handleSubmitEB} className="space-y-8">
+        !EB_REGISTRATIONS_OPEN ? (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="border-2 border-[#C9A86A]/40 bg-[#1A1F1A] p-6 sm:p-10 lg:p-12 text-center space-y-8 shadow-2xl relative overflow-hidden"
+          >
+            {/* Subtle background seal */}
+            <div className="absolute -right-12 -bottom-12 opacity-5 pointer-events-none">
+              <img src="/logo-emblem-transparent.png" alt="Emblem" className="w-80 h-80 object-contain" />
+            </div>
+
+            <div className="max-w-2xl mx-auto space-y-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-950/60 border border-rose-500/40 text-rose-300 font-mono text-[10px] uppercase tracking-[0.25em]">
+                <span className="h-2 w-2 rounded-full bg-rose-500 inline-block" />
+                REGISTRATION WINDOW CONCLUDED
+              </div>
+
+              <div className="flex justify-center my-2">
+                <div className="h-16 w-16 rounded-full bg-[#2A372B] border border-[#C9A86A]/50 flex items-center justify-center text-[#C9A86A] shadow-inner">
+                  <ShieldCheck className="h-8 w-8" />
+                </div>
+              </div>
+
+              <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl text-[#EDE6D3] font-normal tracking-tight">
+                Executive Board Registrations <br />
+                <span className="text-[#C9A86A] italic">Are Now Closed</span>
+              </h2>
+
+              <div className="h-px w-24 bg-[#C9A86A]/40 mx-auto my-3" />
+
+              <p className="font-sans text-xs sm:text-sm text-[#EDE6D3]/85 leading-relaxed font-light">
+                The application window for Presiding Officers and Dais Leadership for <strong className="text-[#EDE6D3]">IIST Model United Nations 2027</strong> has officially closed. We express our sincere gratitude to all applicants who submitted their dossiers.
+              </p>
+
+              <div className="p-4 sm:p-5 bg-[#141814] border border-[#C9A86A]/25 text-left text-xs text-[#8A9A7E] space-y-2.5">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-[#C9A86A] shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-[#EDE6D3]">Dossier Evaluation:</strong> The Secretariat is actively reviewing candidate credentials, past MUN appointments, and study guides.
+                  </span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-[#C9A86A] shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-[#EDE6D3]">Shortlisting Communications:</strong> Interview schedules and presidium appointments will be communicated via official email.
+                  </span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-[#C9A86A] shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-[#EDE6D3]">Inquiries:</strong> For questions regarding an already submitted dossier, contact <a href="mailto:support@iistmun.org" className="text-[#C9A86A] hover:underline font-mono">support@iistmun.org</a>.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action CTAs */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSelectedForm("campus-ambassador")}
+                className="w-full sm:w-auto px-6 py-3 border border-[#8BA06F] bg-[#8BA06F] text-[#1A1F1A] font-sans text-xs uppercase tracking-[0.18em] font-semibold hover:bg-[#EDE6D3] hover:border-[#EDE6D3] transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+              >
+                <Users className="h-4 w-4" />
+                Apply as Campus Ambassador (Open)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("home")}
+                className="w-full sm:w-auto px-6 py-3 border border-[#8A9A7E]/30 text-[#8A9A7E] hover:text-[#EDE6D3] hover:border-[#8A9A7E] font-sans text-xs uppercase tracking-[0.18em] transition-all cursor-pointer"
+              >
+                Return to Homepage
+              </button>
+            </div>
+          </motion.div>
+        ) : (
+          <form onSubmit={handleSubmitEB} className="space-y-8">
 
           {/* Section 1: Personal & Academic Credentials */}
           <div className="border border-[#C9A86A]/30 bg-[#1A1F1A]/90 p-6 sm:p-8 space-y-6">
@@ -995,6 +1088,7 @@ export default function RegisterPortal({ initialPortalTab = "eb", setActiveTab }
             </button>
           </div>
         </form>
+        )
       )}
 
       {/* FORM 2: CAMPUS AMBASSADOR REGISTRATION */}

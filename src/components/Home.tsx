@@ -254,30 +254,29 @@ export default function Home({ setActiveTab }: HomeProps) {
           <div className="w-full max-w-2xl mx-auto pt-2 sm:pt-4" id="registrations-status-banner">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-              {/* Notice 1: EB registrations open */}
+              {/* Notice 1: EB registrations closed */}
               <button
                 type="button"
                 onClick={() => {
                   setActiveTab("register-portal-eb");
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="border border-[#C9A86A]/70 hover:border-[#C9A86A] bg-[#1A1F1A]/95 hover:bg-[#2E3B2F]/60 p-5 text-left flex items-start gap-3.5 shadow-lg group transition-all duration-300 cursor-pointer"
+                className="border border-[#8A9A7E]/40 hover:border-[#8A9A7E]/80 bg-[#1A1F1A]/95 hover:bg-[#2E3B2F]/40 p-5 text-left flex items-start gap-3.5 shadow-lg group transition-all duration-300 cursor-pointer"
               >
                 <span className="relative flex h-3 w-3 mt-1 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9A86A] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#C9A86A]"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500/80"></span>
                 </span>
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] block font-medium">
+                    <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E] block font-medium">
                       Executive Board (EB)
                     </span>
-                    <span className="text-[9px] font-mono text-[#1A1F1A] bg-[#C9A86A] px-1 rounded-none font-semibold">
-                      APPLY
+                    <span className="text-[9px] font-mono text-rose-300 bg-rose-950/80 border border-rose-500/40 px-1.5 rounded-none font-semibold">
+                      CLOSED
                     </span>
                   </div>
-                  <span className="font-sans text-xs sm:text-sm text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#C9A86A] transition-colors">
-                    Applications Open • Click to Register
+                  <span className="font-sans text-xs sm:text-sm text-[#EDE6D3]/80 font-medium tracking-wide block group-hover:text-[#EDE6D3] transition-colors">
+                    Applications Closed • Selection Underway
                   </span>
                 </div>
               </button>
@@ -496,7 +495,7 @@ export default function Home({ setActiveTab }: HomeProps) {
 
             <div className="pt-4 border-t border-[#C9A86A]/20 text-center">
               <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C9A86A] block">
-                Registrations Live &bull; Executive Board &amp; Campus Ambassadors
+                Campus Ambassador Registrations Live &bull; Executive Board Applications Closed
               </span>
             </div>
           </div>
