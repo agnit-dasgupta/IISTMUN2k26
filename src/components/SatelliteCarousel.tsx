@@ -16,13 +16,14 @@ interface SatelliteCarouselProps {
 }
 
 const COMMITTEES = [
-  { id: "uncopuos" as const, label: "UNCOPUOS", fullName: "United Nations Committee on the Peaceful Uses of Outer Space", color: "#C9A86A", glowColor: "rgba(201, 168, 106, 0.4)", secondaryColor: "#586841" },
+  { id: "uncopuos" as const, label: "UNCOPOUS", fullName: "United Nations Committee on the Peaceful Uses of Outer Space", color: "#C9A86A", glowColor: "rgba(201, 168, 106, 0.4)", secondaryColor: "#586841" },
+  { id: "unga" as const, label: "UNGA (Online)", fullName: "United Nations General Assembly (Online Committee)", color: "#EDE6D3", glowColor: "rgba(237, 230, 211, 0.4)", secondaryColor: "#1A1F1A" },
   { id: "unhrc" as const, label: "UNHRC", fullName: "United Nations Human Rights Council", color: "#8A9A7E", glowColor: "rgba(138, 154, 126, 0.4)", secondaryColor: "#2E3B2F" },
   { id: "unodc" as const, label: "UNODC", fullName: "United Nations Office on Drugs and Crime", color: "#B8860B", glowColor: "rgba(184, 134, 11, 0.4)", secondaryColor: "#586841" },
   { id: "nes75" as const, label: "NES'75", fullName: "National Emergency Summit 1975", color: "#dfbe7e", glowColor: "rgba(223, 190, 126, 0.4)", secondaryColor: "#8B5A3C" },
-  { id: "unga" as const, label: "UNGA", fullName: "United Nations General Assembly", color: "#EDE6D3", glowColor: "rgba(237, 230, 211, 0.4)", secondaryColor: "#1A1F1A" },
   { id: "undp" as const, label: "UNDP", fullName: "United Nations Development Programme", color: "#586841", glowColor: "rgba(88, 104, 65, 0.4)", secondaryColor: "#2E3B2F" },
-  { id: "ip" as const, label: "IP", fullName: "International Press", color: "#D97706", glowColor: "rgba(217, 119, 6, 0.4)", secondaryColor: "#1A1F1A" }
+  { id: "ip_journalism" as const, label: "IP (Journalism)", fullName: "International Press - Journalism", color: "#E11D48", glowColor: "rgba(225, 29, 72, 0.4)", secondaryColor: "#1A1F1A" },
+  { id: "ip_photojournalism" as const, label: "IP (Photojournalism)", fullName: "International Press - Photojournalism", color: "#EA580C", glowColor: "rgba(234, 88, 12, 0.4)", secondaryColor: "#1A1F1A" }
 ];
 
 export default function SatelliteCarousel({ portfolioOverrides, getPortfolioStatus, onSelectPreference }: SatelliteCarouselProps) {

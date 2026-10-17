@@ -8,3 +8,5 @@ coverage/
 !.env.example
 public/uploads/*
 !public/uploads/.gitkeep
+data/*
+!data/.gitkeep

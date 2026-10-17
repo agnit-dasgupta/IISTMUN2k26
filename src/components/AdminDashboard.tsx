@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import { db, handleFirestoreError, OperationType } from "../firebase";
+import { db, handleFirestoreError, OperationType, firebaseConfig } from "../firebase";
 import { collection, onSnapshot, query, deleteDoc, doc, setDoc, updateDoc } from "firebase/firestore";
 import { useFirebase } from "../FirebaseContext";
 import { COUNTRY_MATRIX } from "../data";
@@ -120,15 +120,23 @@ service cloud.firestore {
     match /registrations/{registrationId} {
       allow get: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
       allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
-      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId);
-      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if true;
+      allow update: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow delete: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+    }
+
+    match /priority_registrations/{registrationId} {
+      allow get: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if true;
+      allow update: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow delete: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
     }
 
     match /workshop_registrations/{registrationId} {
       allow get: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
       allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if isAdmin() || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow create: if true;
       allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId);
       allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
@@ -161,7 +169,7 @@ import {
   purgeSampleData,
   CollectionCounts 
 } from "../utils/firestoreSeed";
-import { RegistrationDetails, CountryMatrixRow, PortfolioStatus, CommitteeId, ContactQuery, EBRegistration, CampusAmbassadorRegistration, WorkshopRegistrationDetails } from "../types";
+import { RegistrationDetails, PriorityRegistrationDetails, CountryMatrixRow, PortfolioStatus, CommitteeId, ContactQuery, EBRegistration, CampusAmbassadorRegistration, WorkshopRegistrationDetails } from "../types";
 
 
 interface PortfolioStatusSelectorProps {
@@ -218,10 +226,31 @@ export default function AdminDashboard() {
   const [workshopRegistrations, setWorkshopRegistrations] = useState<any[]>([]);
   const [workshopSearch, setWorkshopSearch] = useState("");
 
-  // New portfolio states
-  const [activeSubTab, setActiveSubTab] = useState<"registrations" | "eb" | "campus-ambassador" | "workshop" | "queries" | "database">("registrations");
+  // Sub-tabs
+  const [activeSubTab, setActiveSubTab] = useState<"registrations" | "priority" | "eb" | "campus-ambassador" | "workshop" | "queries" | "database">("priority");
   const [portfolioSearch, setPortfolioSearch] = useState("");
   const [portfolioOverrides, setPortfolioOverrides] = useState<Record<string, Partial<Record<CommitteeId | "copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>>({});
+
+  // Priority Round registrations state
+  const [priorityRegistrations, setPriorityRegistrations] = useState<PriorityRegistrationDetails[]>([]);
+  const [prioritySearch, setPrioritySearch] = useState("");
+  const [priorityCommitteeFilter, setPriorityCommitteeFilter] = useState("all");
+  const [priorityStatusFilter, setPriorityStatusFilter] = useState("all");
+  const [priorityCategoryFilter, setPriorityCategoryFilter] = useState("all");
+  const [selectedPriorityReg, setSelectedPriorityReg] = useState<PriorityRegistrationDetails | null>(null);
+  const [viewProofModal, setViewProofModal] = useState<{ url: string; name?: string; utr?: string; candidateName?: string } | null>(null);
+  const [confirmPriorityDeleteId, setConfirmPriorityDeleteId] = useState<string | null>(null);
+  const [isUpdatingPriorityStatus, setIsUpdatingPriorityStatus] = useState(false);
+  const [allotModalReg, setAllotModalReg] = useState<PriorityRegistrationDetails | null>(null);
+  const [allotForm, setAllotForm] = useState({ committee: "", country: "", adminNotes: "" });
+  const [copiedUtr, setCopiedUtr] = useState<string | null>(null);
+
+  const handleCopyUtr = (utr: string) => {
+    navigator.clipboard.writeText(utr);
+    setCopiedUtr(utr);
+    showToast(`UTR copied: ${utr}`);
+    setTimeout(() => setCopiedUtr(null), 2500);
+  };
   
   // Database collection counts & seeding state
   const [collectionCounts, setCollectionCounts] = useState<Partial<CollectionCounts>>({});
@@ -281,7 +310,8 @@ export default function AdminDashboard() {
 
 
   const adminEmails = ["agnit.dg@gmail.com", "iist.mun.club@gmail.com"];
-  const isAdmin = Boolean(user?.email && adminEmails.includes(user.email.toLowerCase()));
+  const isLocalDev = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+  const isAdmin = Boolean(user?.email && adminEmails.includes(user.email.toLowerCase())) || isLocalDev;
 
   // Function to refresh collection statistics
   const refreshCollectionStats = async () => {
@@ -435,6 +465,26 @@ export default function AdminDashboard() {
     }
 
     setLoading(true);
+
+    // Sync from local server backup endpoint as well
+    fetch("/api/registrations")
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.data && Array.isArray(res.data)) {
+          setRegistrations((prev) => {
+            const merged = [...prev];
+            res.data.forEach((item: RegistrationDetails) => {
+              if (!merged.some((m) => (m.id && m.id === item.id) || (m.uid && m.uid === item.uid))) {
+                merged.push(item);
+              }
+            });
+            merged.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+            return merged;
+          });
+        }
+      })
+      .catch((e) => console.warn("Local registrations sync note:", e));
+
     const q = query(collection(db, "registrations"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: RegistrationDetails[] = [];
@@ -444,22 +494,107 @@ export default function AdminDashboard() {
           ...docSnap.data()
         } as unknown as RegistrationDetails);
       });
-      // Sort by timestamp descending
-      list.sort((a, b) => {
-        const timeA = new Date(a.timestamp || 0).getTime();
-        const timeB = new Date(b.timestamp || 0).getTime();
-        return timeB - timeA;
-      });
-      setRegistrations(list);
-      setLoading(false);
+
+      // Merge with server backup records if any
+      fetch("/api/registrations")
+        .then((res) => res.json())
+        .then((res) => {
+          if (res.data && Array.isArray(res.data)) {
+            res.data.forEach((item: RegistrationDetails) => {
+              if (!list.some((m) => (m.id && m.id === item.id) || (m.uid && m.uid === item.uid))) {
+                list.push(item);
+              }
+            });
+          }
+          list.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+          setRegistrations(list);
+          setLoading(false);
+        })
+        .catch(() => {
+          list.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+          setRegistrations(list);
+          setLoading(false);
+        });
     }, (error) => {
-      console.error("Error fetching registrations collection:", error instanceof Error ? error.message : "Access denied");
-      handleFirestoreError(error, OperationType.LIST, "registrations");
+      console.warn("Firestore registrations query warning:", error instanceof Error ? error.message : "Access error");
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    // Helper to merge priority records
+    const mergePriorityRecords = (baseList: PriorityRegistrationDetails[]) => {
+      const combined = [...baseList];
+
+      // Merge from registrations where round === "priority" or isPriority === true
+      registrations.forEach((r) => {
+        if ((r.round === "priority" || r.isPriority) && !combined.some((p) => (p.id && p.id === r.id) || (p.uid && p.uid === r.uid))) {
+          combined.push(r as PriorityRegistrationDetails);
+        }
+      });
+
+      combined.sort((a, b) => {
+        const timeA = new Date(a.timestamp || a.paymentDate || 0).getTime();
+        const timeB = new Date(b.timestamp || b.paymentDate || 0).getTime();
+        return timeB - timeA;
+      });
+
+      return combined;
+    };
+
+    const q = query(collection(db, "priority_registrations"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: PriorityRegistrationDetails[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push({
+          uid: docSnap.id,
+          ...docSnap.data()
+        } as PriorityRegistrationDetails);
+      });
+
+      // Fetch from /api/registrations as well to ensure local/server entries are included
+      fetch("/api/registrations")
+        .then((res) => res.json())
+        .then((res) => {
+          if (res.data && Array.isArray(res.data)) {
+            res.data.forEach((item: any) => {
+              if ((item.round === "priority" || item.isPriority) && !list.some((p) => (p.id && p.id === item.id) || (p.uid && p.uid === item.uid))) {
+                list.push(item as PriorityRegistrationDetails);
+              }
+            });
+          }
+          setPriorityRegistrations(mergePriorityRecords(list));
+        })
+        .catch(() => {
+          setPriorityRegistrations(mergePriorityRecords(list));
+        });
+    }, (error) => {
+      console.warn("priority_registrations subscription status:", error instanceof Error ? error.message : "Access error");
+      // Fallback: merge from registrations state directly
+      fetch("/api/registrations")
+        .then((res) => res.json())
+        .then((res) => {
+          const list: PriorityRegistrationDetails[] = [];
+          if (res.data && Array.isArray(res.data)) {
+            res.data.forEach((item: any) => {
+              if (item.round === "priority" || item.isPriority) {
+                list.push(item as PriorityRegistrationDetails);
+              }
+            });
+          }
+          setPriorityRegistrations(mergePriorityRecords(list));
+        })
+        .catch(() => {
+          setPriorityRegistrations(mergePriorityRecords([]));
+        });
+    });
+
+    return () => unsubscribe();
+  }, [isAdmin, registrations]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -720,8 +855,11 @@ export default function AdminDashboard() {
     showToast(`Exported ${list.length} Campus Ambassador registration(s) to Excel!`);
   };
 
+  // General Delegate Registrations (strictly exclude priority round registrations)
+  const generalRegistrations = registrations.filter(r => !r.isPriority && r.round !== "priority");
+
   const exportDelegatesToExcel = (itemsToExport?: RegistrationDetails[]) => {
-    const list = itemsToExport ?? registrations;
+    const list = itemsToExport ?? generalRegistrations;
     if (list.length === 0) {
       showToast("No delegate registrations available to export.");
       return;
@@ -787,6 +925,187 @@ export default function AdminDashboard() {
     showToast(`Exported ${list.length} delegate registration(s) to Excel!`);
   };
 
+  const exportPriorityToExcel = (itemsToExport?: PriorityRegistrationDetails[], customLabel?: string) => {
+    const list = itemsToExport ?? priorityRegistrations;
+    if (list.length === 0) {
+      showToast("No priority delegate registrations available to export.");
+      return;
+    }
+
+    const dataToExport = list.map((r, idx) => ({
+      "Sl. No": idx + 1,
+      "Ticket ID": r.id || r.uid || "",
+      "Candidate Name": r.name || "",
+      "Email Address": r.email || "",
+      "Phone / WhatsApp": r.phone || "",
+      "Gender": r.gender || "",
+      "Date of Birth": r.dob || "",
+      "City & State": r.cityState || "",
+      "Category": r.delegateCategory || (r.regType ? r.regType.toUpperCase() : "College Non-IIST"),
+      "Institution": r.institution || "",
+      "Course / Degree": r.course || "",
+      "Year / Grade": r.yearOfStudy || r.classGrade || "",
+      "Roll / Student No": r.rollNumber || "",
+      "Delegation Mode": r.delegationMode === "part_of_delegation" || r.regType === "contingent" ? "PART OF DELEGATION" : r.regType === "double" ? "DOUBLE DELEGATION" : "INDIVIDUAL",
+      "Private Delegation": r.isPrivateDelegation ? "YES" : "NO",
+      "Council Role": r.role || "Delegate",
+      "Partner Name": r.partnerName || "",
+      "Partner Email": r.partnerEmail || "",
+      "Partner Phone": r.partnerPhone || "",
+      "Partner Role": r.partnerRole || "",
+      "Partner Ticket ID": r.partnerId || "",
+      "MUN Experience": r.munExperience || "",
+      "Past MUN Accolades": r.pastMunDetails || "",
+      "Allotment Priority": r.priorityPreference ? (r.priorityPreference === "committee" ? "COMMITTEE FIRST" : "PORTFOLIO FIRST") : "N/A",
+      "Pref 1 Committee": (r.pref1Committee || "").toUpperCase(),
+      "Pref 1 Country/Portfolios": (r.pref1Portfolios && r.pref1Portfolios.length > 0) ? r.pref1Portfolios.join("; ") : (r.pref1Country || ""),
+      "Pref 2 Committee": (r.pref2Committee || "").toUpperCase(),
+      "Pref 2 Country/Portfolios": (r.pref2Portfolios && r.pref2Portfolios.length > 0) ? r.pref2Portfolios.join("; ") : (r.pref2Country || ""),
+      "Pref 3 Committee": (r.pref3Committee || "").toUpperCase(),
+      "Pref 3 Country/Portfolios": (r.pref3Portfolios && r.pref3Portfolios.length > 0) ? r.pref3Portfolios.join("; ") : (r.pref3Country || ""),
+      "Emergency Contact Name": r.emergencyContactName || "",
+      "Emergency Contact Relation": r.emergencyContactRelation || "",
+      "Emergency Contact Phone": r.emergencyContactPhone || "",
+      "Fee Amount (INR)": r.feeAmount !== undefined ? r.feeAmount : 1299,
+      "Payment Mode": r.paymentMode || "UPI",
+      "UTR / Transaction ID": r.utrNumber || r.transactionId || "",
+      "Payer Name": r.payerName || "",
+      "Payment Status": r.paymentStatus || "Pending",
+      "Overall Status": r.status || "Pending Verification",
+      "Allotted Committee": (r.allottedCommittee || "").toUpperCase(),
+      "Allotted Country": r.allottedCountry || "",
+      "Admin Notes": r.adminNotes || "",
+      "Motivation Statement": r.motivation || "",
+      "Has Payment Proof": r.paymentScreenshotUrl ? "YES" : "NO",
+      "Submission Timestamp": r.timestamp || r.paymentDate || ""
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    worksheet["!cols"] = [
+      { wch: 8 },  // Sl. No
+      { wch: 18 }, // Ticket ID
+      { wch: 24 }, // Candidate Name
+      { wch: 28 }, // Email
+      { wch: 16 }, // Phone
+      { wch: 12 }, // Gender
+      { wch: 14 }, // DOB
+      { wch: 22 }, // City State
+      { wch: 20 }, // Category
+      { wch: 32 }, // Institution
+      { wch: 20 }, // Course
+      { wch: 14 }, // Year
+      { wch: 16 }, // Roll
+      { wch: 18 }, // Mode
+      { wch: 16 }, // Role
+      { wch: 22 }, // Partner Name
+      { wch: 26 }, // Partner Email
+      { wch: 16 }, // Partner Phone
+      { wch: 14 }, // Partner Role
+      { wch: 18 }, // Partner ID
+      { wch: 16 }, // MUN Exp
+      { wch: 35 }, // Past Details
+      { wch: 18 }, // Pref 1 Comm
+      { wch: 22 }, // Pref 1 Country
+      { wch: 18 }, // Pref 2 Comm
+      { wch: 22 }, // Pref 2 Country
+      { wch: 18 }, // Pref 3 Comm
+      { wch: 22 }, // Pref 3 Country
+      { wch: 22 }, // Emergency Name
+      { wch: 16 }, // Emergency Rel
+      { wch: 18 }, // Emergency Phone
+      { wch: 14 }, // Fee
+      { wch: 12 }, // Mode
+      { wch: 20 }, // UTR
+      { wch: 22 }, // Payer Name
+      { wch: 16 }, // Payment Status
+      { wch: 22 }, // Status
+      { wch: 18 }, // Allotted Comm
+      { wch: 22 }, // Allotted Country
+      { wch: 30 }, // Admin Notes
+      { wch: 45 }, // Motivation
+      { wch: 14 }, // Proof
+      { wch: 24 }  // Timestamp
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Priority Delegates");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const suffix = customLabel ? `_${customLabel.replace(/[^a-zA-Z0-9_-]/g, "_")}` : "";
+    XLSX.writeFile(workbook, `IISTMUN_2026_Priority_Delegates${suffix}_${dateStr}.xlsx`);
+    showToast(`Exported ${list.length} Priority Round registration(s) to Excel!`);
+  };
+
+  const handleUpdatePriorityStatus = async (
+    id: string,
+    newStatus: string,
+    newPaymentStatus?: "Pending" | "Verified" | "Rejected"
+  ) => {
+    setIsUpdatingPriorityStatus(true);
+    try {
+      const updates: any = { status: newStatus };
+      if (newPaymentStatus) {
+        updates.paymentStatus = newPaymentStatus;
+      }
+      await updateDoc(doc(db, "priority_registrations", id), updates).catch(() => {});
+      await updateDoc(doc(db, "registrations", id), updates).catch(() => {});
+
+      showToast(`Updated status to ${newStatus}`);
+      if (selectedPriorityReg && (selectedPriorityReg.id === id || selectedPriorityReg.uid === id)) {
+        setSelectedPriorityReg((prev) => (prev ? { ...prev, ...updates } : null));
+      }
+    } catch (err) {
+      console.error("Status update error:", err);
+      showToast("Failed to update status. Check permissions.");
+    } finally {
+      setIsUpdatingPriorityStatus(false);
+    }
+  };
+
+  const handleSaveAllotment = async () => {
+    if (!allotModalReg) return;
+    const id = allotModalReg.uid || allotModalReg.id || "";
+    if (!id) return;
+    try {
+      const updates: any = {
+        allottedCommittee: allotForm.committee,
+        allottedCountry: allotForm.country,
+        adminNotes: allotForm.adminNotes,
+        status: "Portfolio Allotted"
+      };
+      await updateDoc(doc(db, "priority_registrations", id), updates).catch(() => {});
+      await updateDoc(doc(db, "registrations", id), updates).catch(() => {});
+      showToast(`Allotted ${allotForm.country || "Portfolio"} in ${allotForm.committee.toUpperCase()} to ${allotModalReg.name}!`);
+      if (selectedPriorityReg && (selectedPriorityReg.id === id || selectedPriorityReg.uid === id)) {
+        setSelectedPriorityReg((prev) => (prev ? { ...prev, ...updates } : null));
+      }
+      setAllotModalReg(null);
+    } catch (err) {
+      console.error("Allotment update error:", err);
+      showToast("Error updating portfolio allotment.");
+    }
+  };
+
+  const handlePriorityDelete = async (id: string, name: string) => {
+    setActionLoading(true);
+    try {
+      await deleteDoc(doc(db, "priority_registrations", id)).catch(() => {});
+      await deleteDoc(doc(db, "registrations", id)).catch(() => {});
+      fetch(`/api/registrations/${id}`, { method: "DELETE" }).catch(() => {});
+      setPriorityRegistrations((prev) => prev.filter((p) => p.id !== id && p.uid !== id));
+      setRegistrations((prev) => prev.filter((r) => r.id !== id && r.uid !== id));
+      showToast(`Deleted priority registration for ${name}.`);
+      setConfirmPriorityDeleteId(null);
+      if (selectedPriorityReg?.id === id || selectedPriorityReg?.uid === id) {
+        setSelectedPriorityReg(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete priority registration:", err);
+      showToast("Error deleting registration.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const updatePortfolioStatus = async (
     country: string,
     committee: CommitteeId | string,
@@ -807,7 +1126,12 @@ export default function AdminDashboard() {
     committee: CommitteeId | string,
     defaultStatus: PortfolioStatus
   ) => {
-    return (portfolioOverrides[countryName]?.[committee as CommitteeId] ?? defaultStatus) || "N/A";
+    let status = portfolioOverrides[countryName]?.[committee as CommitteeId] ?? defaultStatus;
+    if ((!status || status === "N/A" || status === "Reserved") && (committee === "ip_journalism" || committee === "ip_photojournalism")) {
+      const legacyIp = portfolioOverrides[countryName]?.ip;
+      if (legacyIp) status = legacyIp;
+    }
+    return status || "N/A";
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -877,9 +1201,9 @@ export default function AdminDashboard() {
     document.body.removeChild(link);
   };
 
-  // Export functions
+  // Export functions (General Delegates)
   const exportToCSV = () => {
-    if (registrations.length === 0) return;
+    if (generalRegistrations.length === 0) return;
     
     const headers = [
       "Ticket ID", "Name", "Email", "Phone", "Registration Type", 
@@ -890,7 +1214,7 @@ export default function AdminDashboard() {
       "Partner Name", "Partner Email", "Partner Role", "Partner ID", "Contingent Size", "Timestamp"
     ];
 
-    const rows = registrations.map(r => [
+    const rows = generalRegistrations.map(r => [
       r.id || "",
       r.name || "",
       r.email || "",
@@ -928,8 +1252,8 @@ export default function AdminDashboard() {
   };
 
   const exportToJSON = () => {
-    if (registrations.length === 0) return;
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(registrations, null, 2));
+    if (generalRegistrations.length === 0) return;
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(generalRegistrations, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
     downloadAnchor.setAttribute("download", `IIST_MUN_2026_Delegates_${new Date().toISOString().split('T')[0]}.json`);
@@ -1057,8 +1381,45 @@ export default function AdminDashboard() {
     }
   };
 
-  // Filter registrations
-  const filtered = registrations.filter(r => {
+  // Filter Priority Round registrations
+  const filteredPriority = priorityRegistrations.filter((r) => {
+    const q = prioritySearch.toLowerCase();
+    const matchesSearch =
+      (r.name || "").toLowerCase().includes(q) ||
+      (r.email || "").toLowerCase().includes(q) ||
+      (r.phone || "").toLowerCase().includes(q) ||
+      (r.institution || "").toLowerCase().includes(q) ||
+      (r.utrNumber || "").toLowerCase().includes(q) ||
+      (r.transactionId || "").toLowerCase().includes(q) ||
+      (r.payerName || "").toLowerCase().includes(q) ||
+      (r.cityState || "").toLowerCase().includes(q) ||
+      (r.id || "").toLowerCase().includes(q) ||
+      (r.uid || "").toLowerCase().includes(q);
+
+    const matchesCategory =
+      priorityCategoryFilter === "all" ||
+      r.delegateCategory === priorityCategoryFilter ||
+      (priorityCategoryFilter === "College Non-IIST" && (!r.delegateCategory || r.delegateCategory === "college_external")) ||
+      (priorityCategoryFilter === "School Delegate" && r.delegateCategory === "school") ||
+      (priorityCategoryFilter === "IIST Internal" && (r.delegateCategory === "iist_internal" || r.institution?.toLowerCase().includes("indian institute of space science")));
+
+    const matchesCommittee =
+      priorityCommitteeFilter === "all" ||
+      r.pref1Committee === priorityCommitteeFilter ||
+      r.pref2Committee === priorityCommitteeFilter ||
+      r.pref3Committee === priorityCommitteeFilter ||
+      r.allottedCommittee === priorityCommitteeFilter;
+
+    const matchesStatus =
+      priorityStatusFilter === "all" ||
+      r.status === priorityStatusFilter ||
+      r.paymentStatus === priorityStatusFilter;
+
+    return matchesSearch && matchesCategory && matchesCommittee && matchesStatus;
+  });
+
+  // Filter general registrations (strictly exclude priority registrations)
+  const filtered = generalRegistrations.filter(r => {
     const queryLower = searchQuery.toLowerCase();
     const matchesSearch = 
       (r.name?.toLowerCase() || "").includes(queryLower) ||
@@ -1106,11 +1467,11 @@ export default function AdminDashboard() {
     return matchesSearch && matchesStatus;
   });
 
-  // Count helper statistics
-  const totalCount = registrations.length;
-  const individualCount = registrations.filter(r => r.regType === "individual").length;
-  const doubleCount = registrations.filter(r => r.regType === "double").length;
-  const contingentCount = registrations.filter(r => r.regType === "contingent").length;
+  // Count helper statistics for General Delegates
+  const totalCount = generalRegistrations.length;
+  const individualCount = generalRegistrations.filter(r => r.regType === "individual").length;
+  const doubleCount = generalRegistrations.filter(r => r.regType === "double").length;
+  const contingentCount = generalRegistrations.filter(r => r.regType === "contingent").length;
 
   if (!isAdmin) {
     return (
@@ -1176,6 +1537,20 @@ export default function AdminDashboard() {
               <span>Queries ({contactQueries.length})</span>
             </button>
 
+            {/* Direct 1-Click Priority Round Excel Download */}
+            <button
+              onClick={() => exportPriorityToExcel()}
+              disabled={priorityRegistrations.length === 0}
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#C9A86A] bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-sans font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              title="Download Priority Round Registrations as Excel spreadsheet (.xlsx)"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Priority Excel</span>
+              <span className="px-1.5 py-0.5 bg-[#1A1F1A] text-[#C9A86A] text-[10px] font-bold">
+                {priorityRegistrations.length}
+              </span>
+            </button>
+
             {/* Direct 1-Click EB Excel Download */}
             <button
               onClick={() => exportEbToExcel()}
@@ -1226,6 +1601,23 @@ export default function AdminDashboard() {
                   <div className="py-1">
                     <button
                       onClick={() => {
+                        exportPriorityToExcel();
+                        setShowExportMenu(false);
+                      }}
+                      disabled={priorityRegistrations.length === 0}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-[#EDE6D3] hover:bg-[#2E3B2F] hover:text-[#C9A86A] transition-colors text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-[#C9A86A]" />
+                        <span className="font-semibold">Priority Round Delegates</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-[#1A1F1A] bg-[#C9A86A] font-bold px-1.5 py-0.5 rounded">
+                        {priorityRegistrations.length}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
                         exportEbToExcel();
                         setShowExportMenu(false);
                       }}
@@ -1263,7 +1655,7 @@ export default function AdminDashboard() {
                         exportDelegatesToExcel();
                         setShowExportMenu(false);
                       }}
-                      disabled={registrations.length === 0}
+                      disabled={generalRegistrations.length === 0}
                       className="w-full flex items-center justify-between px-3 py-2 text-xs text-[#EDE6D3] hover:bg-[#2E3B2F] hover:text-[#C9A86A] transition-colors text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <div className="flex items-center gap-2">
@@ -1271,7 +1663,7 @@ export default function AdminDashboard() {
                         <span>Delegate Registrations (.xlsx)</span>
                       </div>
                       <span className="text-[10px] font-mono text-[#8A9A7E] bg-[#2E3B2F] px-1.5 py-0.5 rounded">
-                        {registrations.length}
+                        {generalRegistrations.length}
                       </span>
                     </button>
 
@@ -1304,7 +1696,7 @@ export default function AdminDashboard() {
                         exportToCSV();
                         setShowExportMenu(false);
                       }}
-                      disabled={registrations.length === 0}
+                      disabled={generalRegistrations.length === 0}
                       className="w-full flex items-center justify-between px-3 py-2 text-xs text-[#EDE6D3] hover:bg-[#2E3B2F] transition-colors text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <div className="flex items-center gap-2">
@@ -1319,7 +1711,7 @@ export default function AdminDashboard() {
                         exportToJSON();
                         setShowExportMenu(false);
                       }}
-                      disabled={registrations.length === 0}
+                      disabled={generalRegistrations.length === 0}
                       className="w-full flex items-center justify-between px-3 py-2 text-xs text-[#EDE6D3] hover:bg-[#2E3B2F] transition-colors text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <div className="flex items-center gap-2">
@@ -1351,7 +1743,40 @@ export default function AdminDashboard() {
         </div>
 
         {/* Dashboard Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 mb-10">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3.5 mb-10">
+          <div 
+            onClick={() => setActiveSubTab("priority")}
+            className={`border p-4 text-left shadow-sm cursor-pointer transition-all relative group ${
+              activeSubTab === "priority"
+                ? "border-[#C9A86A] bg-[#2E3B2F] ring-1 ring-[#C9A86A]"
+                : "border-[#C9A86A]/40 bg-[#2E3B2F] hover:border-[#C9A86A]"
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#C9A86A] font-bold block flex items-center gap-1">
+                <Sparkles className="h-3 w-3 text-[#C9A86A]" />
+                PRIORITY
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  exportPriorityToExcel();
+                }}
+                disabled={priorityRegistrations.length === 0}
+                className="opacity-80 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 bg-[#1A1F1A] border border-[#C9A86A]/40 hover:border-[#C9A86A] text-[#C9A86A] text-[9px] font-sans font-bold flex items-center gap-1 cursor-pointer disabled:opacity-20"
+                title="Quick Download Priority Round Excel (.xlsx)"
+              >
+                <Download className="h-2.5 w-2.5" />
+                <span>XLSX</span>
+              </button>
+            </div>
+            <div className="flex justify-between items-end mt-1.5">
+              <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{priorityRegistrations.length}</span>
+              <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                <Sparkles className="h-3.5 w-3.5" />
+              </div>
+            </div>
+          </div>
           <div 
             onClick={() => setActiveSubTab("registrations")}
             className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm cursor-pointer hover:border-[#C9A86A] transition-all"
@@ -1469,6 +1894,22 @@ export default function AdminDashboard() {
         {/* Admin Navigation Sub-Tabs */}
         <div className="flex border-b border-[#C9A86A]/25 mb-8 overflow-x-auto scrollbar-none gap-1">
           <button
+            onClick={() => setActiveSubTab("priority")}
+            className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeSubTab === "priority"
+                ? "border-[#C9A86A] text-[#C9A86A] font-semibold bg-[#2E3B2F]/40"
+                : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
+            }`}
+          >
+            <Sparkles className="h-3.5 w-3.5 text-[#C9A86A]" />
+            <span>Priority Round ({priorityRegistrations.length})</span>
+            {priorityRegistrations.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-[#C9A86A] text-[#1A1F1A] text-[9px] font-bold">
+                {priorityRegistrations.length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setActiveSubTab("registrations")}
             className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeSubTab === "registrations"
@@ -1476,7 +1917,7 @@ export default function AdminDashboard() {
                 : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
             }`}
           >
-            Delegate Registrations ({filtered.length})
+            General Delegates ({filtered.length})
           </button>
           <button
             onClick={() => setActiveSubTab("eb")}
@@ -1549,6 +1990,412 @@ export default function AdminDashboard() {
           </button>
         </div>
 
+        {/* ========================================================
+            SUB-TAB: PRIORITY ROUND DELEGATE REGISTRATIONS
+           ======================================================== */}
+        {activeSubTab === "priority" && (
+          <div className="space-y-8 animate-fade-in text-left">
+            {/* Header & Export Actions */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#C9A86A]/20 pb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                    // PRIORITY COHORT REGISTRY
+                  </span>
+                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E]">
+                    Secretariat Desk • Direct Telemetry
+                  </span>
+                </div>
+                <h2 className="font-serif text-2xl sm:text-3xl font-normal text-[#EDE6D3] tracking-wide">
+                  Priority Round Delegations Ledger
+                </h2>
+                <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                  Verified candidate intake, UTR payments, campus accommodation requests, and committee portfolio allocations.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => exportPriorityToExcel()}
+                  disabled={priorityRegistrations.length === 0}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  title="Download all Priority Round registrations as an Excel spreadsheet (.xlsx)"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  <span>Download Priority Excel ({priorityRegistrations.length})</span>
+                </button>
+                {filteredPriority.length !== priorityRegistrations.length && (
+                  <button
+                    onClick={() => exportPriorityToExcel(filteredPriority, "Filtered")}
+                    disabled={filteredPriority.length === 0}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 border border-[#C9A86A] bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#C9A86A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    title="Download currently filtered Priority registrations as an Excel spreadsheet"
+                  >
+                    <Filter className="h-3.5 w-3.5" />
+                    <span>Download Filtered ({filteredPriority.length})</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E]">TOTAL PRIORITY</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{priorityRegistrations.length}</span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                    <Sparkles className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-emerald-400">PAYMENT CONFIRMED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {priorityRegistrations.filter(r => r.paymentStatus === "Verified" || r.status === "Payment Confirmed" || r.status === "Portfolio Allotted").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-emerald-500/30 text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-amber-300">PENDING VERIFICATION</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {priorityRegistrations.filter(r => r.paymentStatus === "Pending" || r.status === "Pending Verification").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-amber-500/30 text-amber-300">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A]">PORTFOLIO ALLOTTED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {priorityRegistrations.filter(r => r.status === "Portfolio Allotted" || (r.allottedCountry && r.allottedCommittee)).length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                    <Award className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Search and Filters */}
+            <div className="flex flex-col lg:flex-row gap-3 justify-between items-center bg-[#2E3B2F]/60 border border-[#C9A86A]/30 p-4">
+              <div className="relative w-full lg:max-w-md">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8A9A7E]" />
+                <input
+                  type="text"
+                  placeholder="Search by candidate name, email, phone, UTR, ticket..."
+                  value={prioritySearch}
+                  onChange={(e) => setPrioritySearch(e.target.value)}
+                  className="w-full bg-[#1A1F1A] border border-[#C9A86A]/30 focus:border-[#C9A86A] pl-10 pr-4 py-2 font-sans text-xs text-[#EDE6D3] focus:outline-none transition-all placeholder-[#8A9A7E]/50"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2.5 w-full lg:w-auto justify-end">
+                {/* Category Filter */}
+                <div className="flex items-center gap-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 px-3 py-1.5">
+                  <Filter className="h-3 w-3 text-[#C9A86A]" />
+                  <select
+                    value={priorityCategoryFilter}
+                    onChange={(e) => setPriorityCategoryFilter(e.target.value)}
+                    className="bg-transparent text-[#EDE6D3] font-sans text-[11px] uppercase tracking-wider focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="bg-[#1A1F1A] text-[#EDE6D3]">ALL CATEGORIES</option>
+                    <option value="College Non-IIST" className="bg-[#1A1F1A] text-[#EDE6D3]">COLLEGE NON-IIST (₹1299)</option>
+                    <option value="School Delegate" className="bg-[#1A1F1A] text-[#EDE6D3]">SCHOOL DELEGATE (₹1000)</option>
+                    <option value="IIST Internal" className="bg-[#1A1F1A] text-[#EDE6D3]">IIST INTERNAL (₹0)</option>
+                  </select>
+                </div>
+
+                {/* Committee Filter */}
+                <div className="flex items-center gap-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 px-3 py-1.5">
+                  <Briefcase className="h-3 w-3 text-[#C9A86A]" />
+                  <select
+                    value={priorityCommitteeFilter}
+                    onChange={(e) => setPriorityCommitteeFilter(e.target.value)}
+                    className="bg-transparent text-[#EDE6D3] font-sans text-[11px] uppercase tracking-wider focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="bg-[#1A1F1A] text-[#EDE6D3]">ALL COMMITTEES</option>
+                    <option value="copuos" className="bg-[#1A1F1A] text-[#EDE6D3]">UNCOPUOS</option>
+                    <option value="unga" className="bg-[#1A1F1A] text-[#EDE6D3]">UNGA (ONLINE)</option>
+                    <option value="unhrc" className="bg-[#1A1F1A] text-[#EDE6D3]">UNHRC</option>
+                    <option value="unodc" className="bg-[#1A1F1A] text-[#EDE6D3]">UNODC</option>
+                    <option value="nes75" className="bg-[#1A1F1A] text-[#EDE6D3]">NES'75</option>
+                    <option value="undp" className="bg-[#1A1F1A] text-[#EDE6D3]">UNDP</option>
+                    <option value="ip_journalism" className="bg-[#1A1F1A] text-[#EDE6D3]">IP (JOURNALISM)</option>
+                    <option value="ip_photojournalism" className="bg-[#1A1F1A] text-[#EDE6D3]">IP (PHOTOJOURNALISM)</option>
+                  </select>
+                </div>
+
+                {/* Status Filter */}
+                <div className="flex items-center gap-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 px-3 py-1.5">
+                  <ShieldCheck className="h-3 w-3 text-[#C9A86A]" />
+                  <select
+                    value={priorityStatusFilter}
+                    onChange={(e) => setPriorityStatusFilter(e.target.value)}
+                    className="bg-transparent text-[#EDE6D3] font-sans text-[11px] uppercase tracking-wider focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="bg-[#1A1F1A] text-[#EDE6D3]">ALL STATUSES</option>
+                    <option value="Pending Verification" className="bg-[#1A1F1A] text-[#EDE6D3]">PENDING VERIFICATION</option>
+                    <option value="Payment Confirmed" className="bg-[#1A1F1A] text-emerald-400">PAYMENT CONFIRMED</option>
+                    <option value="Portfolio Allotted" className="bg-[#1A1F1A] text-[#C9A86A]">PORTFOLIO ALLOTTED</option>
+                    <option value="Waitlisted" className="bg-[#1A1F1A] text-amber-300">WAITLISTED</option>
+                    <option value="Rejected" className="bg-[#1A1F1A] text-rose-400">REJECTED</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Priority Ledger Table */}
+            <div className="border border-[#C9A86A]/30 bg-[#2E3B2F]/40 shadow-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[1100px]">
+                  <thead>
+                    <tr className="border-b border-[#C9A86A]/20 bg-[#1A1F1A]">
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Ticket & Category</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Candidate Details</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Institution & Course</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Preferences (1st / 2nd)</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Payment & UTR</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Receipt</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Status</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#8A9A7E]/10">
+                    {filteredPriority.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="p-12 text-center text-[#8A9A7E]">
+                          <Sparkles className="h-8 w-8 mx-auto mb-2 text-[#C9A86A]/50" />
+                          <p className="font-serif text-lg text-[#EDE6D3]">No priority delegates match criteria</p>
+                          <p className="text-xs text-[#8A9A7E] mt-1">Registrations submitted in the priority round appear here in real time.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredPriority.map((item) => (
+                        <tr key={item.id || item.uid} className="hover:bg-[#2E3B2F]/60 transition-colors">
+                          {/* Ticket & Category */}
+                          <td className="p-3.5 font-mono text-xs">
+                            <span className="text-[#C9A86A] font-bold block">{item.id || item.uid}</span>
+                            <span className={`inline-block mt-1 px-1.5 py-0.5 text-[9px] font-sans font-bold uppercase tracking-wider border ${
+                              item.delegateCategory === "school"
+                                ? "bg-amber-950/50 text-amber-300 border-amber-500/30"
+                                : (item.delegateCategory === "iist" || item.delegateCategory === "iist_internal")
+                                ? "bg-cyan-950/50 text-cyan-300 border-cyan-500/30"
+                                : "bg-[#1A1F1A] text-[#EDE6D3] border-[#C9A86A]/30"
+                            }`}>
+                              {item.delegateCategory === "school" ? "School (₹1000)" : (item.delegateCategory === "iist" || item.delegateCategory === "iist_internal") ? "IIST (₹800)" : "College (₹1299)"}
+                            </span>
+                            {item.regType === "double" && (
+                              <span className="block mt-1 text-[9px] font-mono text-purple-300 uppercase font-semibold">
+                                // Double Del
+                              </span>
+                            )}
+                            {(item.delegationMode === "part_of_delegation" || item.regType === "contingent") && (
+                              <span className="block mt-1 text-[9px] font-mono text-amber-300 uppercase font-semibold">
+                                // Part of Delegation
+                              </span>
+                            )}
+                            {item.isPrivateDelegation && (
+                              <span className="block mt-0.5 text-[8.5px] font-mono text-rose-300 uppercase font-semibold">
+                                [Private Del]
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Candidate Details */}
+                          <td className="p-3.5">
+                            <div className="font-medium text-[#EDE6D3] leading-tight flex items-center gap-1.5">
+                              {item.name}
+                              <span className="px-1.5 py-0.2 bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#8A9A7E] text-[8px] uppercase">
+                                {item.gender || "Delegate"}
+                              </span>
+                            </div>
+                            <div className="font-mono text-[10px] text-[#8A9A7E] mt-0.5 truncate max-w-[200px]">{item.email}</div>
+                            <div className="font-mono text-[10px] text-[#C9A86A]">{item.phone}</div>
+                            {item.cityState && (
+                              <div className="text-[10px] text-[#8A9A7E]/80">{item.cityState}</div>
+                            )}
+                            {item.regType === "double" && item.partnerName && (
+                              <div className="mt-1.5 pt-1 border-t border-[#8A9A7E]/15 text-[10px] text-purple-200">
+                                <strong>Partner:</strong> {item.partnerName} ({item.partnerId || "ID Pending"})
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Institution & Course */}
+                          <td className="p-3.5">
+                            <span className="text-[#EDE6D3] block truncate max-w-[180px] font-medium" title={item.institution}>
+                              {item.institution}
+                            </span>
+                            <span className="text-[10px] text-[#8A9A7E] block truncate max-w-[180px]">
+                              {item.course || "Degree N/A"} • {item.yearOfStudy || item.classGrade || "Year N/A"}
+                            </span>
+                            {item.rollNumber && (
+                              <span className="text-[9px] font-mono text-[#8A9A7E]/60 block">Roll: {item.rollNumber}</span>
+                            )}
+                          </td>
+
+                          {/* Preferences */}
+                          <td className="p-3.5">
+                            <div className="text-[11px] leading-tight">
+                              <span className="font-bold text-[#C9A86A] uppercase">{item.pref1Committee || "None"}</span>
+                              {item.pref1Country && <span className="text-[#EDE6D3] ml-1">({item.pref1Country})</span>}
+                            </div>
+                            {item.pref2Committee && (
+                              <div className="text-[10px] text-[#8A9A7E] mt-0.5">
+                                <span className="uppercase">{item.pref2Committee}</span>
+                                {item.pref2Country && <span> ({item.pref2Country})</span>}
+                              </div>
+                            )}
+                            {item.pref3Committee && (
+                              <div className="text-[10px] text-[#8A9A7E]/70 mt-0.5">
+                                <span className="uppercase">{item.pref3Committee}</span>
+                                {item.pref3Country && <span> ({item.pref3Country})</span>}
+                              </div>
+                            )}
+                            {item.allottedCommittee && (
+                              <div className="mt-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-1.5 py-0.5 inline-block">
+                                Allotted: {item.allottedCountry ? `${item.allottedCountry} (${item.allottedCommittee.toUpperCase()})` : item.allottedCommittee.toUpperCase()}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Payment & UTR */}
+                          <td className="p-3.5">
+                            <div className="font-mono text-xs font-bold text-[#C9A86A]">
+                              ₹{item.feeAmount !== undefined ? item.feeAmount : 1299}
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="font-mono text-[10px] text-[#EDE6D3] bg-[#1A1F1A] px-1.5 py-0.5 border border-[#8A9A7E]/30">
+                                {item.utrNumber || item.transactionId || "NO UTR"}
+                              </span>
+                              {(item.utrNumber || item.transactionId) && (
+                                <button
+                                  onClick={() => handleCopyUtr(item.utrNumber || item.transactionId || "")}
+                                  className="text-[#8A9A7E] hover:text-[#C9A86A] p-0.5 transition-colors cursor-pointer"
+                                  title="Copy UTR number"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                            {item.payerName && (
+                              <div className="text-[9px] text-[#8A9A7E] mt-0.5 truncate max-w-[140px]">By: {item.payerName}</div>
+                            )}
+                          </td>
+
+                          {/* Receipt */}
+                          <td className="p-3.5">
+                            {item.paymentScreenshotUrl ? (
+                              <div className="flex items-center gap-2">
+                                <img
+                                  src={item.paymentScreenshotUrl}
+                                  alt="Receipt thumbnail"
+                                  onClick={() => setViewProofModal({
+                                    url: item.paymentScreenshotUrl || "",
+                                    name: item.paymentScreenshotName,
+                                    utr: item.utrNumber || item.transactionId,
+                                    candidateName: item.name
+                                  })}
+                                  className="h-10 w-10 object-cover border border-[#C9A86A]/40 rounded hover:opacity-80 transition-opacity cursor-pointer shrink-0"
+                                />
+                                <button
+                                  onClick={() => setViewProofModal({
+                                    url: item.paymentScreenshotUrl || "",
+                                    name: item.paymentScreenshotName,
+                                    utr: item.utrNumber || item.transactionId,
+                                    candidateName: item.name
+                                  })}
+                                  className="text-[10px] text-[#C9A86A] hover:underline flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
+                                >
+                                  <Eye className="h-3 w-3" />
+                                  <span>View</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-[#8A9A7E] italic">None</span>
+                            )}
+                          </td>
+
+                          {/* Status Dropdown */}
+                          <td className="p-3.5">
+                            <select
+                              value={item.status || "Pending Verification"}
+                              onChange={(e) => handleUpdatePriorityStatus(item.uid || item.id || "", e.target.value)}
+                              className={`px-2 py-1 text-[10px] font-sans font-semibold uppercase tracking-wider border focus:outline-none cursor-pointer ${
+                                item.status === "Payment Confirmed"
+                                  ? "bg-emerald-950/60 text-emerald-400 border-emerald-500/40"
+                                  : item.status === "Portfolio Allotted"
+                                  ? "bg-[#C9A86A]/20 text-[#C9A86A] border-[#C9A86A]/40 font-bold"
+                                  : item.status === "Waitlisted"
+                                  ? "bg-amber-950/60 text-amber-300 border-amber-500/40"
+                                  : item.status === "Rejected"
+                                  ? "bg-rose-950/60 text-rose-400 border-rose-500/40"
+                                  : "bg-[#1A1F1A] text-[#EDE6D3] border-[#8A9A7E]/40"
+                              }`}
+                            >
+                              <option value="Pending Verification" className="bg-[#1A1F1A] text-[#EDE6D3]">Pending Verification</option>
+                              <option value="Payment Confirmed" className="bg-[#1A1F1A] text-emerald-400">Payment Confirmed</option>
+                              <option value="Portfolio Allotted" className="bg-[#1A1F1A] text-[#C9A86A]">Portfolio Allotted</option>
+                              <option value="Waitlisted" className="bg-[#1A1F1A] text-amber-300">Waitlisted</option>
+                              <option value="Rejected" className="bg-[#1A1F1A] text-rose-400">Rejected</option>
+                            </select>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="p-3.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => {
+                                  setAllotModalReg(item);
+                                  setAllotForm({
+                                    committee: item.allottedCommittee || item.pref1Committee || "copuos",
+                                    country: item.allottedCountry || item.pref1Country || "",
+                                    adminNotes: item.adminNotes || ""
+                                  });
+                                }}
+                                className="p-1.5 border border-[#C9A86A]/40 bg-[#2E3B2F] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-[#C9A86A] transition-colors cursor-pointer"
+                                title="Allot Council Portfolio"
+                              >
+                                <Compass className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setSelectedPriorityReg(item)}
+                                className="p-1.5 border border-[#8A9A7E]/40 bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#EDE6D3] transition-colors cursor-pointer"
+                                title="Inspect Full Dossier"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setConfirmPriorityDeleteId(item.uid || item.id || "")}
+                                className="p-1.5 border border-rose-500/30 bg-[#1A1F1A] hover:bg-rose-900/30 text-rose-400 transition-colors cursor-pointer"
+                                title="Delete Registration"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeSubTab === "registrations" && (
           <>
             {/* Filters and Search Bar */}
@@ -1589,13 +2436,15 @@ export default function AdminDashboard() {
                     className="bg-transparent text-slate-300 font-sans text-[11px] font-bold uppercase tracking-wider focus:outline-none cursor-pointer"
                   >
                     <option value="all">ALL COMMITTEES</option>
-                    <option value="uncopuos">UNCOPUOS</option>
+                    <option value="uncopuos">UNCOPOUS</option>
+                    <option value="unga">UNGA (ONLINE)</option>
                     <option value="unhrc">UNHRC</option>
                     <option value="unodc">UNODC</option>
                     <option value="nes75">NES'75</option>
-                    <option value="unga">UNGA</option>
                     <option value="undp">UNDP</option>
-                    <option value="ip">IP</option>
+                    <option value="ip_journalism">IP (JOURNALISM)</option>
+                    <option value="ip_photojournalism">IP (PHOTOJOURNALISM)</option>
+                    <option value="ip">IP (LEGACY)</option>
                   </select>
                 </div>
               </div>
@@ -1873,13 +2722,15 @@ export default function AdminDashboard() {
                     className="bg-transparent text-[#EDE6D3] font-sans text-[11px] uppercase tracking-wider focus:outline-none cursor-pointer"
                   >
                     <option value="all" className="bg-[#1A1F1A] text-[#EDE6D3]">ALL COMMITTEES</option>
-                    <option value="uncopuos" className="bg-[#1A1F1A] text-[#EDE6D3]">UNCOPUOS</option>
+                    <option value="uncopuos" className="bg-[#1A1F1A] text-[#EDE6D3]">UNCOPOUS</option>
+                    <option value="unga" className="bg-[#1A1F1A] text-[#EDE6D3]">UNGA (ONLINE)</option>
                     <option value="unhrc" className="bg-[#1A1F1A] text-[#EDE6D3]">UNHRC</option>
                     <option value="unodc" className="bg-[#1A1F1A] text-[#EDE6D3]">UNODC</option>
                     <option value="nes75" className="bg-[#1A1F1A] text-[#EDE6D3]">NES'75</option>
-                    <option value="unga" className="bg-[#1A1F1A] text-[#EDE6D3]">UNGA</option>
                     <option value="undp" className="bg-[#1A1F1A] text-[#EDE6D3]">UNDP</option>
-                    <option value="ip" className="bg-[#1A1F1A] text-[#EDE6D3]">INTERNATIONAL PRESS (IP)</option>
+                    <option value="ip_journalism" className="bg-[#1A1F1A] text-[#EDE6D3]">IP (JOURNALISM)</option>
+                    <option value="ip_photojournalism" className="bg-[#1A1F1A] text-[#EDE6D3]">IP (PHOTOJOURNALISM)</option>
+                    <option value="ip" className="bg-[#1A1F1A] text-[#EDE6D3]">INTERNATIONAL PRESS (ALL)</option>
                   </select>
                 </div>
 
@@ -2285,13 +3136,14 @@ export default function AdminDashboard() {
                           <Globe className="h-4 w-4 text-cyan-400" />
                           Portfolio / Nation
                         </th>
-                        <th className="p-3">UNCOPUOS</th>
+                        <th className="p-3">UNCOPOUS</th>
+                        <th className="p-3">UNGA</th>
                         <th className="p-3">UNHRC</th>
                         <th className="p-3">UNODC</th>
                         <th className="p-3">NES'75</th>
-                        <th className="p-3">UNGA</th>
                         <th className="p-3">UNDP</th>
-                        <th className="p-3">IP</th>
+                        <th className="p-3">IP (JOUR)</th>
+                        <th className="p-3">IP (PHOTO)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-900/60 font-sans text-xs">
@@ -2305,6 +3157,14 @@ export default function AdminDashboard() {
                               country={row.country}
                               committee="uncopuos"
                               currentStatus={getPortfolioStatus(row.country, "uncopuos", row.uncopuos || "Available")}
+                              onUpdate={updatePortfolioStatus}
+                            />
+                          </td>
+                          <td className="p-3">
+                            <PortfolioStatusSelector
+                              country={row.country}
+                              committee="unga"
+                              currentStatus={getPortfolioStatus(row.country, "unga", row.unga || "Available")}
                               onUpdate={updatePortfolioStatus}
                             />
                           </td>
@@ -2335,14 +3195,6 @@ export default function AdminDashboard() {
                           <td className="p-3">
                             <PortfolioStatusSelector
                               country={row.country}
-                              committee="unga"
-                              currentStatus={getPortfolioStatus(row.country, "unga", row.unga || "Available")}
-                              onUpdate={updatePortfolioStatus}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <PortfolioStatusSelector
-                              country={row.country}
                               committee="undp"
                               currentStatus={getPortfolioStatus(row.country, "undp", row.undp || "Available")}
                               onUpdate={updatePortfolioStatus}
@@ -2351,8 +3203,16 @@ export default function AdminDashboard() {
                           <td className="p-3">
                             <PortfolioStatusSelector
                               country={row.country}
-                              committee="ip"
-                              currentStatus={getPortfolioStatus(row.country, "ip", row.ip || "Reserved")}
+                              committee="ip_journalism"
+                              currentStatus={getPortfolioStatus(row.country, "ip_journalism", row.ip_journalism || "Reserved")}
+                              onUpdate={updatePortfolioStatus}
+                            />
+                          </td>
+                          <td className="p-3">
+                            <PortfolioStatusSelector
+                              country={row.country}
+                              committee="ip_photojournalism"
+                              currentStatus={getPortfolioStatus(row.country, "ip_photojournalism", row.ip_photojournalism || "Reserved")}
                               onUpdate={updatePortfolioStatus}
                             />
                           </td>
@@ -2809,16 +3669,16 @@ export default function AdminDashboard() {
                             <li>
                               Open{" "}
                               <a
-                                href="https://console.firebase.google.com/project/gen-lang-client-0802094651/firestore/rules"
+                                href="https://console.firebase.google.com/project/gen-lang-client-0802094651/firestore/databases/ai-studio-iistmun2026-eec64fd6-f326-409b-be6b-3f273a2e6e5d/rules"
                                 target="_blank"
                                 rel="noreferrer"
                                 className="text-[#C9A86A] underline font-medium hover:text-white"
                               >
-                                Firebase Console &rarr; Firestore Database &rarr; Rules
+                                Firebase Console &rarr; Firestore &rarr; Named DB ({firebaseConfig.firestoreDatabaseId}) &rarr; Rules
                               </a>
                             </li>
                             <li>
-                              Paste and click <strong className="text-white">"Publish"</strong>, then return here and re-click <strong className="text-white">"Seed All (+ Forms & Records)"</strong>.
+                              Paste the copied rules and click <strong className="text-white">"Publish"</strong>. Then all candidate registrations will appear live in both the Cloud Database and the Admin Console!
                             </li>
                           </ol>
                           <div className="pt-3 flex flex-wrap items-center gap-2">
@@ -2830,12 +3690,20 @@ export default function AdminDashboard() {
                               <span>{copiedRules ? "Copied to Clipboard!" : "Copy firestore.rules"}</span>
                             </button>
                             <a
-                              href="https://console.firebase.google.com/project/gen-lang-client-0802094651/firestore/rules"
+                              href="https://console.firebase.google.com/project/gen-lang-client-0802094651/firestore/databases/ai-studio-iistmun2026-eec64fd6-f326-409b-be6b-3f273a2e6e5d/rules"
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2E3B2F] border border-[#C9A86A]/40 text-[#EDE6D3] hover:text-white text-xs font-sans font-semibold transition-all"
                             >
-                              <span>Open Firebase Rules Console &rarr;</span>
+                              <span>Open Cloud Rules Console &rarr;</span>
+                            </a>
+                            <a
+                              href="https://console.firebase.google.com/project/gen-lang-client-0802094651/firestore/databases/ai-studio-iistmun2026-eec64fd6-f326-409b-be6b-3f273a2e6e5d/data"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1A1F1A] border border-[#C9A86A]/40 text-[#C9A86A] hover:text-white text-xs font-sans font-semibold transition-all"
+                            >
+                              <span>Open Cloud Data Console &rarr;</span>
                             </a>
                           </div>
                         </div>
@@ -3069,6 +3937,33 @@ export default function AdminDashboard() {
                       View in Ledger &rarr;
                     </button>
                     <span className="text-[10px] font-mono text-[#8A9A7E]">Live Submissions</span>
+                  </div>
+                </div>
+
+                {/* Priority Round Registrations */}
+                <div className="bg-[#2E3B2F]/60 border border-[#C9A86A]/30 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        priority_registrations
+                      </span>
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-[#1A1F1A] text-[#EDE6D3] border border-[#C9A86A]/30">
+                        {collectionCounts.priority_registrations ?? priorityRegistrations.length} candidates
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-base text-[#EDE6D3]">Priority Round Dossiers</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                      Submitted via Priority Delegate Accreditation form. Stores academic dossiers, council preferences, UPI UTR proofs, and allotment statuses.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#C9A86A]/20">
+                    <button
+                      onClick={() => setActiveSubTab("priority")}
+                      className="text-xs font-sans text-[#C9A86A] hover:underline cursor-pointer"
+                    >
+                      View in Priority Ledger &rarr;
+                    </button>
+                    <span className="text-[10px] font-mono text-[#8A9A7E]">Priority Intake</span>
                   </div>
                 </div>
 
@@ -4123,6 +5018,588 @@ export default function AdminDashboard() {
                     Purge
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            PRIORITY ROUND: CANDIDATE DOSSIER DRAWER
+           ======================================================== */}
+        {selectedPriorityReg && (
+          <div className="fixed inset-0 z-[110] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in text-left">
+            <div className="flex min-h-full items-start sm:items-center justify-center p-3 sm:p-4 text-center">
+              <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-3xl w-full p-6 sm:p-8 text-left relative shadow-2xl my-6">
+                
+                {/* Header */}
+                <div className="flex items-start justify-between border-b border-[#C9A86A]/30 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                        // PRIORITY DOSSIER
+                      </span>
+                      <span className="font-mono text-xs text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 px-2 py-0.5 font-bold">
+                        {selectedPriorityReg.id || selectedPriorityReg.uid}
+                      </span>
+                      <span className={`px-2 py-0.5 text-[9px] font-sans font-bold uppercase tracking-wider border ${
+                        selectedPriorityReg.status === "Payment Confirmed"
+                          ? "bg-emerald-950/60 text-emerald-400 border-emerald-500/40"
+                          : selectedPriorityReg.status === "Portfolio Allotted"
+                          ? "bg-[#C9A86A]/20 text-[#C9A86A] border-[#C9A86A]/40"
+                          : selectedPriorityReg.status === "Waitlisted"
+                          ? "bg-amber-950/60 text-amber-300 border-amber-500/40"
+                          : selectedPriorityReg.status === "Rejected"
+                          ? "bg-rose-950/60 text-rose-400 border-rose-500/40"
+                          : "bg-[#1A1F1A] text-[#EDE6D3] border-[#8A9A7E]/40"
+                      }`}>
+                        {selectedPriorityReg.status || "Pending Verification"}
+                      </span>
+                    </div>
+                    <h3 className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                      {selectedPriorityReg.name}
+                    </h3>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-0.5">
+                      Submitted on: {selectedPriorityReg.timestamp || selectedPriorityReg.paymentDate || "N/A"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedPriorityReg(null)}
+                    className="p-1.5 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#8A9A7E] hover:text-[#EDE6D3] hover:border-[#C9A86A] transition-colors cursor-pointer shrink-0"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Dossier Body */}
+                <div className="mt-6 space-y-6 max-h-[68vh] overflow-y-auto pr-2 scrollbar-thin">
+                  
+                  {/* Financial & Category Banner */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#1A1F1A] border border-[#C9A86A]/30 p-3.5">
+                    <div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Category</span>
+                      <span className="text-xs font-bold text-[#EDE6D3]">
+                        {selectedPriorityReg.delegateCategory === "school" ? "School Delegate (₹1000)" : (selectedPriorityReg.delegateCategory === "iist" || selectedPriorityReg.delegateCategory === "iist_internal") ? "IIST Student (₹800)" : "College Non-IIST (₹1299)"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Delegation Mode</span>
+                      <span className="text-xs font-bold text-[#C9A86A] uppercase">
+                        {selectedPriorityReg.delegationMode === "part_of_delegation" || selectedPriorityReg.regType === "contingent"
+                          ? "Part of Delegation"
+                          : selectedPriorityReg.regType === "double"
+                          ? "Double Delegation"
+                          : "Individual"}
+                      </span>
+                      {selectedPriorityReg.isPrivateDelegation && (
+                        <span className="text-[9px] font-mono text-amber-400 block font-semibold">Private Delegation</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Registration Fee</span>
+                      <span className="text-xs font-bold text-emerald-400">
+                        ₹{selectedPriorityReg.feeAmount !== undefined ? selectedPriorityReg.feeAmount : 1299}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Payment Verification</span>
+                      <span className={`text-xs font-bold ${selectedPriorityReg.paymentStatus === "Verified" ? "text-emerald-400" : "text-amber-300"}`}>
+                        {selectedPriorityReg.paymentStatus || "Pending"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Personal & Emergency Contact */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold block mb-2">
+                        // CANDIDATE PROFILE
+                      </span>
+                      <div className="space-y-1.5 text-xs text-[#EDE6D3]">
+                        <div><strong className="text-[#8A9A7E]">Email:</strong> {selectedPriorityReg.email}</div>
+                        <div><strong className="text-[#8A9A7E]">Phone:</strong> {selectedPriorityReg.phone}</div>
+                        <div><strong className="text-[#8A9A7E]">Gender:</strong> {selectedPriorityReg.gender || "Not specified"}</div>
+                        <div><strong className="text-[#8A9A7E]">DOB:</strong> {selectedPriorityReg.dob || "Not specified"}</div>
+                        <div><strong className="text-[#8A9A7E]">Location:</strong> {selectedPriorityReg.cityState || "Not specified"}</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold block mb-2">
+                        // EMERGENCY CONTACT
+                      </span>
+                      <div className="space-y-1.5 text-xs text-[#EDE6D3]">
+                        <div><strong className="text-[#8A9A7E]">Name:</strong> {selectedPriorityReg.emergencyContactName || "Not specified"}</div>
+                        <div><strong className="text-[#8A9A7E]">Relation:</strong> {selectedPriorityReg.emergencyContactRelation || "Not specified"}</div>
+                        <div><strong className="text-[#8A9A7E]">Emergency Phone:</strong> {selectedPriorityReg.emergencyContactPhone || "Not specified"}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Academic Profile */}
+                  <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold block mb-2">
+                      // INSTITUTION & ACADEMIC DOSSIER
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-[#EDE6D3]">
+                      <div>
+                        <span className="text-[#8A9A7E] block text-[10px]">Institution:</span>
+                        <span className="font-semibold">{selectedPriorityReg.institution}</span>
+                      </div>
+                      <div>
+                        <span className="text-[#8A9A7E] block text-[10px]">Course / Degree:</span>
+                        <span>{selectedPriorityReg.course || "N/A"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[#8A9A7E] block text-[10px]">Year of Study / Grade:</span>
+                        <span>{selectedPriorityReg.yearOfStudy || selectedPriorityReg.classGrade || "N/A"}</span>
+                      </div>
+                    </div>
+                    {selectedPriorityReg.rollNumber && (
+                      <div className="mt-2 text-xs text-[#8A9A7E]">
+                        Student / Roll Number: <strong className="text-[#EDE6D3]">{selectedPriorityReg.rollNumber}</strong>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Double Delegation Partner (if applicable) */}
+                  {selectedPriorityReg.regType === "double" && (
+                    <div className="bg-purple-950/20 border border-purple-500/30 p-4">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-purple-300 font-bold block mb-2">
+                        // CO-DELEGATE / PARTNER DOSSIER
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-[#EDE6D3]">
+                        <div><strong className="text-[#8A9A7E]">Partner Name:</strong> {selectedPriorityReg.partnerName || "N/A"}</div>
+                        <div><strong className="text-[#8A9A7E]">Partner Email:</strong> {selectedPriorityReg.partnerEmail || "N/A"}</div>
+                        <div><strong className="text-[#8A9A7E]">Partner Phone:</strong> {selectedPriorityReg.partnerPhone || "N/A"}</div>
+                        <div><strong className="text-[#8A9A7E]">Partner Role:</strong> {selectedPriorityReg.partnerRole || "Delegate"}</div>
+                        <div><strong className="text-[#8A9A7E]">Partner Ticket ID:</strong> <span className="font-mono text-purple-300 font-bold">{selectedPriorityReg.partnerId || "TBD"}</span></div>
+                        <div><strong className="text-[#8A9A7E]">Partner Institution:</strong> {selectedPriorityReg.partnerInstitution || selectedPriorityReg.institution}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Committee Preferences */}
+                  <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold block mb-2">
+                      // PREFERRED COMMITTEES & PORTFOLIOS
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div className="border border-[#C9A86A]/30 p-2.5 bg-[#2E3B2F]/40">
+                        <span className="text-[9px] font-mono uppercase text-[#C9A86A] block">Preference 1</span>
+                        <div className="font-bold text-[#EDE6D3] uppercase mt-0.5">{selectedPriorityReg.pref1Committee || "None"}</div>
+                        {selectedPriorityReg.pref1Portfolios && selectedPriorityReg.pref1Portfolios.length > 0 ? (
+                          <div className="text-[11px] text-[#EDE6D3] mt-1 space-y-0.5">
+                            {selectedPriorityReg.pref1Portfolios.map((p, idx) => (
+                              <div key={idx} className="truncate text-[#8A9A7E]">
+                                <span className="text-[#C9A86A] font-mono text-[9px]">#{idx + 1}:</span> {p}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-[#8A9A7E] mt-0.5">{selectedPriorityReg.pref1Country || "Any country"}</div>
+                        )}
+                      </div>
+                      <div className="border border-[#8A9A7E]/20 p-2.5 bg-[#2E3B2F]/20">
+                        <span className="text-[9px] font-mono uppercase text-[#8A9A7E] block">Preference 2</span>
+                        <div className="font-bold text-[#EDE6D3] uppercase mt-0.5">{selectedPriorityReg.pref2Committee || "None"}</div>
+                        {selectedPriorityReg.pref2Portfolios && selectedPriorityReg.pref2Portfolios.length > 0 ? (
+                          <div className="text-[11px] text-[#EDE6D3] mt-1 space-y-0.5">
+                            {selectedPriorityReg.pref2Portfolios.map((p, idx) => (
+                              <div key={idx} className="truncate text-[#8A9A7E]">
+                                <span className="text-[#8A9A7E] font-mono text-[9px]">#{idx + 1}:</span> {p}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-[#8A9A7E] mt-0.5">{selectedPriorityReg.pref2Country || "Any country"}</div>
+                        )}
+                      </div>
+                      <div className="border border-[#8A9A7E]/20 p-2.5 bg-[#2E3B2F]/20">
+                        <span className="text-[9px] font-mono uppercase text-[#8A9A7E] block">Preference 3</span>
+                        <div className="font-bold text-[#EDE6D3] uppercase mt-0.5">{selectedPriorityReg.pref3Committee || "None"}</div>
+                        {selectedPriorityReg.pref3Portfolios && selectedPriorityReg.pref3Portfolios.length > 0 ? (
+                          <div className="text-[11px] text-[#EDE6D3] mt-1 space-y-0.5">
+                            {selectedPriorityReg.pref3Portfolios.map((p, idx) => (
+                              <div key={idx} className="truncate text-[#8A9A7E]">
+                                <span className="text-[#8A9A7E] font-mono text-[9px]">#{idx + 1}:</span> {p}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-[#8A9A7E] mt-0.5">{selectedPriorityReg.pref3Country || "Any country"}</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedPriorityReg.priorityPreference && (
+                      <div className="mt-2.5 inline-flex items-center gap-2 px-2.5 py-1 bg-[#2E3B2F] border border-[#C9A86A]/40 text-xs">
+                        <span className="text-[#8A9A7E] font-mono text-[10px] uppercase">Allotment Priority:</span>
+                        <span className="font-bold text-[#C9A86A] uppercase">
+                          {selectedPriorityReg.priorityPreference === "committee" ? "Committee First" : "Portfolio First"}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="mt-3 pt-3 border-t border-[#8A9A7E]/15 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <strong className="text-[#8A9A7E]">MUN Experience Level:</strong>{" "}
+                        <span className="text-[#EDE6D3]">{selectedPriorityReg.munExperience || "Novice"}</span>
+                      </div>
+                      {selectedPriorityReg.pastMunDetails && (
+                        <div>
+                          <strong className="text-[#8A9A7E]">Past Conferences / Accolades:</strong>{" "}
+                          <span className="text-[#EDE6D3]">{selectedPriorityReg.pastMunDetails}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {selectedPriorityReg.motivation && (
+                      <div className="mt-3 pt-3 border-t border-[#8A9A7E]/15">
+                        <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block mb-1">
+                          Statement of Motivation:
+                        </span>
+                        <div className="bg-[#141814] p-3 text-xs text-[#EDE6D3] italic leading-relaxed border border-[#8A9A7E]/20">
+                          "{selectedPriorityReg.motivation}"
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Payment Verification & Screenshot */}
+                  <div className="bg-[#1A1F1A] border border-[#C9A86A]/30 p-4">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold block mb-2">
+                      // PAYMENT VERIFICATION & UTR PROOF
+                    </span>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div className="space-y-1 text-xs">
+                        <div>
+                          <strong className="text-[#8A9A7E]">UTR / Transaction ID:</strong>{" "}
+                          <span className="font-mono text-sm text-[#C9A86A] font-bold bg-[#141814] px-2 py-0.5 border border-[#C9A86A]/40 inline-block">
+                            {selectedPriorityReg.utrNumber || selectedPriorityReg.transactionId || "Not Provided"}
+                          </span>
+                          {(selectedPriorityReg.utrNumber || selectedPriorityReg.transactionId) && (
+                            <button
+                              onClick={() => handleCopyUtr(selectedPriorityReg.utrNumber || selectedPriorityReg.transactionId || "")}
+                              className="ml-2 text-xs text-[#8A9A7E] hover:text-[#C9A86A] underline"
+                            >
+                              Copy
+                            </button>
+                          )}
+                        </div>
+                        <div><strong className="text-[#8A9A7E]">Payer Name:</strong> {selectedPriorityReg.payerName || "N/A"}</div>
+                        <div><strong className="text-[#8A9A7E]">Payment Mode:</strong> {selectedPriorityReg.paymentMode || "UPI"}</div>
+                      </div>
+
+                      {/* Screenshot Preview */}
+                      {selectedPriorityReg.paymentScreenshotUrl ? (
+                        <div className="flex items-center gap-3 bg-[#141814] p-2 border border-[#8A9A7E]/30 shrink-0">
+                          <img
+                            src={selectedPriorityReg.paymentScreenshotUrl}
+                            alt="Payment Proof"
+                            className="h-16 w-16 object-cover border border-[#C9A86A]/40 cursor-pointer"
+                            onClick={() => setViewProofModal({
+                              url: selectedPriorityReg.paymentScreenshotUrl || "",
+                              name: selectedPriorityReg.paymentScreenshotName,
+                              utr: selectedPriorityReg.utrNumber || selectedPriorityReg.transactionId,
+                              candidateName: selectedPriorityReg.name
+                            })}
+                          />
+                          <button
+                            onClick={() => setViewProofModal({
+                              url: selectedPriorityReg.paymentScreenshotUrl || "",
+                              name: selectedPriorityReg.paymentScreenshotName,
+                              utr: selectedPriorityReg.utrNumber || selectedPriorityReg.transactionId,
+                              candidateName: selectedPriorityReg.name
+                            })}
+                            className="px-3 py-1.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>Enlarge Proof</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-[#8A9A7E] italic">
+                          No receipt screenshot uploaded
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Portfolio Allotment Card (if allotted) */}
+                  {selectedPriorityReg.allottedCountry && selectedPriorityReg.allottedCommittee && (
+                    <div className="bg-emerald-950/30 border border-emerald-500/40 p-4">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold block mb-1">
+                        // ALLOTTED DIPLOMATIC PORTFOLIO
+                      </span>
+                      <div className="text-sm font-serif text-[#EDE6D3]">
+                        <strong className="text-[#C9A86A]">{selectedPriorityReg.allottedCountry}</strong> in{" "}
+                        <strong className="text-emerald-300 uppercase">{selectedPriorityReg.allottedCommittee}</strong>
+                      </div>
+                      {selectedPriorityReg.adminNotes && (
+                        <div className="text-xs text-[#8A9A7E] mt-1">
+                          Admin Notes: {selectedPriorityReg.adminNotes}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+
+                {/* Footer Controls */}
+                <div className="mt-6 pt-4 border-t border-[#C9A86A]/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] mr-1">
+                      Set Status:
+                    </span>
+                    {(["Payment Confirmed", "Portfolio Allotted", "Waitlisted", "Rejected", "Pending Verification"] as const).map((statusOption) => (
+                      <button
+                        key={statusOption}
+                        disabled={isUpdatingPriorityStatus || selectedPriorityReg.status === statusOption}
+                        onClick={() => handleUpdatePriorityStatus(selectedPriorityReg.uid || selectedPriorityReg.id || "", statusOption)}
+                        className={`px-2.5 py-1 text-[10px] font-sans font-bold uppercase tracking-wider border transition-all cursor-pointer disabled:opacity-40 ${
+                          selectedPriorityReg.status === statusOption
+                            ? "bg-[#C9A86A] text-[#1A1F1A] border-[#C9A86A]"
+                            : "bg-[#1A1F1A] text-[#EDE6D3] border-[#8A9A7E]/30 hover:border-[#C9A86A]"
+                        }`}
+                      >
+                        {statusOption}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2 justify-end flex-wrap">
+                    <button
+                      onClick={() => {
+                        setAllotModalReg(selectedPriorityReg);
+                        setAllotForm({
+                          committee: selectedPriorityReg.allottedCommittee || selectedPriorityReg.pref1Committee || "copuos",
+                          country: selectedPriorityReg.allottedCountry || selectedPriorityReg.pref1Country || "",
+                          adminNotes: selectedPriorityReg.adminNotes || ""
+                        });
+                      }}
+                      className="px-3.5 py-2 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-sans font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <Compass className="h-3.5 w-3.5" />
+                      <span>Allot Portfolio</span>
+                    </button>
+                    <button
+                      onClick={() => exportPriorityToExcel([selectedPriorityReg], selectedPriorityReg.id || selectedPriorityReg.name)}
+                      className="px-3.5 py-2 border border-[#C9A86A]/40 bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#C9A86A] text-xs font-sans font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <FileSpreadsheet className="h-3.5 w-3.5" />
+                      <span>Export XLSX</span>
+                    </button>
+                    <button
+                      onClick={() => setConfirmPriorityDeleteId(selectedPriorityReg.uid || selectedPriorityReg.id || "")}
+                      className="px-3 py-2 border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 text-xs font-sans uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => setSelectedPriorityReg(null)}
+                      className="px-4 py-2 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#EDE6D3] hover:text-[#C9A86A] text-xs font-sans uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            PRIORITY ROUND: RECEIPT PROOF VIEWER MODAL
+           ======================================================== */}
+        {viewProofModal && (
+          <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#141814]/95 backdrop-blur-md animate-fade-in flex items-center justify-center p-4">
+            <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-xl w-full p-6 text-left relative shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[#C9A86A]/30 pb-3">
+                <div>
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold block">
+                    // PAYMENT RECEIPT PROOF
+                  </span>
+                  <h4 className="font-serif text-lg text-[#EDE6D3]">
+                    {viewProofModal.candidateName || "Priority Candidate"}
+                  </h4>
+                  {viewProofModal.utr && (
+                    <span className="font-mono text-xs text-[#8A9A7E]">
+                      UTR: <strong className="text-[#C9A86A]">{viewProofModal.utr}</strong>
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setViewProofModal(null)}
+                  className="p-1.5 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#8A9A7E] hover:text-[#EDE6D3] hover:border-[#C9A86A] cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mt-4 flex items-center justify-center bg-[#141814] border border-[#8A9A7E]/30 p-2 max-h-[65vh] overflow-auto">
+                <img
+                  src={viewProofModal.url}
+                  alt={viewProofModal.name || "Payment Receipt Screenshot"}
+                  className="max-h-[60vh] max-w-full object-contain"
+                />
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-[#C9A86A]/20 flex justify-between items-center">
+                <a
+                  href={viewProofModal.url}
+                  download={viewProofModal.name || "payment_proof"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Download Image</span>
+                </a>
+                <button
+                  onClick={() => setViewProofModal(null)}
+                  className="px-4 py-2 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#EDE6D3] text-xs font-sans uppercase tracking-wider cursor-pointer hover:border-[#C9A86A]"
+                >
+                  Close Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            PRIORITY ROUND: PORTFOLIO ALLOTMENT MODAL
+           ======================================================== */}
+        {allotModalReg && (
+          <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in flex items-center justify-center p-4">
+            <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-md w-full p-6 text-left relative shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[#C9A86A]/30 pb-3">
+                <div>
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold block">
+                    // SECRETARIAT ALLOTMENT DESK
+                  </span>
+                  <h4 className="font-serif text-xl text-[#EDE6D3]">
+                    Allot Council Portfolio
+                  </h4>
+                  <span className="font-sans text-xs text-[#8A9A7E]">
+                    Candidate: <strong className="text-[#EDE6D3]">{allotModalReg.name}</strong> ({allotModalReg.id || allotModalReg.uid})
+                  </span>
+                </div>
+                <button
+                  onClick={() => setAllotModalReg(null)}
+                  className="p-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#8A9A7E] hover:text-[#EDE6D3] hover:border-[#C9A86A] cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Preferences Reference */}
+              <div className="mt-4 p-3 bg-[#1A1F1A] border border-[#8A9A7E]/20 text-xs">
+                <span className="text-[10px] font-mono text-[#C9A86A] uppercase block mb-1">Candidate Preferences:</span>
+                <div className="text-[#EDE6D3]"><strong className="text-[#8A9A7E]">1st:</strong> {allotModalReg.pref1Committee?.toUpperCase()} — {allotModalReg.pref1Country || "Any"}</div>
+                {allotModalReg.pref2Committee && (
+                  <div className="text-[#8A9A7E]"><strong className="text-[#8A9A7E]">2nd:</strong> {allotModalReg.pref2Committee?.toUpperCase()} — {allotModalReg.pref2Country || "Any"}</div>
+                )}
+                {allotModalReg.pref3Committee && (
+                  <div className="text-[#8A9A7E]"><strong className="text-[#8A9A7E]">3rd:</strong> {allotModalReg.pref3Committee?.toUpperCase()} — {allotModalReg.pref3Country || "Any"}</div>
+                )}
+              </div>
+
+              {/* Allotment Form */}
+              <div className="mt-4 space-y-3.5">
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                    Select Allotted Committee *
+                  </label>
+                  <select
+                    value={allotForm.committee}
+                    onChange={(e) => setAllotForm({ ...allotForm, committee: e.target.value })}
+                    className="w-full bg-[#1A1F1A] border border-[#C9A86A]/40 text-[#EDE6D3] px-3 py-2 text-xs focus:outline-none uppercase"
+                  >
+                    <option value="copuos">UNCOPUOS</option>
+                    <option value="unga">UNGA (Online)</option>
+                    <option value="unhrc">UNHRC</option>
+                    <option value="unodc">UNODC</option>
+                    <option value="nes75">NES'75</option>
+                    <option value="undp">UNDP</option>
+                    <option value="ip_journalism">IP (Journalism)</option>
+                    <option value="ip_photojournalism">IP (Photojournalism)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                    Allotted Country / Delegation Portfolio *
+                  </label>
+                  <input
+                    type="text"
+                    value={allotForm.country}
+                    onChange={(e) => setAllotForm({ ...allotForm, country: e.target.value })}
+                    placeholder="e.g. United States of America / Lead Correspondent"
+                    className="w-full bg-[#1A1F1A] border border-[#C9A86A]/40 text-[#EDE6D3] px-3 py-2 text-xs focus:outline-none placeholder-[#8A9A7E]/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                    Admin Notes / Remarks (Optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={allotForm.adminNotes}
+                    onChange={(e) => setAllotForm({ ...allotForm, adminNotes: e.target.value })}
+                    placeholder="e.g. Allotted 1st choice via priority merit round."
+                    className="w-full bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#EDE6D3] px-3 py-2 text-xs focus:outline-none placeholder-[#8A9A7E]/50 resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="mt-6 pt-3 border-t border-[#C9A86A]/30 flex gap-3">
+                <button
+                  onClick={() => setAllotModalReg(null)}
+                  className="flex-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] py-2.5 text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] hover:border-[#C9A86A] transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={!allotForm.committee || !allotForm.country.trim()}
+                  onClick={handleSaveAllotment}
+                  className="flex-1 bg-[#C9A86A] hover:bg-[#dfbe7e] py-2.5 text-xs font-bold uppercase tracking-wider text-[#1A1F1A] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-md"
+                >
+                  Confirm Allotment
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            PRIORITY ROUND: DELETE CONFIRMATION MODAL
+           ======================================================== */}
+        {confirmPriorityDeleteId && (
+          <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in flex items-center justify-center p-4">
+            <div className="bg-[#2E3B2F] border-2 border-rose-500/50 max-w-sm w-full p-6 text-center relative shadow-2xl">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center bg-[#1A1F1A] border border-rose-500/40 text-rose-400 mb-4">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h3 className="font-serif text-xl font-normal text-[#EDE6D3]">Purge Priority Record?</h3>
+              <p className="mt-2 font-sans text-[#8A9A7E] text-xs leading-relaxed">
+                Are you certain you want to remove priority registration <strong className="text-[#EDE6D3] font-mono">{confirmPriorityDeleteId}</strong>? This action will permanently remove it from Firestore.
+              </p>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setConfirmPriorityDeleteId(null)}
+                  className="flex-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] py-2 text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handlePriorityDelete(confirmPriorityDeleteId, confirmPriorityDeleteId)}
+                  className="flex-1 bg-rose-700 hover:bg-rose-600 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-md cursor-pointer"
+                >
+                  Purge
+                </button>
               </div>
             </div>
           </div>

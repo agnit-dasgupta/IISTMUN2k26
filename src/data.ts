@@ -9,7 +9,7 @@ export const COMMITTEES: Committee[] = [
   {
     id: "uncopuos",
     name: "United Nations Committee on the Peaceful Uses of Outer Space",
-    abbreviation: "UNCOPUOS",
+    abbreviation: "UNCOPOUS",
     agenda: "Developing multilateral legal frameworks for lunar governance, planetary protection, and active space debris remediation.",
     description: "Serves as the principal international forum for the peaceful governance of space exploration, orbital sustainability, and space resource utilization.",
     logo: "Orbit",
@@ -17,6 +17,20 @@ export const COMMITTEES: Committee[] = [
     eb: [
       { name: "Dr. Aditya Sen", role: "Chairperson", avatar: "AS" },
       { name: "Meera Krishnan", role: "Co-Chairperson", avatar: "MK" }
+    ],
+    guideUrl: "#"
+  },
+  {
+    id: "unga",
+    name: "United Nations General Assembly (Online Committee)",
+    abbreviation: "UNGA (Online)",
+    agenda: "Reviewing global geopolitical stability, reforming multilateral institutions, and preventing weaponization in international commons.",
+    description: "The premier deliberative organ of the United Nations conducted entirely online, convening delegates worldwide for sovereign equality debate, global consensus-building, and digital diplomatic multilateralism.",
+    logo: "Globe",
+    color: "blue",
+    eb: [
+      { name: "Siddharth Nair", role: "President", avatar: "SN" },
+      { name: "Diya Roy", role: "Vice-President", avatar: "DR" }
     ],
     guideUrl: "#"
   },
@@ -63,20 +77,6 @@ export const COMMITTEES: Committee[] = [
     guideUrl: "#"
   },
   {
-    id: "unga",
-    name: "United Nations General Assembly",
-    abbreviation: "UNGA",
-    agenda: "Reviewing global geopolitical stability, reforming multilateral institutions, and preventing weaponization in international commons.",
-    description: "The premier deliberative organ of the United Nations, bringing together all member states for sovereign equality debate and multilateral treaty formation.",
-    logo: "Globe",
-    color: "blue",
-    eb: [
-      { name: "Siddharth Nair", role: "President", avatar: "SN" },
-      { name: "Diya Roy", role: "Vice-President", avatar: "DR" }
-    ],
-    guideUrl: "#"
-  },
-  {
     id: "undp",
     name: "United Nations Development Programme",
     abbreviation: "UNDP",
@@ -91,16 +91,30 @@ export const COMMITTEES: Committee[] = [
     guideUrl: "#"
   },
   {
-    id: "ip",
-    name: "International Press",
-    abbreviation: "IP",
-    agenda: "Investigative journalism, committee oversight, press conferences, editorial analysis, and photojournalism across all simulation councils.",
-    description: "The dynamic Fourth Estate of IISTMUN 2026, interrogating delegates, publishing daily conference gazettes, and capturing live photo-essays.",
+    id: "ip_journalism",
+    name: "International Press - Journalism",
+    abbreviation: "IP (Journalism)",
+    agenda: "Investigative journalism, committee oversight, press conferences, editorial analysis, and daily gazette publications.",
+    description: "The dynamic Fourth Estate holding delegates accountable, conducting press conferences, penning incisive investigative features, and publishing daily conference dispatches.",
     logo: "Newspaper",
     color: "rose",
     eb: [
       { name: "Tara Bhattacharya", role: "Editor-in-Chief", avatar: "TB" },
-      { name: "Farhan Siddiqui", role: "Head of Photography", avatar: "FS" }
+      { name: "Devika Shenoy", role: "Managing Editor", avatar: "DS" }
+    ],
+    guideUrl: "#"
+  },
+  {
+    id: "ip_photojournalism",
+    name: "International Press - Photojournalism",
+    abbreviation: "IP (Photojournalism)",
+    agenda: "Visual documentation, high-impact photo-essays, debate photography, and press archiving across all simulation chambers.",
+    description: "The visual chroniclers of IISTMUN 2026, documenting diplomatic negotiations, heated caucuses, press conferences, and creating the photographic legacy of the summit.",
+    logo: "Camera",
+    color: "orange",
+    eb: [
+      { name: "Farhan Siddiqui", role: "Head of Photography", avatar: "FS" },
+      { name: "Naveen R.", role: "Lead Photojournalist", avatar: "NR" }
     ],
     guideUrl: "#"
   }
@@ -196,49 +210,54 @@ export const FAQ_ITEMS: FAQItem[] = [
 ];
 
 export const COUNTRY_MATRIX: CountryMatrixRow[] = [
-  { country: "United States of America", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Russian Federation", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "People's Republic of China", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "United Kingdom", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Republic of France", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Republic of India", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Available", unsc: "Available" },
-  { country: "Japan", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Federal Republic of Germany", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Federative Republic of Brazil", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Republic of South Africa", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Canada", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Commonwealth of Australia", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "State of Israel", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Islamic Republic of Iran", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Democratic People's Rep. of Korea", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Kingdom of Saudi Arabia", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "United Arab Emirates", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Republic of Korea (South)", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Ukraine", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Republic of Italy", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Swiss Confederation", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Republic of Singapore", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Kingdom of Sweden", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "United Mexican States", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Republic of Indonesia", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Arab Republic of Egypt", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
-  { country: "Republic of Türkiye", uncopuos: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", unga: "Available", undp: "Available", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "United States of America", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Russian Federation", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "People's Republic of China", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "United Kingdom", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Republic of France", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Republic of India", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Available", unsc: "Available" },
+  { country: "Japan", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Federal Republic of Germany", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Federative Republic of Brazil", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Republic of South Africa", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Canada", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Commonwealth of Australia", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "State of Israel", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Islamic Republic of Iran", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Democratic People's Rep. of Korea", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Kingdom of Saudi Arabia", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "United Arab Emirates", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Republic of Korea (South)", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Ukraine", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Republic of Italy", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Swiss Confederation", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Republic of Singapore", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Kingdom of Sweden", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "United Mexican States", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Republic of Indonesia", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Arab Republic of Egypt", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
+  { country: "Republic of Türkiye", uncopuos: "Available", unga: "Available", unhrc: "Available", unodc: "Available", nes75: "Reserved", undp: "Available", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Available", disec: "Available", aippm: "Reserved", unsc: "Available" },
   // NES'75 (National Emergency Summit 1975) Key Historical Portfolios
-  { country: "Indira Gandhi (Prime Minister)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", unga: "Reserved", undp: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
-  { country: "Jayaprakash Narayan (Loknayak)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", unga: "Reserved", undp: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
-  { country: "Morarji Desai (Opposition Leader)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", unga: "Reserved", undp: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
-  { country: "Jagjivan Ram (Union Minister)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", unga: "Reserved", undp: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
-  { country: "Fakhruddin Ali Ahmed (President of India)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", unga: "Reserved", undp: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
-  { country: "Siddhartha Shankar Ray (CM West Bengal)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", unga: "Reserved", undp: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
-  { country: "George Fernandes (Trade Union Leader)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", unga: "Reserved", undp: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
-  { country: "Atal Bihari Vajpayee (BJS)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", unga: "Reserved", undp: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
-  { country: "Lal Krishna Advani (BJS)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", unga: "Reserved", undp: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
-  { country: "Charan Singh (Bharatiya Lok Dal)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", unga: "Reserved", undp: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
-  // IP (International Press) Specialized Portfolios
-  { country: "Reuters (Investigative Bureau)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", unga: "Reserved", undp: "Reserved", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
-  { country: "BBC World Service (Chief Correspondent)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", unga: "Reserved", undp: "Reserved", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
-  { country: "The Hindu (Diplomatic Editor)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", unga: "Reserved", undp: "Reserved", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
-  { country: "Al Jazeera (Crisis Bureau)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", unga: "Reserved", undp: "Reserved", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
-  { country: "The Indian Express (Political Editor)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", unga: "Reserved", undp: "Reserved", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
-  { country: "Associated Press (Photojournalist)", uncopuos: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", unga: "Reserved", undp: "Reserved", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" }
+  { country: "Indira Gandhi (Prime Minister)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
+  { country: "Jayaprakash Narayan (Loknayak)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
+  { country: "Morarji Desai (Opposition Leader)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
+  { country: "Jagjivan Ram (Union Minister)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
+  { country: "Fakhruddin Ali Ahmed (President of India)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
+  { country: "Siddhartha Shankar Ray (CM West Bengal)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
+  { country: "George Fernandes (Trade Union Leader)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
+  { country: "Atal Bihari Vajpayee (BJS)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
+  { country: "Lal Krishna Advani (BJS)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
+  { country: "Charan Singh (Bharatiya Lok Dal)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Available", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Reserved", ip: "Reserved", copuos: "Reserved", disec: "Reserved", aippm: "Available", unsc: "Reserved" },
+  // IP (Journalism) Specialized Portfolios
+  { country: "Reuters (Investigative Bureau)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", undp: "Reserved", ip_journalism: "Available", ip_photojournalism: "Reserved", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
+  { country: "BBC World Service (Chief Correspondent)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", undp: "Reserved", ip_journalism: "Available", ip_photojournalism: "Reserved", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
+  { country: "The Hindu (Diplomatic Editor)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", undp: "Reserved", ip_journalism: "Available", ip_photojournalism: "Reserved", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
+  { country: "Al Jazeera (Crisis Bureau)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", undp: "Reserved", ip_journalism: "Available", ip_photojournalism: "Reserved", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
+  { country: "The Indian Express (Political Editor)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", undp: "Reserved", ip_journalism: "Available", ip_photojournalism: "Reserved", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
+  { country: "Agence France-Presse (Chief Reporter)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", undp: "Reserved", ip_journalism: "Available", ip_photojournalism: "Reserved", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
+  // IP (Photojournalism) Specialized Portfolios
+  { country: "Associated Press (Photojournalist)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Available", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
+  { country: "Magnum Photos (Lead Photo Essayist)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Available", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
+  { country: "National Geographic (Staff Photographer)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Available", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" },
+  { country: "Getty Images (Documentary Photojournalist)", uncopuos: "Reserved", unga: "Reserved", unhrc: "Reserved", unodc: "Reserved", nes75: "Reserved", undp: "Reserved", ip_journalism: "Reserved", ip_photojournalism: "Available", ip: "Available", copuos: "Reserved", disec: "Reserved", aippm: "Reserved", unsc: "Reserved" }
 ];

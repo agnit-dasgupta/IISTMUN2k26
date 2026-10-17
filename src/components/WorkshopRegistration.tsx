@@ -64,6 +64,7 @@ export default function WorkshopRegistration({ setActiveTab }: WorkshopRegistrat
     estimatedStudents: "10-15",
     gradeLevels: "Class 9 to 12",
     specialRequirements: "",
+    isPrivateDelegation: false,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -175,6 +176,7 @@ export default function WorkshopRegistration({ setActiveTab }: WorkshopRegistrat
           : formData.motivation.trim(),
         timestamp: new Date().toLocaleString(),
         ...(regType === "school" && {
+          isPrivateDelegation: !!formData.isPrivateDelegation,
           teacherName: formData.teacherName.trim(),
           teacherDesignation: formData.teacherDesignation.trim(),
           teacherEmail: formData.teacherEmail.trim(),
@@ -664,6 +666,27 @@ export default function WorkshopRegistration({ setActiveTab }: WorkshopRegistrat
                     placeholder="Select or enter school name..."
                     id="workshop-school-institution-select"
                   />
+                </div>
+
+                {/* Private Delegation Checkbox */}
+                <div className="bg-[#2E3B2F]/40 border border-[#C9A86A]/40 p-4 transition-all">
+                  <label className="flex items-start gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      id="workshopSchoolPrivateDelegationCheckbox"
+                      checked={formData.isPrivateDelegation || false}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, isPrivateDelegation: e.target.checked }))}
+                      className="mt-0.5 h-4 w-4 rounded-none accent-[#C9A86A] cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-sans text-xs text-[#EDE6D3] font-semibold block">
+                        Check if this delegation is a private delegation
+                      </span>
+                      <span className="font-sans text-[11px] text-[#8A9A7E] block mt-0.5 leading-relaxed">
+                        Select this option if this school delegation is registering independently without official school representation or faculty escort.
+                      </span>
+                    </div>
+                  </label>
                 </div>
 
                 {/* Teacher in Charge Section Header */}

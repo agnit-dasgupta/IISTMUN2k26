@@ -46,11 +46,13 @@ export interface FAQItem {
 
 export type CommitteeId = 
   | "uncopuos"
+  | "unga"
   | "unhrc"
   | "unodc"
   | "nes75"
-  | "unga"
   | "undp"
+  | "ip_journalism"
+  | "ip_photojournalism"
   | "ip";
 
 export type PortfolioStatus = "Available" | "Assigned" | "Reserved" | "Pending" | "N/A";
@@ -58,13 +60,15 @@ export type PortfolioStatus = "Available" | "Assigned" | "Reserved" | "Pending" 
 export interface CountryMatrixRow {
   country: string;
   uncopuos?: PortfolioStatus;
+  unga?: PortfolioStatus;
   unhrc?: PortfolioStatus;
   unodc?: PortfolioStatus;
   nes75?: PortfolioStatus;
-  unga?: PortfolioStatus;
   undp?: PortfolioStatus;
-  ip?: PortfolioStatus;
+  ip_journalism?: PortfolioStatus;
+  ip_photojournalism?: PortfolioStatus;
   // Legacy aliases for backward compatibility
+  ip?: PortfolioStatus;
   copuos?: PortfolioStatus;
   disec?: PortfolioStatus;
   aippm?: PortfolioStatus;
@@ -78,26 +82,71 @@ export interface RegistrationDetails {
   id: string;
   timestamp: string;
   regType: "individual" | "double" | "contingent";
+  delegationMode?: "individual" | "part_of_delegation";
+  isPrivateDelegation?: boolean;
+  round?: "priority" | "regular" | "late";
+  isPriority?: boolean;
   name: string;
   email: string;
   phone: string;
+  gender?: string;
+  dob?: string;
+  cityState?: string;
+  delegateCategory?: "college" | "school" | "iist";
   institution: string;
   course: string;
+  yearOfStudy?: string;
+  classGrade?: string;
+  rollNumber?: string;
   munExperience: string; // "None" | "1-2" | "3-5" | "5+"
-  role: "Delegate" | "Photographer";
+  pastMunDetails?: string;
+  role: "Delegate" | "Photographer" | "Journalist";
   pref1Committee: string;
   pref1Country: string;
+  pref1Portfolios?: string[];
   pref2Committee: string;
   pref2Country: string;
+  pref2Portfolios?: string[];
   pref3Committee: string;
   pref3Country: string;
+  pref3Portfolios?: string[];
+  priorityPreference?: "committee" | "portfolio";
   partnerName?: string;
   partnerEmail?: string;
-  partnerRole?: "Delegate" | "Photographer";
+  partnerPhone?: string;
+  partnerRole?: "Delegate" | "Photographer" | "Journalist";
   partnerId?: string;
+  partnerInstitution?: string;
   contingentSize?: string;
   motivation: string;
+  // Logistics & Accommodation
+  accommodationRequired?: "yes" | "no" | boolean;
+  checkInDate?: string;
+  checkOutDate?: string;
+  roomPreference?: string;
+  dietaryPreference?: string;
+  specialMedicalNeeds?: string;
+  emergencyContactName?: string;
+  emergencyContactRelation?: string;
+  emergencyContactPhone?: string;
+  // Payment & Verification
+  feeAmount?: number;
+  paymentMode?: string;
+  transactionId?: string;
+  utrNumber?: string;
+  payerName?: string;
+  paymentDate?: string;
+  paymentScreenshotUrl?: string;
+  paymentScreenshotName?: string;
+  paymentStatus?: "Pending" | "Verified" | "Rejected";
+  status?: "Pending Verification" | "Payment Confirmed" | "Portfolio Allotted" | "Waitlisted" | "Rejected";
+  allottedCommittee?: string;
+  allottedCountry?: string;
+  adminNotes?: string;
 }
+
+export type PriorityRegistrationDetails = RegistrationDetails;
+
 
 export interface ContactQuery {
   id?: string;
@@ -191,6 +240,7 @@ export interface WorkshopRegistrationDetails {
   motivation: string;
   timestamp: string;
   // School/Institutional specific fields
+  isPrivateDelegation?: boolean;
   teacherName?: string;
   teacherDesignation?: string;
   teacherEmail?: string;

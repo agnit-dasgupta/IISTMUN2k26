@@ -8,6 +8,7 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
+export { firebaseConfig };
 
 // Initialize Firebase client SDK
 const app = initializeApp(firebaseConfig);

@@ -39,6 +39,7 @@ export interface CollectionCounts {
   country_matrix: number;
   portfolio_states: number;
   registrations: number;
+  priority_registrations: number;
   workshop_registrations: number;
   eb_registrations: number;
   campus_ambassador_registrations: number;
@@ -58,6 +59,7 @@ export async function fetchCollectionCounts(db: Firestore): Promise<CollectionCo
     "country_matrix",
     "portfolio_states",
     "registrations",
+    "priority_registrations",
     "workshop_registrations",
     "eb_registrations",
     "campus_ambassador_registrations",
@@ -87,7 +89,7 @@ export async function fetchCollectionCounts(db: Firestore): Promise<CollectionCo
  */
 export async function seedCommittees(db: Firestore) {
   // Purge legacy committee documents if present
-  const legacyIds = ["copuos", "disec", "aippm", "unsc"];
+  const legacyIds = ["copuos", "disec", "aippm", "unsc", "ip"];
   for (const legId of legacyIds) {
     try {
       await deleteDoc(doc(db, "committees", legId));

@@ -15,6 +15,7 @@ import Registration from "./components/Registration";
 import AdminDashboard from "./components/AdminDashboard";
 import WorkshopRegistration from "./components/WorkshopRegistration";
 import RegisterPortal from "./components/RegisterPortal";
+import OpeningSoonPlaceholder from "./components/OpeningSoonPlaceholder";
 import MarqueeTicker from "./components/MarqueeTicker";
 import CherryBlossomBackground from "./components/CherryBlossomBackground";
 import { motion } from "motion/react";
@@ -47,14 +48,20 @@ export default function App() {
       case "faq":
         return <FAQs />;
       case "register-portal":
-      case "register-portal-ca":
-        return <RegisterPortal initialPortalTab="campus-ambassador" setActiveTab={setActiveTab} />;
+      case "register-portal-priority":
       case "register-portal-eb":
-        return <RegisterPortal initialPortalTab="eb" setActiveTab={setActiveTab} />;
+        return <RegisterPortal initialPortalTab="priority" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={setActiveTab} />;
+      case "register-portal-ca":
+        return <RegisterPortal initialPortalTab="campus-ambassador" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={setActiveTab} />;
       case "register":
-        return <Registration 
+        return <OpeningSoonPlaceholder 
+          title="Priority Delegate Registration"
+          subtitle="Accreditation & Representation Dossier"
+          roundName="Priority Round"
+          badge="OPENING SOON"
           initialPreference={initialPreference} 
           clearInitialPreference={() => setInitialPreference(null)} 
+          setActiveTab={setActiveTab}
         />;
       case "workshop-register":
         return <WorkshopRegistration setActiveTab={setActiveTab} />;
@@ -182,9 +189,9 @@ export default function App() {
               <h4 className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-semibold">Registrations & Fellowship</h4>
               <ul className="space-y-2 font-sans text-xs text-[#8A9A7E]">
                 <li>
-                  <button onClick={() => { setActiveTab("register-portal-eb"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
-                    <span className="text-[#8A9A7E] group-hover:text-[#EDE6D3] transition-colors font-medium">Executive Board (EB)</span>
-                    <span className="block text-[10px] text-rose-400/80">Closed &bull; Applications Concluded</span>
+                  <button onClick={() => { setActiveTab("register-portal-priority"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
+                    <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">Priority Registration</span>
+                    <span className="block text-[10px] text-[#C9A86A]/80">Opening Soon &bull; Priority Round</span>
                   </button>
                 </li>
                 <li>

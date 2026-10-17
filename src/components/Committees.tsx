@@ -11,7 +11,7 @@ import { collection, onSnapshot, query } from "firebase/firestore";
 import { 
   Orbit, ShieldCheck, Scale, Globe, ChevronRight, 
   FileText, Download, X, HelpCircle, BookOpen, UserCheck,
-  ShieldAlert, Users, Landmark, Leaf, Newspaper
+  ShieldAlert, Users, Landmark, Leaf, Newspaper, Camera
 } from "lucide-react";
 import { motion } from "motion/react";
 
@@ -23,6 +23,7 @@ const SIGIL_MAP: Record<string, React.ComponentType<any>> = {
   Globe: Globe,
   Leaf: Leaf,
   Newspaper: Newspaper,
+  Camera: Camera,
   Scale: Scale,
   ShieldCheck: ShieldCheck
 };
@@ -78,7 +79,7 @@ export default function Committees() {
             </span>
           </div>
           <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-normal text-[#EDE6D3] tracking-wide mt-2">
-            Seven Arenas of Diplomatic Statecraft
+            Eight Arenas of Diplomatic Statecraft
           </h1>
           <p className="mt-4 max-w-2xl font-sans text-xs sm:text-sm text-[#8A9A7E] leading-relaxed font-light">
             Explore committee agendas, background guides, and Executive Board profiles.
