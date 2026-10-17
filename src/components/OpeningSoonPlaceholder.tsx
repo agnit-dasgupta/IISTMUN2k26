@@ -9,6 +9,9 @@ import {
   ArrowRight,
   ArrowLeft,
   Mail,
+  Landmark,
+  Globe,
+  X
 } from "lucide-react";
 import { motion } from "motion/react";
 
@@ -34,6 +37,8 @@ export default function OpeningSoonPlaceholder({
   roundName = "Priority Round",
   badge = "OPENING SOON",
   description,
+  initialPreference,
+  clearInitialPreference,
   setActiveTab,
   embedded = false,
   onBack
@@ -117,6 +122,33 @@ export default function OpeningSoonPlaceholder({
                 </>
               )}
             </p>
+
+            {/* Preserved initial matrix preference (if user navigated from country matrix) */}
+            {initialPreference && (initialPreference.committee || initialPreference.country) && (
+              <div className="flex items-center justify-between gap-3 p-3 bg-[#2E3B2F]/80 border border-[#C9A86A]/50 text-xs shadow-md">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="h-2 w-2 rounded-full bg-[#C9A86A] shrink-0" />
+                  <span className="font-sans text-[#EDE6D3] truncate">
+                    Saved Matrix Selection:{" "}
+                    <strong className="text-[#C9A86A]">
+                      {initialPreference.country ? `${initialPreference.country} — ` : ""}
+                      {initialPreference.committee}
+                    </strong>{" "}
+                    (Kept ready for priority intake)
+                  </span>
+                </div>
+                {clearInitialPreference && (
+                  <button
+                    type="button"
+                    onClick={clearInitialPreference}
+                    className="p-1 text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer"
+                    title="Clear preference"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Action Pathways While Waiting */}
@@ -126,10 +158,7 @@ export default function OpeningSoonPlaceholder({
                 INSTEAD, YOU CAN EXPLORE:
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-
-
-
-
+                {/* Pathway 1: Campus Ambassador */}
                 <button
                   type="button"
                   onClick={() => {
@@ -147,6 +176,48 @@ export default function OpeningSoonPlaceholder({
                   </div>
                   <p className="font-sans text-[10px] text-[#8A9A7E]">
                     Lead your university contingent and earn leadership honors.
+                  </p>
+                </button>
+
+                {/* Pathway 2: Explore Committees */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("committees");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="p-3.5 text-left border border-[#C9A86A]/40 bg-[#1A1F1A]/80 hover:bg-[#2E3B2F]/60 hover:border-[#C9A86A] transition-all group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-serif text-xs text-[#EDE6D3] font-medium group-hover:text-[#C9A86A] transition-colors flex items-center gap-1.5">
+                      <Landmark className="h-3.5 w-3.5 text-[#C9A86A]" />
+                      <span>Specialised Councils</span>
+                    </span>
+                    <ArrowRight className="h-3 w-3 text-[#8A9A7E] group-hover:translate-x-1 group-hover:text-[#C9A86A] transition-all" />
+                  </div>
+                  <p className="font-sans text-[10px] text-[#8A9A7E]">
+                    Explore 4 historic councils, agendas, and background dossiers.
+                  </p>
+                </button>
+
+                {/* Pathway 3: Country Matrix */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("matrix");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="p-3.5 text-left border border-[#8BA06F]/50 bg-[#1A1F1A]/80 hover:bg-[#2E3B2F]/60 hover:border-[#8BA06F] transition-all group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-serif text-xs text-[#EDE6D3] font-medium group-hover:text-emerald-300 transition-colors flex items-center gap-1.5">
+                      <Globe className="h-3.5 w-3.5 text-[#8BA06F]" />
+                      <span>Country Matrix</span>
+                    </span>
+                    <ArrowRight className="h-3 w-3 text-[#8A9A7E] group-hover:translate-x-1 group-hover:text-emerald-300 transition-all" />
+                  </div>
+                  <p className="font-sans text-[10px] text-[#8A9A7E]">
+                    Review delegation allocations and reserve your preferred portfolio.
                   </p>
                 </button>
               </div>

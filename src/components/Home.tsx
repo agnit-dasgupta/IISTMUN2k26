@@ -254,7 +254,7 @@ export default function Home({ setActiveTab }: HomeProps) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-              {/* Notice 1: Priority registrations now open */}
+              {/* Notice 1: Priority registrations opening soon */}
               <button
                 type="button"
                 onClick={() => {
@@ -272,12 +272,12 @@ export default function Home({ setActiveTab }: HomeProps) {
                     <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] block font-medium">
                       Priority Registration
                     </span>
-                    <span className="text-[9px] font-mono text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-1.5 rounded-none font-semibold">
-                      NOW OPEN
+                    <span className="text-[9px] font-mono text-[#1A1F1A] bg-[#C9A86A] px-1.5 rounded-none font-semibold">
+                      OPENING SOON
                     </span>
                   </div>
                   <span className="font-sans text-xs sm:text-sm text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#C9A86A] transition-colors">
-                    Priority Delegate Intake • Registrations Active
+                    Priority Delegate Intake • Opening Soon
                   </span>
                 </div>
               </button>
