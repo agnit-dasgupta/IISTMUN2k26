@@ -9,8 +9,6 @@ import {
   ArrowRight,
   ArrowLeft,
   Mail,
-  Landmark,
-  Globe,
   X
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -179,47 +177,9 @@ export default function OpeningSoonPlaceholder({
                   </p>
                 </button>
 
-                {/* Pathway 2: Explore Committees */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("committees");
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                  className="p-3.5 text-left border border-[#C9A86A]/40 bg-[#1A1F1A]/80 hover:bg-[#2E3B2F]/60 hover:border-[#C9A86A] transition-all group cursor-pointer"
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-serif text-xs text-[#EDE6D3] font-medium group-hover:text-[#C9A86A] transition-colors flex items-center gap-1.5">
-                      <Landmark className="h-3.5 w-3.5 text-[#C9A86A]" />
-                      <span>Specialised Councils</span>
-                    </span>
-                    <ArrowRight className="h-3 w-3 text-[#8A9A7E] group-hover:translate-x-1 group-hover:text-[#C9A86A] transition-all" />
-                  </div>
-                  <p className="font-sans text-[10px] text-[#8A9A7E]">
-                    Explore 4 historic councils, agendas, and background dossiers.
-                  </p>
-                </button>
 
-                {/* Pathway 3: Country Matrix */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("matrix");
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                  className="p-3.5 text-left border border-[#8BA06F]/50 bg-[#1A1F1A]/80 hover:bg-[#2E3B2F]/60 hover:border-[#8BA06F] transition-all group cursor-pointer"
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-serif text-xs text-[#EDE6D3] font-medium group-hover:text-emerald-300 transition-colors flex items-center gap-1.5">
-                      <Globe className="h-3.5 w-3.5 text-[#8BA06F]" />
-                      <span>Country Matrix</span>
-                    </span>
-                    <ArrowRight className="h-3 w-3 text-[#8A9A7E] group-hover:translate-x-1 group-hover:text-emerald-300 transition-all" />
-                  </div>
-                  <p className="font-sans text-[10px] text-[#8A9A7E]">
-                    Review delegation allocations and reserve your preferred portfolio.
-                  </p>
-                </button>
+
+
               </div>
             </div>
           )}
