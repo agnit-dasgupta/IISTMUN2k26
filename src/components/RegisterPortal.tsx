@@ -213,7 +213,7 @@ export default function RegisterPortal({
               CONVOCATION DISPATCH • 14TH EDITION
             </span>
             <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] border border-[#C9A86A]/40 bg-[#C9A86A]/10 px-2.5 py-1 font-semibold">
-              PRIORITY ROUND OPENING SOON • CAMPUS AMBASSADOR OPEN
+              PRIORITY ROUND NOW OPEN • CAMPUS AMBASSADOR OPEN
             </span>
           </div>
 
@@ -224,7 +224,7 @@ export default function RegisterPortal({
 
           <p className="font-sans text-xs sm:text-sm text-[#EDE6D3]/80 leading-relaxed font-light">
             Welcome to the official registration portal of <strong className="text-[#EDE6D3]">IIST Model United Nations 2027</strong>.
-            Priority delegate applications will be opening shortly with subsidized tiers and guaranteed early matrix allotment. You can also join the prestigious <span className="text-[#8BA06F] font-medium">Campus Ambassador Network</span> to represent IISTMUN at your academic institution and lead student contingents.
+            Priority delegate applications are now open with subsidized tiers and guaranteed early matrix allotment. You can also join the prestigious <span className="text-[#8BA06F] font-medium">Campus Ambassador Network</span> to represent IISTMUN at your academic institution and lead student contingents.
           </p>
 
           <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-mono text-[#8A9A7E]">
@@ -247,7 +247,7 @@ export default function RegisterPortal({
 
       {/* Dual Selector Tabs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
-        {/* Section A: Priority Registrations (Opening Soon) */}
+        {/* Section A: Priority Registrations (Now Open) */}
         <button
           type="button"
           onClick={() => {
@@ -265,8 +265,8 @@ export default function RegisterPortal({
               SECTION A
             </span>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-2 py-0.5">
-                OPENING SOON
+              <span className="font-mono text-[9px] uppercase tracking-wider text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-2 py-0.5">
+                NOW OPEN
               </span>
               <Sparkles className={`h-5 w-5 ${selectedForm === "priority" ? "text-[#C9A86A]" : "text-[#8A9A7E]"}`} />
             </div>
@@ -318,14 +318,10 @@ export default function RegisterPortal({
         </button>
       </div>
 
-      {/* SECTION A: PRIORITY REGISTRATION FORM (DISPLAYS OPENING SOON PLACEHOLDER) */}
+      {/* SECTION A: PRIORITY REGISTRATION FORM */}
       {selectedForm === "priority" && (
-        <OpeningSoonPlaceholder
+        <Registration
           embedded={true}
-          title="Priority Delegate Registration"
-          subtitle="Accreditation & Representation Dossier"
-          roundName="Priority Round"
-          badge="OPENING SOON"
           initialPreference={initialPreference}
           clearInitialPreference={clearInitialPreference}
           setActiveTab={setActiveTab}

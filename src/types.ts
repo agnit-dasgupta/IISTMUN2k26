@@ -89,6 +89,7 @@ export interface RegistrationDetails {
   name: string;
   email: string;
   phone: string;
+  aadharNumber?: string;
   gender?: string;
   dob?: string;
   cityState?: string;
@@ -143,6 +144,10 @@ export interface RegistrationDetails {
   allottedCommittee?: string;
   allottedCountry?: string;
   adminNotes?: string;
+  // Merchandise
+  hasMerch?: boolean;
+  merchSize?: string;
+  merchAmount?: number;
 }
 
 export type PriorityRegistrationDetails = RegistrationDetails;

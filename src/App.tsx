@@ -54,15 +54,7 @@ export default function App() {
       case "register-portal-ca":
         return <RegisterPortal initialPortalTab="campus-ambassador" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={setActiveTab} />;
       case "register":
-        return <OpeningSoonPlaceholder 
-          title="Priority Delegate Registration"
-          subtitle="Accreditation & Representation Dossier"
-          roundName="Priority Round"
-          badge="OPENING SOON"
-          initialPreference={initialPreference} 
-          clearInitialPreference={() => setInitialPreference(null)} 
-          setActiveTab={setActiveTab}
-        />;
+        return <Registration initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={setActiveTab} />;
       case "workshop-register":
         return <WorkshopRegistration setActiveTab={setActiveTab} />;
       case "admin":
@@ -191,7 +183,7 @@ export default function App() {
                 <li>
                   <button onClick={() => { setActiveTab("register-portal-priority"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
                     <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">Priority Registration</span>
-                    <span className="block text-[10px] text-[#C9A86A]/80">Opening Soon &bull; Priority Round</span>
+                    <span className="block text-[10px] text-[#C9A86A]/80">Now Open &bull; Priority Round</span>
                   </button>
                 </li>
                 <li>

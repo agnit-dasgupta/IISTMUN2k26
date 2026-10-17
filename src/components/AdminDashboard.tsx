@@ -43,7 +43,8 @@ import {
   RefreshCw,
   Layers,
   Copy,
-  ChevronDown
+  ChevronDown,
+  Shirt
 } from "lucide-react";
 
 export const FIRESTORE_RULES_TEXT = `rules_version = '2';
@@ -237,6 +238,7 @@ export default function AdminDashboard() {
   const [priorityCommitteeFilter, setPriorityCommitteeFilter] = useState("all");
   const [priorityStatusFilter, setPriorityStatusFilter] = useState("all");
   const [priorityCategoryFilter, setPriorityCategoryFilter] = useState("all");
+  const [priorityMerchFilter, setPriorityMerchFilter] = useState("all");
   const [selectedPriorityReg, setSelectedPriorityReg] = useState<PriorityRegistrationDetails | null>(null);
   const [viewProofModal, setViewProofModal] = useState<{ url: string; name?: string; utr?: string; candidateName?: string } | null>(null);
   const [confirmPriorityDeleteId, setConfirmPriorityDeleteId] = useState<string | null>(null);
@@ -938,6 +940,7 @@ export default function AdminDashboard() {
       "Candidate Name": r.name || "",
       "Email Address": r.email || "",
       "Phone / WhatsApp": r.phone || "",
+      "Aadhaar Number": r.aadharNumber || "",
       "Gender": r.gender || "",
       "Date of Birth": r.dob || "",
       "City & State": r.cityState || "",
@@ -967,6 +970,9 @@ export default function AdminDashboard() {
       "Emergency Contact Relation": r.emergencyContactRelation || "",
       "Emergency Contact Phone": r.emergencyContactPhone || "",
       "Fee Amount (INR)": r.feeAmount !== undefined ? r.feeAmount : 1299,
+      "Merchandise Purchased": r.hasMerch ? "YES" : "NO",
+      "Merch Size": r.hasMerch ? (r.merchSize || "N/A") : "N/A",
+      "Merch Amount (INR)": r.hasMerch ? (r.merchAmount || 599) : 0,
       "Payment Mode": r.paymentMode || "UPI",
       "UTR / Transaction ID": r.utrNumber || r.transactionId || "",
       "Payer Name": r.payerName || "",
@@ -1014,6 +1020,9 @@ export default function AdminDashboard() {
       { wch: 16 }, // Emergency Rel
       { wch: 18 }, // Emergency Phone
       { wch: 14 }, // Fee
+      { wch: 20 }, // Merchandise Purchased
+      { wch: 12 }, // Merch Size
+      { wch: 18 }, // Merch Amount (INR)
       { wch: 12 }, // Mode
       { wch: 20 }, // UTR
       { wch: 22 }, // Payer Name
@@ -1388,13 +1397,16 @@ export default function AdminDashboard() {
       (r.name || "").toLowerCase().includes(q) ||
       (r.email || "").toLowerCase().includes(q) ||
       (r.phone || "").toLowerCase().includes(q) ||
+      (r.aadharNumber || "").toLowerCase().includes(q) ||
       (r.institution || "").toLowerCase().includes(q) ||
       (r.utrNumber || "").toLowerCase().includes(q) ||
       (r.transactionId || "").toLowerCase().includes(q) ||
       (r.payerName || "").toLowerCase().includes(q) ||
       (r.cityState || "").toLowerCase().includes(q) ||
       (r.id || "").toLowerCase().includes(q) ||
-      (r.uid || "").toLowerCase().includes(q);
+      (r.uid || "").toLowerCase().includes(q) ||
+      (r.merchSize || "").toLowerCase().includes(q) ||
+      (r.hasMerch && "merchandise t-shirt merch".includes(q));
 
     const matchesCategory =
       priorityCategoryFilter === "all" ||
@@ -1415,7 +1427,12 @@ export default function AdminDashboard() {
       r.status === priorityStatusFilter ||
       r.paymentStatus === priorityStatusFilter;
 
-    return matchesSearch && matchesCategory && matchesCommittee && matchesStatus;
+    const matchesMerch =
+      priorityMerchFilter === "all" ||
+      (priorityMerchFilter === "merch" && r.hasMerch) ||
+      (priorityMerchFilter === "no_merch" && !r.hasMerch);
+
+    return matchesSearch && matchesCategory && matchesCommittee && matchesStatus && matchesMerch;
   });
 
   // Filter general registrations (strictly exclude priority registrations)
@@ -2040,7 +2057,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
               <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
                 <span className="font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E]">TOTAL PRIORITY</span>
                 <div className="flex justify-between items-end mt-1.5">
@@ -2086,6 +2103,23 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A]">MERCH ORDERS</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <div>
+                    <span className="font-serif text-2xl font-normal text-[#EDE6D3] block">
+                      {priorityRegistrations.filter(r => r.hasMerch).length}
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                      ₹{priorityRegistrations.filter(r => r.hasMerch).length * 599}
+                    </span>
+                  </div>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                    <Shirt className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Search and Filters */}
@@ -2114,6 +2148,20 @@ export default function AdminDashboard() {
                     <option value="College Non-IIST" className="bg-[#1A1F1A] text-[#EDE6D3]">COLLEGE NON-IIST (₹1299)</option>
                     <option value="School Delegate" className="bg-[#1A1F1A] text-[#EDE6D3]">SCHOOL DELEGATE (₹1000)</option>
                     <option value="IIST Internal" className="bg-[#1A1F1A] text-[#EDE6D3]">IIST INTERNAL (₹0)</option>
+                  </select>
+                </div>
+
+                {/* Merch Filter */}
+                <div className="flex items-center gap-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 px-3 py-1.5">
+                  <Shirt className="h-3 w-3 text-[#C9A86A]" />
+                  <select
+                    value={priorityMerchFilter}
+                    onChange={(e) => setPriorityMerchFilter(e.target.value)}
+                    className="bg-transparent text-[#EDE6D3] font-sans text-[11px] uppercase tracking-wider focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="bg-[#1A1F1A] text-[#EDE6D3]">ALL MERCH</option>
+                    <option value="merch" className="bg-[#1A1F1A] text-[#EDE6D3]">WITH MERCH (₹599)</option>
+                    <option value="no_merch" className="bg-[#1A1F1A] text-[#EDE6D3]">WITHOUT MERCH</option>
                   </select>
                 </div>
 
@@ -2166,6 +2214,7 @@ export default function AdminDashboard() {
                       <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Candidate Details</th>
                       <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Institution & Course</th>
                       <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Preferences (1st / 2nd)</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Merch</th>
                       <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Payment & UTR</th>
                       <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Receipt</th>
                       <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Status</th>
@@ -2175,7 +2224,7 @@ export default function AdminDashboard() {
                   <tbody className="divide-y divide-[#8A9A7E]/10">
                     {filteredPriority.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="p-12 text-center text-[#8A9A7E]">
+                        <td colSpan={9} className="p-12 text-center text-[#8A9A7E]">
                           <Sparkles className="h-8 w-8 mx-auto mb-2 text-[#C9A86A]/50" />
                           <p className="font-serif text-lg text-[#EDE6D3]">No priority delegates match criteria</p>
                           <p className="text-xs text-[#8A9A7E] mt-1">Registrations submitted in the priority round appear here in real time.</p>
@@ -2268,6 +2317,23 @@ export default function AdminDashboard() {
                               <div className="mt-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-1.5 py-0.5 inline-block">
                                 Allotted: {item.allottedCountry ? `${item.allottedCountry} (${item.allottedCommittee.toUpperCase()})` : item.allottedCommittee.toUpperCase()}
                               </div>
+                            )}
+                          </td>
+
+                          {/* Merch */}
+                          <td className="p-3.5">
+                            {item.hasMerch ? (
+                              <div>
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                  <Shirt className="h-3 w-3" />
+                                  {item.merchSize || "M"}
+                                </span>
+                                <div className="text-[10px] font-mono text-[#8A9A7E] mt-0.5">
+                                  +₹{item.merchAmount || 599}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-[11px] font-mono text-[#8A9A7E]/50">—</span>
                             )}
                           </td>
 
@@ -5117,6 +5183,7 @@ export default function AdminDashboard() {
                       <div className="space-y-1.5 text-xs text-[#EDE6D3]">
                         <div><strong className="text-[#8A9A7E]">Email:</strong> {selectedPriorityReg.email}</div>
                         <div><strong className="text-[#8A9A7E]">Phone:</strong> {selectedPriorityReg.phone}</div>
+                        <div><strong className="text-[#8A9A7E]">Aadhaar:</strong> {selectedPriorityReg.aadharNumber || "Not specified"}</div>
                         <div><strong className="text-[#8A9A7E]">Gender:</strong> {selectedPriorityReg.gender || "Not specified"}</div>
                         <div><strong className="text-[#8A9A7E]">DOB:</strong> {selectedPriorityReg.dob || "Not specified"}</div>
                         <div><strong className="text-[#8A9A7E]">Location:</strong> {selectedPriorityReg.cityState || "Not specified"}</div>
@@ -5262,6 +5329,51 @@ export default function AdminDashboard() {
                           "{selectedPriorityReg.motivation}"
                         </div>
                       </div>
+                    )}
+                  </div>
+
+                  {/* Official Merchandise */}
+                  <div className={`p-4 border ${selectedPriorityReg.hasMerch ? "bg-amber-950/20 border-amber-500/40" : "bg-[#1A1F1A] border-[#8A9A7E]/20"}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold flex items-center gap-1.5">
+                        <Shirt className="h-3.5 w-3.5" />
+                        // OFFICIAL COMMEMORATIVE MERCHANDISE
+                      </span>
+                      {selectedPriorityReg.hasMerch ? (
+                        <span className="px-2 py-0.5 text-[9px] font-mono font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                          Ordered (+₹{selectedPriorityReg.merchAmount || 599})
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 text-[9px] font-mono text-[#8A9A7E] bg-[#141814] border border-[#8A9A7E]/30">
+                          Not Purchased
+                        </span>
+                      )}
+                    </div>
+                    {selectedPriorityReg.hasMerch ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-[#EDE6D3] mt-3">
+                        <div>
+                          <span className="text-[#8A9A7E] block text-[10px] uppercase font-mono">Size Selected:</span>
+                          <span className="font-mono text-sm font-bold text-amber-300 bg-[#141814] px-2 py-0.5 border border-amber-500/30 inline-block mt-0.5">
+                            {selectedPriorityReg.merchSize || "M"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[#8A9A7E] block text-[10px] uppercase font-mono">Merchandise Add-on:</span>
+                          <span className="font-bold text-emerald-400 mt-0.5 block">
+                            ₹{selectedPriorityReg.merchAmount || 599}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[#8A9A7E] block text-[10px] uppercase font-mono">Fulfillment Status:</span>
+                          <span className="text-[#EDE6D3] text-[11px] mt-0.5 block">
+                            To be handed at Conference Kit Desk
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-[#8A9A7E] mt-1">
+                        Delegate opted out of the merchandise add-on or is an internal IIST delegate.
+                      </p>
                     )}
                   </div>
 

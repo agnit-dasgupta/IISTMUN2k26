@@ -12,7 +12,8 @@ import {
   ShieldCheck, FileText, CheckCircle2, QrCode, Copy,
   CreditCard, Sparkles, Building2, MapPin, Phone, Mail,
   Calendar, HelpCircle, ArrowLeft, RefreshCw,
-  Clock, ShieldAlert, Award, ExternalLink
+  Clock, ShieldAlert, Award, ExternalLink,
+  Shirt, ShoppingBag, Ruler, X, Tag
 } from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { db, handleFirestoreError, OperationType } from "../firebase";
@@ -22,6 +23,25 @@ import { InstitutionSelect } from "./InstitutionSelect";
 import FileUploadZone from "./FileUploadZone";
 import QRCodeDisplay from "./QRCodeDisplay";
 import { downloadBoardingPassPDF } from "../utils/pdfGenerator";
+
+export const isIISTInstitution = (institution?: string): boolean => {
+  if (!institution) return false;
+  const lower = institution.toLowerCase().trim();
+  if (lower.includes("indian institute of space science")) return true;
+  if (lower.includes("space science and technology") && lower.includes("thiruvananthapuram")) return true;
+  if (/\biist\b/i.test(lower)) return true;
+  return false;
+};
+
+export const MERCH_SIZES = [
+  { value: "XS", label: "XS (Chest 36\" / Height 25\")" },
+  { value: "S", label: "S (Chest 38\" / Height 26\")" },
+  { value: "M", label: "M (Chest 40\" / Height 27\")" },
+  { value: "L", label: "L (Chest 42\" / Height 28\")" },
+  { value: "XL", label: "XL (Chest 44\" / Height 29\")" },
+  { value: "XXL", label: "XXL (Chest 46\" / Height 30\")" },
+  { value: "XXXL", label: "XXXL (Chest 48\" / Height 31\")" },
+];
 
 interface RegistrationProps {
   initialPreference?: { country?: string; committee: string } | null;
@@ -51,6 +71,7 @@ export default function Registration({ initialPreference, clearInitialPreference
     name: "",
     email: "",
     phone: "",
+    aadharNumber: "",
     gender: "Prefer not to say",
     dob: "",
     cityState: "",
@@ -106,17 +127,29 @@ export default function Registration({ initialPreference, clearInitialPreference
     paymentDate: new Date().toISOString().slice(0, 10),
     paymentScreenshotUrl: "",
     paymentScreenshotName: "",
-    agreedToTerms: false
+    agreedToTerms: false,
+
+    // Merchandise Selection
+    hasMerch: false,
+    merchSize: "M"
   });
+
+  // Merchandise Modal States
+  const [showMerchModal, setShowMerchModal] = useState(false);
+  const [merchViewTab, setMerchViewTab] = useState<"front" | "back" | "size_chart">("front");
+  const [selectedMerchSize, setSelectedMerchSize] = useState<string>("M");
+  const [merchSizeError, setMerchSizeError] = useState("");
 
   const [submittedPass, setSubmittedPass] = useState<RegistrationDetails | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDownloading, setIsDownloading] = useState(false);
   const boardingPassRef = useRef<HTMLDivElement>(null);
 
-  // Dynamic fee calculation based on Category (Category A: College Non-IIST)
+  // Dynamic fee calculation based on Category and Merchandise selection
   const calculateTotalFee = (): number => {
-    return 1299;
+    const isIIST = isIISTInstitution(formData.institution);
+    const merchExtra = (!isIIST && formData.hasMerch) ? 599 : 0;
+    return 1299 + merchExtra;
   };
 
   const calculatedFee = calculateTotalFee();
@@ -229,6 +262,12 @@ export default function Registration({ initialPreference, clearInitialPreference
       if (!formData.phone.trim() || formData.phone.length < 8) {
         newErrors.phone = "A valid WhatsApp / Phone contact number is required.";
       }
+      const rawAadhar = formData.aadharNumber.replace(/\s+/g, "");
+      if (!rawAadhar) {
+        newErrors.aadharNumber = "Aadhaar Card Number is mandatory for campus security clearance.";
+      } else if (!/^\d{12}$/.test(rawAadhar)) {
+        newErrors.aadharNumber = "Please enter a valid 12-digit Aadhaar Card Number.";
+      }
       if (!formData.cityState.trim()) {
         newErrors.cityState = "Current City & State of residence is required.";
       }
@@ -297,9 +336,49 @@ export default function Registration({ initialPreference, clearInitialPreference
 
   const handleNext = () => {
     if (validateStep(step)) {
+      if (step === 3) {
+        // Case 1 vs Case 2:
+        // Case 2: For students who have selected IIST, no pop up to be shown.
+        if (isIISTInstitution(formData.institution)) {
+          setStep(4);
+          window.scrollTo({ top: 120, behavior: "smooth" });
+        } else {
+          // Case 1: For students who have selected colleges except IIST,
+          // display a popup just before final payment stage.
+          setShowMerchModal(true);
+        }
+        return;
+      }
       setStep((prev) => Math.min(prev + 1, 4));
       window.scrollTo({ top: 120, behavior: "smooth" });
     }
+  };
+
+  const handleConfirmMerch = () => {
+    if (!selectedMerchSize) {
+      setMerchSizeError("Please select a size to proceed.");
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      hasMerch: true,
+      merchSize: selectedMerchSize,
+    }));
+    setShowMerchModal(false);
+    setMerchSizeError("");
+    setStep(4);
+    window.scrollTo({ top: 120, behavior: "smooth" });
+  };
+
+  const handleSkipMerch = () => {
+    setFormData((prev) => ({
+      ...prev,
+      hasMerch: false,
+    }));
+    setShowMerchModal(false);
+    setMerchSizeError("");
+    setStep(4);
+    window.scrollTo({ top: 120, behavior: "smooth" });
   };
 
   const handleBack = () => {
@@ -352,6 +431,7 @@ export default function Registration({ initialPreference, clearInitialPreference
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         phone: formData.phone.trim(),
+        aadharNumber: formData.aadharNumber.trim(),
         gender: formData.gender,
         dob: formData.dob,
         cityState: formData.cityState.trim(),
@@ -383,6 +463,9 @@ export default function Registration({ initialPreference, clearInitialPreference
         motivation: formData.motivation.trim(),
         accommodationRequired: "no",
         feeAmount: calculatedFee,
+        hasMerch: !isIISTInstitution(formData.institution) && formData.hasMerch,
+        merchSize: (!isIISTInstitution(formData.institution) && formData.hasMerch) ? (formData.merchSize || "M") : undefined,
+        merchAmount: (!isIISTInstitution(formData.institution) && formData.hasMerch) ? 599 : 0,
         paymentMode: formData.paymentMode,
         transactionId: utr,
         utrNumber: utr,
@@ -436,7 +519,7 @@ export default function Registration({ initialPreference, clearInitialPreference
   };
 
   const handleCopyUpi = () => {
-    navigator.clipboard.writeText("iistmun@upi");
+    navigator.clipboard.writeText("arnav.tpj@oksbi");
     setCopiedUpi(true);
     setTimeout(() => setCopiedUpi(false), 2500);
   };
@@ -559,7 +642,7 @@ export default function Registration({ initialPreference, clearInitialPreference
               College Non-IIST: ₹1299
             </span>
             <span className="px-2.5 py-1 bg-[#2E3B2F]/60 border border-[#C9A86A]/30">
-              Portfolio Allotment: 15 Dec 2025
+              Portfolio Allotment: Rolling Priority Basis
             </span>
           </div>
         </div>
@@ -685,6 +768,11 @@ export default function Registration({ initialPreference, clearInitialPreference
                       <div className="mt-2 font-mono text-[10px] text-[#5B6B4F]">
                         City: {submittedPass.cityState || "Kerala"}
                       </div>
+                      {submittedPass.aadharNumber && (
+                        <div className="mt-1 font-mono text-[10px] text-[#5B6B4F]">
+                          Aadhaar: {submittedPass.aadharNumber.replace(/(\d{4})\s*(\d{4})\s*(\d{4})/, "XXXX XXXX $3")}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -977,6 +1065,33 @@ export default function Registration({ initialPreference, clearInitialPreference
                       {errors.phone && <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.phone}</p>}
                     </div>
 
+                    {/* Aadhaar Card Number */}
+                    <div>
+                      <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] mb-1.5 font-semibold flex items-center justify-between">
+                        <span>Aadhaar Card Number *</span>
+                        <span className="text-[9px] font-mono text-[#8A9A7E] font-normal">12-Digit UID</span>
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={14}
+                        value={formData.aadharNumber}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, "").slice(0, 12);
+                          const formatted = digits.replace(/(\d{4})(?=\d)/g, "$1 ");
+                          setFormData({ ...formData, aadharNumber: formatted });
+                        }}
+                        className={`w-full border ${errors.aadharNumber ? "border-rose-400" : "border-[#8A9A7E]/30"} bg-[#1A1F1A] px-4 py-3 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/50 outline-none focus:border-[#C9A86A] transition-all font-mono tracking-widest`}
+                        placeholder="XXXX XXXX XXXX"
+                      />
+                      {errors.aadharNumber ? (
+                        <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.aadharNumber}</p>
+                      ) : (
+                        <p className="text-[10px] text-[#8A9A7E]/75 mt-1 font-sans">
+                          Mandatory for ISRO / IIST campus gate security verification.
+                        </p>
+                      )}
+                    </div>
+
                     {/* Gender */}
                     <div>
                       <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] mb-1.5 font-semibold">
@@ -1009,7 +1124,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                     </div>
 
                     {/* City & State */}
-                    <div>
+                    <div className="sm:col-span-2">
                       <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] mb-1.5 font-semibold">
                         City & State of Residence *
                       </label>
@@ -1644,7 +1759,7 @@ export default function Registration({ initialPreference, clearInitialPreference
               )}
 
               {/* ======================================================== */}
-              {/* STAGE 4: PAYMENT, QR CODE PLACEHOLDER & SUBMISSION       */}
+              {/* STAGE 4: PAYMENT, OFFICIAL UPI QR CODE & SUBMISSION      */}
               {/* ======================================================== */}
               {step === 4 && (
                 <div className="space-y-6 animate-fade-in">
@@ -1653,7 +1768,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                       Stage 4: Fee Payment & Transaction Verification
                     </h2>
                     <p className="text-xs sm:text-sm text-[#8A9A7E] mt-1 leading-relaxed">
-                      Complete your Priority Round registration fee payment using the official QR code placeholder or UPI ID.
+                      Complete your Priority Round registration fee payment using the official QR code or UPI ID.
                     </p>
                   </div>
 
@@ -1665,7 +1780,11 @@ export default function Registration({ initialPreference, clearInitialPreference
                           Priority Round Assessment
                         </span>
                         <h3 className="font-serif text-xl font-normal text-[#EDE6D3] mt-0.5">
-                          College Delegate Priority Fee
+                          {isIISTInstitution(formData.institution)
+                            ? "IIST Delegate Priority Fee"
+                            : formData.hasMerch
+                            ? "College Delegate Priority Fee + Merch"
+                            : "College Delegate Priority Fee"}
                         </h3>
                       </div>
                       <div className="text-right">
@@ -1676,13 +1795,21 @@ export default function Registration({ initialPreference, clearInitialPreference
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-3 text-xs font-sans text-[#8A9A7E]">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 text-xs font-sans text-[#8A9A7E]">
                       <div>
                         <span>Base Registration:</span>{" "}
                         <strong className="text-[#EDE6D3]">
                           ₹1,299
                         </strong>
                       </div>
+                      {!isIISTInstitution(formData.institution) && formData.hasMerch && (
+                        <div>
+                          <span>Merch ({formData.merchSize}):</span>{" "}
+                          <strong className="text-emerald-400">
+                            +₹599
+                          </strong>
+                        </div>
+                      )}
                       <div>
                         <span>Accreditation Round:</span>{" "}
                         <strong className="text-[#EDE6D3]">
@@ -1696,47 +1823,100 @@ export default function Registration({ initialPreference, clearInitialPreference
                     </div>
                   </div>
 
-                  {/* QR Code Placeholder Box */}
+                  {/* Merchandise Management Banner (Non-IIST Students Only) */}
+                  {!isIISTInstitution(formData.institution) && (
+                    <div className="border border-[#C9A86A]/30 bg-[#1A1F1A] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 bg-[#2E3B2F] border border-[#C9A86A]/40 flex items-center justify-center text-[#C9A86A] shrink-0">
+                          <Shirt className="h-5 w-5" />
+                        </div>
+                        <div className="text-xs">
+                          {formData.hasMerch ? (
+                            <>
+                              <span className="font-bold text-[#EDE6D3] flex items-center gap-2">
+                                Official Conference T-Shirt Included
+                                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-1.5 py-0.2 border border-emerald-500/40 font-bold">
+                                  +₹599
+                                </span>
+                              </span>
+                              <span className="text-[#8A9A7E] text-[11px] block mt-0.5">
+                                Selected Size: <strong className="text-[#C9A86A] font-mono font-bold">{formData.merchSize}</strong> • Included in your total payment
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="font-semibold text-[#EDE6D3] block">
+                                Official Conference T-Shirt (Optional Upgrade)
+                              </span>
+                              <span className="text-[#8A9A7E] text-[11px] block mt-0.5">
+                                Commemorative limited edition ISRO space heritage tee for ₹599.
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                        {formData.hasMerch ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedMerchSize(formData.merchSize || "M");
+                                setShowMerchModal(true);
+                              }}
+                              className="px-3 py-1.5 border border-[#C9A86A] text-[#C9A86A] hover:bg-[#C9A86A]/10 text-[10px] font-sans font-bold uppercase tracking-wider transition-all cursor-pointer"
+                            >
+                              Change Size
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFormData(prev => ({ ...prev, hasMerch: false }))}
+                              className="px-3 py-1.5 border border-rose-500/40 text-rose-300 hover:bg-rose-950/30 text-[10px] font-sans font-semibold uppercase tracking-wider transition-all cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedMerchSize("M");
+                              setShowMerchModal(true);
+                            }}
+                            className="px-3.5 py-1.5 bg-[#C9A86A] hover:bg-[#bfa060] text-[#1A1F1A] text-[10px] font-sans font-bold uppercase tracking-wider transition-all cursor-pointer shadow flex items-center gap-1.5"
+                          >
+                            <ShoppingBag className="h-3.5 w-3.5" />
+                            <span>+ Add Merch (₹599)</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Official UPI QR Payment Card */}
                   <div className="border-2 border-[#C9A86A] bg-[#141814] p-6 text-center relative overflow-hidden shadow-2xl">
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#C9A86A]/20 border border-[#C9A86A] text-[#C9A86A] text-[10px] font-mono uppercase tracking-widest font-bold mb-4">
                       <QrCode className="h-3.5 w-3.5 text-[#C9A86A]" />
-                      <span>[ UPI QR CODE PLACEHOLDER ]</span>
+                      <span>OFFICIAL UPI QR PAYMENT</span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
 
-                      {/* Stylized QR Box Graphic */}
+                      {/* Official UPI QR Graphic */}
                       <div className="flex flex-col items-center">
-                        <div className="relative p-4 bg-white border-4 border-[#C9A86A] shadow-xl inline-block rounded-none">
-                          {/* Simulated QR Code graphic with centered IISTMUN Seal */}
-                          <div className="w-44 h-44 bg-[#F8F9FA] border-2 border-slate-900 relative flex flex-col items-center justify-center p-2">
-                            {/* Corner Position Detection Patterns */}
-                            <div className="absolute top-2 left-2 w-10 h-10 border-4 border-slate-900 flex items-center justify-center">
-                              <div className="w-4 h-4 bg-slate-900"></div>
-                            </div>
-                            <div className="absolute top-2 right-2 w-10 h-10 border-4 border-slate-900 flex items-center justify-center">
-                              <div className="w-4 h-4 bg-slate-900"></div>
-                            </div>
-                            <div className="absolute bottom-2 left-2 w-10 h-10 border-4 border-slate-900 flex items-center justify-center">
-                              <div className="w-4 h-4 bg-slate-900"></div>
-                            </div>
-
-                            {/* Centered Seal */}
-                            <div className="relative z-10 w-14 h-14 rounded-full border-2 border-[#C9A86A] bg-[#1A1F1A] p-1 flex items-center justify-center shadow-md">
-                              <img
-                                src="/logo-emblem-transparent.png"
-                                alt="IIST MUN"
-                                className="h-full w-full object-contain"
-                              />
-                            </div>
-
-                            <span className="font-mono text-[8px] font-bold text-slate-800 uppercase tracking-widest mt-2">
-                              SCAN TO PAY ₹{calculatedFee}
-                            </span>
+                        <div className="relative p-2.5 bg-white border-2 border-[#C9A86A] shadow-2xl inline-block max-w-[240px] sm:max-w-[260px] w-full">
+                          <img
+                            src="/UPI-QR-IIST-MUN-2026.png"
+                            alt="IIST MUN Official UPI QR Code - Arnav Jain"
+                            className="w-full h-auto object-contain block mx-auto rounded"
+                          />
+                          <div className="mt-2 py-1.5 px-3 bg-[#1A1F1A] text-center border border-[#C9A86A]/40 flex items-center justify-between">
+                            <span className="font-mono text-[9px] text-[#8A9A7E] uppercase tracking-wider">Amount Due:</span>
+                            <span className="font-mono text-xs font-bold text-[#C9A86A]">₹{calculatedFee}</span>
                           </div>
                         </div>
                         <span className="text-[10px] text-[#8A9A7E] font-mono mt-2">
-                          Official Gateway Placeholder
+                          Scan to pay ₹{calculatedFee} with any UPI app
                         </span>
                       </div>
 
@@ -1747,8 +1927,8 @@ export default function Registration({ initialPreference, clearInitialPreference
                             Direct UPI ID
                           </span>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-base font-bold text-[#C9A86A] bg-[#1A1F1A] px-3.5 py-1.5 border border-[#C9A86A]/40 inline-block">
-                              iistmun@upi
+                            <span className="font-mono text-base font-bold text-[#C9A86A] bg-[#1A1F1A] px-3.5 py-1.5 border border-[#C9A86A]/40 inline-block select-all">
+                              arnav.tpj@oksbi
                             </span>
                             <button
                               type="button"
@@ -1763,8 +1943,8 @@ export default function Registration({ initialPreference, clearInitialPreference
 
                         <div className="text-xs text-[#8A9A7E] space-y-1">
                           <div>
-                            <span className="text-[#EDE6D3] font-semibold">Account Title:</span>{" "}
-                            IIST Model United Nations Club
+                            <span className="text-[#EDE6D3] font-semibold">Account Holder:</span>{" "}
+                            Arnav Jain
                           </div>
                           <div>
                             <span className="text-[#EDE6D3] font-semibold">Accepted Applications:</span>{" "}
@@ -1776,7 +1956,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                         <div className="border border-[#8A9A7E]/30 bg-[#1A1F1A] p-3 text-[11px] text-[#EDE6D3] space-y-1.5 leading-relaxed">
                           <div className="flex items-start gap-1.5">
                             <span className="text-[#C9A86A] font-bold">1.</span>
-                            <span>Scan the QR code placeholder or pay to <strong className="text-[#C9A86A]">iistmun@upi</strong>.</span>
+                            <span>Scan the official QR code or pay to <strong className="text-[#C9A86A]">arnav.tpj@oksbi</strong>.</span>
                           </div>
                           <div className="flex items-start gap-1.5">
                             <span className="text-[#C9A86A] font-bold">2.</span>
@@ -1928,7 +2108,266 @@ export default function Registration({ initialPreference, clearInitialPreference
             </form>
           </div>
         )}
+      {/* ======================================================== */}
+      {/* CONDITIONAL INTERMEDIATE STAGE: MERCHANDISE POPUP MODAL  */}
+      {/* ======================================================== */}
+      <AnimatePresence>
+        {showMerchModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 16 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 16 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="relative w-full max-w-3xl border-2 border-[#C9A86A] bg-[#1A1F1A] text-[#EDE6D3] shadow-2xl overflow-hidden my-auto text-left"
+            >
+              {/* Golden accent bar */}
+              <div className="h-1.5 w-full bg-gradient-to-r from-[#C9A86A]/40 via-[#C9A86A] to-[#C9A86A]/40" />
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={handleSkipMerch}
+                className="absolute top-4 right-4 p-1.5 text-[#8A9A7E] hover:text-[#EDE6D3] hover:bg-[#2E3B2F] border border-[#8A9A7E]/30 transition-all cursor-pointer z-10"
+                title="Skip and proceed to payment"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              <div className="p-5 sm:p-7 space-y-6">
+                {/* Modal Header */}
+                <div className="pr-8">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold bg-[#2E3B2F] px-2.5 py-0.5 border border-[#C9A86A]/40 flex items-center gap-1.5">
+                      <Sparkles className="h-3 w-3 text-[#C9A86A]" />
+                      Exclusive Delegate Merch Offer
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 border border-emerald-500/30">
+                      ₹599 ONLY
+                    </span>
+                  </div>
+                  <h3 className="font-serif text-2xl sm:text-3xl text-[#EDE6D3] font-normal leading-tight">
+                    Official IISTMUN 2026 Edition T-Shirt
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#8A9A7E] mt-1 leading-relaxed">
+                    Would you like to purchase the official conference merchandise before finalizing your accreditation payment?
+                  </p>
+                </div>
+
+                {/* Main Content Grid: Image Preview (Left) & Selection Panel (Right) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                  
+                  {/* Left Column: Visual Showcase with Tabs */}
+                  <div className="space-y-3">
+                    {/* View Switcher Tabs */}
+                    <div className="flex border border-[#8A9A7E]/30 bg-[#141814] p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setMerchViewTab("front")}
+                        className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer ${
+                          merchViewTab === "front"
+                            ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
+                            : "text-[#8A9A7E] hover:text-[#EDE6D3]"
+                        }`}
+                      >
+                        Front View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMerchViewTab("back")}
+                        className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer ${
+                          merchViewTab === "back"
+                            ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
+                            : "text-[#8A9A7E] hover:text-[#EDE6D3]"
+                        }`}
+                      >
+                        Back View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMerchViewTab("size_chart")}
+                        className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                          merchViewTab === "size_chart"
+                            ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
+                            : "text-[#8A9A7E] hover:text-[#EDE6D3]"
+                        }`}
+                      >
+                        <Ruler className="h-3 w-3" />
+                        Size Chart
+                      </button>
+                    </div>
+
+                    {/* Image Viewer Container */}
+                    <div className="relative border border-[#C9A86A]/40 bg-[#141814] p-3 flex items-center justify-center min-h-[280px] max-h-[320px] overflow-hidden group">
+                      {merchViewTab === "front" && (
+                        <motion.img
+                          key="front"
+                          initial={{ opacity: 0, scale: 0.96 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.2 }}
+                          src="/merch_front.png"
+                          alt="IISTMUN Official Merch Front"
+                          className="max-h-[290px] w-auto object-contain mx-auto transition-transform duration-300 group-hover:scale-105"
+                        />
+                      )}
+                      {merchViewTab === "back" && (
+                        <motion.img
+                          key="back"
+                          initial={{ opacity: 0, scale: 0.96 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.2 }}
+                          src="/merch_back.png"
+                          alt="IISTMUN Official Merch Back"
+                          className="max-h-[290px] w-auto object-contain mx-auto transition-transform duration-300 group-hover:scale-105"
+                        />
+                      )}
+                      {merchViewTab === "size_chart" && (
+                        <motion.img
+                          key="size_chart"
+                          initial={{ opacity: 0, scale: 0.96 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.2 }}
+                          src="/size_chart.png"
+                          alt="IISTMUN Official T-Shirt Size Chart"
+                          className="max-h-[290px] w-auto object-contain mx-auto"
+                        />
+                      )}
+                    </div>
+
+                    {/* Thumbnail Switchers */}
+                    <div className="flex items-center gap-2 justify-center pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setMerchViewTab("front")}
+                        className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer ${
+                          merchViewTab === "front" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
+                        }`}
+                        title="Front view"
+                      >
+                        <img src="/merch_front.png" alt="Front thumbnail" className="h-full w-full object-contain" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMerchViewTab("back")}
+                        className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer ${
+                          merchViewTab === "back" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
+                        }`}
+                        title="Back view"
+                      >
+                        <img src="/merch_back.png" alt="Back thumbnail" className="h-full w-full object-contain" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMerchViewTab("size_chart")}
+                        className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer flex flex-col items-center justify-center ${
+                          merchViewTab === "size_chart" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
+                        }`}
+                        title="Size chart"
+                      >
+                        <Ruler className="h-4 w-4 text-[#C9A86A]" />
+                        <span className="text-[7px] font-mono text-[#8A9A7E] uppercase">CHART</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Details, Size Selection, and CTAs */}
+                  <div className="space-y-4 text-left">
+                    {/* Price and Description Box */}
+                    <div className="p-3.5 border border-[#8A9A7E]/30 bg-[#2E3B2F]/60 space-y-1">
+                      <div className="flex items-baseline justify-between">
+                        <span className="font-sans text-[10px] uppercase tracking-wider text-[#8A9A7E] font-semibold">
+                          Conference Edition Price
+                        </span>
+                        <div className="text-right">
+                          <span className="text-xs text-[#8A9A7E] line-through mr-2">₹899</span>
+                          <span className="font-serif text-2xl font-bold text-[#C9A86A]">₹599</span>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-[#EDE6D3]/90 leading-relaxed pt-1 border-t border-[#8A9A7E]/20">
+                        Iconic ISRO Space Transport artwork on the front with the historic Chandrayaan Moon Landing celebration on the back. 100% premium combed cotton.
+                      </p>
+                    </div>
+
+                    {/* Size Selector */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] font-semibold">
+                          Choose T-Shirt Size *
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setMerchViewTab("size_chart")}
+                          className="text-[10px] text-[#C9A86A] hover:underline flex items-center gap-1 cursor-pointer font-sans"
+                        >
+                          <Ruler className="h-3 w-3" />
+                          <span>View Size Chart</span>
+                        </button>
+                      </div>
+
+                      <select
+                        value={selectedMerchSize}
+                        onChange={(e) => {
+                          setSelectedMerchSize(e.target.value);
+                          if (merchSizeError) setMerchSizeError("");
+                        }}
+                        className={`w-full border ${
+                          merchSizeError ? "border-rose-400" : "border-[#8A9A7E]/40"
+                        } bg-[#141814] px-3.5 py-3 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A] font-medium transition-all cursor-pointer`}
+                      >
+                        <option value="" disabled className="bg-[#1A1F1A]">
+                          -- Select your size --
+                        </option>
+                        {MERCH_SIZES.map((sz) => (
+                          <option key={sz.value} value={sz.value} className="bg-[#1A1F1A]">
+                            {sz.label}
+                          </option>
+                        ))}
+                      </select>
+                      {merchSizeError && (
+                        <p className="text-[10px] text-rose-400 font-semibold mt-1">{merchSizeError}</p>
+                      )}
+                    </div>
+
+                    {/* Summary notice */}
+                    <div className="text-[11px] text-[#8A9A7E] border-l-2 border-[#C9A86A] pl-3 py-1 bg-[#141814]/60 leading-relaxed">
+                      If selected, <strong className="text-[#EDE6D3]">₹599</strong> will be added to your total payment amount (Total: <strong className="text-[#C9A86A]">₹1,898</strong>). Collect your t-shirt at the IISTMUN on-campus kit desk.
+                    </div>
+
+                    {/* Action Decision Buttons */}
+                    <div className="space-y-2.5 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleConfirmMerch}
+                        className="w-full flex items-center justify-center gap-2 bg-[#C9A86A] hover:bg-[#bfa060] px-5 py-3 font-sans text-xs font-bold uppercase tracking-wider text-[#1A1F1A] transition-all shadow-md active:scale-[0.98] cursor-pointer"
+                      >
+                        <ShoppingBag className="h-4 w-4" />
+                        <span>Yes, Add to Registration (+₹599)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleSkipMerch}
+                        className="w-full flex items-center justify-center gap-1.5 border border-[#8A9A7E]/40 bg-[#1A1F1A] hover:bg-[#2E3B2F] px-5 py-2.5 font-sans text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] transition-all cursor-pointer"
+                      >
+                        <span>No, Skip &amp; Proceed to Payment</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </motion.div>
     </div>
   );
 }
+
