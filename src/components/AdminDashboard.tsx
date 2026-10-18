@@ -134,6 +134,14 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
     }
 
+    match /unga_registrations/{registrationId} {
+      allow get: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if true;
+      allow update: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow delete: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+    }
+
     match /workshop_registrations/{registrationId} {
       allow get: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
       allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
@@ -228,7 +236,7 @@ export default function AdminDashboard() {
   const [workshopSearch, setWorkshopSearch] = useState("");
 
   // Sub-tabs
-  const [activeSubTab, setActiveSubTab] = useState<"registrations" | "priority" | "eb" | "campus-ambassador" | "workshop" | "queries" | "database">("priority");
+  const [activeSubTab, setActiveSubTab] = useState<"registrations" | "priority" | "unga" | "eb" | "campus-ambassador" | "workshop" | "queries" | "database">("priority");
   const [portfolioSearch, setPortfolioSearch] = useState("");
   const [portfolioOverrides, setPortfolioOverrides] = useState<Record<string, Partial<Record<CommitteeId | "copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>>({});
 
@@ -246,6 +254,18 @@ export default function AdminDashboard() {
   const [allotModalReg, setAllotModalReg] = useState<PriorityRegistrationDetails | null>(null);
   const [allotForm, setAllotForm] = useState({ committee: "", country: "", adminNotes: "" });
   const [copiedUtr, setCopiedUtr] = useState<string | null>(null);
+
+  // UNGA Online Committee registrations state
+  const [ungaRegistrations, setUngaRegistrations] = useState<RegistrationDetails[]>([]);
+  const [ungaSearch, setUngaSearch] = useState("");
+  const [ungaStatusFilter, setUngaStatusFilter] = useState("all");
+  const [ungaPaymentStatusFilter, setUngaPaymentStatusFilter] = useState("all");
+  const [ungaMerchFilter, setUngaMerchFilter] = useState("all");
+  const [selectedUngaReg, setSelectedUngaReg] = useState<RegistrationDetails | null>(null);
+  const [confirmUngaDeleteId, setConfirmUngaDeleteId] = useState<string | null>(null);
+  const [isUpdatingUngaStatus, setIsUpdatingUngaStatus] = useState(false);
+  const [allotUngaModalReg, setAllotUngaModalReg] = useState<RegistrationDetails | null>(null);
+  const [allotUngaForm, setAllotUngaForm] = useState({ country: "", adminNotes: "" });
 
   const handleCopyUtr = (utr: string) => {
     navigator.clipboard.writeText(utr);
@@ -598,6 +618,88 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, [isAdmin, registrations]);
 
+  // Helper to test if a registration belongs to UNGA (Online Committee)
+  const isUngaRecord = (r: any): boolean =>
+    Boolean(
+      r &&
+        (r.isUnga === true ||
+          r.round === "online" ||
+          r.round === "unga" ||
+          r.pref1Committee === "unga" ||
+          (typeof r.id === "string" && r.id.startsWith("UNGA")))
+    );
+
+  // Sync UNGA Online Registrations from Firestore 'unga_registrations', 'registrations' and '/api/registrations'
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const mergeUngaRecords = (baseList: RegistrationDetails[]) => {
+      const combined = [...baseList];
+
+      // Merge from registrations where isUngaRecord is true
+      registrations.forEach((r) => {
+        if (isUngaRecord(r) && !combined.some((u) => (u.id && u.id === r.id) || (u.uid && u.uid === r.uid))) {
+          combined.push(r);
+        }
+      });
+
+      combined.sort((a, b) => {
+        const timeA = new Date(a.timestamp || a.paymentDate || 0).getTime();
+        const timeB = new Date(b.timestamp || b.paymentDate || 0).getTime();
+        return timeB - timeA;
+      });
+
+      return combined;
+    };
+
+    const q = query(collection(db, "unga_registrations"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: RegistrationDetails[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push({
+          uid: docSnap.id,
+          ...docSnap.data()
+        } as RegistrationDetails);
+      });
+
+      fetch("/api/registrations")
+        .then((res) => res.json())
+        .then((res) => {
+          if (res.data && Array.isArray(res.data)) {
+            res.data.forEach((item: any) => {
+              if (isUngaRecord(item) && !list.some((u) => (u.id && u.id === item.id) || (u.uid && u.uid === item.uid))) {
+                list.push(item as RegistrationDetails);
+              }
+            });
+          }
+          setUngaRegistrations(mergeUngaRecords(list));
+        })
+        .catch(() => {
+          setUngaRegistrations(mergeUngaRecords(list));
+        });
+    }, (error) => {
+      console.warn("unga_registrations subscription status:", error instanceof Error ? error.message : "Access error");
+      fetch("/api/registrations")
+        .then((res) => res.json())
+        .then((res) => {
+          const list: RegistrationDetails[] = [];
+          if (res.data && Array.isArray(res.data)) {
+            res.data.forEach((item: any) => {
+              if (isUngaRecord(item)) {
+                list.push(item as RegistrationDetails);
+              }
+            });
+          }
+          setUngaRegistrations(mergeUngaRecords(list));
+        })
+        .catch(() => {
+          setUngaRegistrations(mergeUngaRecords([]));
+        });
+    });
+
+    return () => unsubscribe();
+  }, [isAdmin, registrations]);
+
   useEffect(() => {
     if (!isAdmin) return;
 
@@ -857,8 +959,8 @@ export default function AdminDashboard() {
     showToast(`Exported ${list.length} Campus Ambassador registration(s) to Excel!`);
   };
 
-  // General Delegate Registrations (strictly exclude priority round registrations)
-  const generalRegistrations = registrations.filter(r => !r.isPriority && r.round !== "priority");
+  // General Delegate Registrations (strictly exclude priority and UNGA online registrations)
+  const generalRegistrations = registrations.filter(r => !r.isPriority && r.round !== "priority" && !isUngaRecord(r));
 
   const exportDelegatesToExcel = (itemsToExport?: RegistrationDetails[]) => {
     const list = itemsToExport ?? generalRegistrations;
@@ -1044,6 +1146,121 @@ export default function AdminDashboard() {
     showToast(`Exported ${list.length} Priority Round registration(s) to Excel!`);
   };
 
+  // Export UNGA Online Delegate Registrations with each and every filled field
+  const exportUngaToExcel = (itemsToExport?: RegistrationDetails[], customLabel?: string) => {
+    const list = itemsToExport ?? ungaRegistrations;
+    if (list.length === 0) {
+      showToast("No online delegate registrations available to export.");
+      return;
+    }
+
+    const dataToExport = list.map((r, idx) => ({
+      "Sl. No": idx + 1,
+      "Ticket ID": r.id || r.uid || "",
+      "Candidate Legal Name": r.name || "",
+      "Email Address": r.email || "",
+      "Phone / WhatsApp": r.phone || "",
+      "Aadhaar Number": r.aadharNumber || "",
+      "Gender": r.gender || "",
+      "Date of Birth": r.dob || "",
+      "City & State / Country": r.cityState || "",
+      "Full Residential / Postal Address": r.fullAddress || "",
+      "Emergency Contact Name": r.emergencyContactName || "",
+      "Emergency Contact Relation": r.emergencyContactRelation || "",
+      "Emergency Contact Phone": r.emergencyContactPhone || "",
+      "Institution": r.institution || "",
+      "Course / Degree": r.course || "",
+      "Year of Study / Grade": r.yearOfStudy || r.classGrade || "",
+      "Roll / Student No": r.rollNumber || "",
+      "Delegation Mode": "INDIVIDUAL",
+      "Accredited Role": r.role || "Delegate",
+      "Committee Chamber": "UNGA (Online)",
+      "Choice 01 (Top Country)": (r.pref1Portfolios && r.pref1Portfolios[0]) || r.pref1Country || "",
+      "Choice 02": (r.pref1Portfolios && r.pref1Portfolios[1]) || "",
+      "Choice 03": (r.pref1Portfolios && r.pref1Portfolios[2]) || "",
+      "Choice 04": (r.pref1Portfolios && r.pref1Portfolios[3]) || "",
+      "Choice 05": (r.pref1Portfolios && r.pref1Portfolios[4]) || "",
+      "All 5 Country Choices": (r.pref1Portfolios && r.pref1Portfolios.length > 0) ? r.pref1Portfolios.filter(Boolean).join("; ") : (r.pref1Country || ""),
+      "MUN Experience Level": r.munExperience || "None",
+      "Past MUN Accolades": r.pastMunDetails || "",
+      "Statement of Motivation": r.motivation || "",
+      "Total Fee Amount (INR)": r.feeAmount !== undefined ? r.feeAmount : (r.hasMerch ? 1498 : 899),
+      "Base Fee (INR)": 899,
+      "Merchandise Purchased": r.hasMerch ? "YES" : "NO",
+      "Merchandise Size": r.hasMerch ? (r.merchSize || "M") : "N/A",
+      "Merchandise Extra (INR)": r.hasMerch ? (r.merchAmount || 599) : 0,
+      "Payment Mode": r.paymentMode || "UPI",
+      "UTR / Transaction ID": r.utrNumber || r.transactionId || "",
+      "Payer Name": r.payerName || "",
+      "Payment Date": r.paymentDate || "",
+      "Payment Status": r.paymentStatus || "Pending",
+      "Overall Status": r.status || "Pending Verification",
+      "Allotted Country": r.allottedCountry || "",
+      "Allotted Committee": "UNGA",
+      "Admin Notes": r.adminNotes || "",
+      "Has Payment Proof": r.paymentScreenshotUrl ? "YES" : "NO",
+      "Has Student ID Proof": r.idCardUrl ? "YES" : "NO",
+      "Submission Timestamp": r.timestamp || r.paymentDate || ""
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    worksheet["!cols"] = [
+      { wch: 8 },  // Sl. No
+      { wch: 18 }, // Ticket ID
+      { wch: 24 }, // Candidate Legal Name
+      { wch: 28 }, // Email Address
+      { wch: 16 }, // Phone
+      { wch: 16 }, // Aadhaar
+      { wch: 12 }, // Gender
+      { wch: 14 }, // DOB
+      { wch: 22 }, // City State
+      { wch: 45 }, // Full Address
+      { wch: 22 }, // Emergency Name
+      { wch: 16 }, // Emergency Rel
+      { wch: 16 }, // Emergency Phone
+      { wch: 32 }, // Institution
+      { wch: 20 }, // Course
+      { wch: 14 }, // Year
+      { wch: 16 }, // Roll
+      { wch: 14 }, // Mode
+      { wch: 14 }, // Role
+      { wch: 18 }, // Committee Chamber
+      { wch: 22 }, // Choice 1
+      { wch: 20 }, // Choice 2
+      { wch: 20 }, // Choice 3
+      { wch: 20 }, // Choice 4
+      { wch: 20 }, // Choice 5
+      { wch: 45 }, // All Choices
+      { wch: 16 }, // MUN Exp
+      { wch: 30 }, // Past Details
+      { wch: 45 }, // Motivation
+      { wch: 16 }, // Total Fee
+      { wch: 14 }, // Base Fee
+      { wch: 18 }, // Merch Purchased
+      { wch: 14 }, // Merch Size
+      { wch: 16 }, // Merch Amount
+      { wch: 14 }, // Payment Mode
+      { wch: 22 }, // UTR
+      { wch: 22 }, // Payer Name
+      { wch: 14 }, // Payment Date
+      { wch: 16 }, // Payment Status
+      { wch: 22 }, // Overall Status
+      { wch: 20 }, // Allotted Country
+      { wch: 18 }, // Allotted Committee
+      { wch: 25 }, // Admin Notes
+      { wch: 16 }, // Has Proof
+      { wch: 16 }, // Has ID
+      { wch: 24 }  // Timestamp
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "UNGA Online Delegates");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const suffix = customLabel ? `_${customLabel.replace(/[^a-zA-Z0-9_-]/g, "_")}` : "";
+    XLSX.writeFile(workbook, `IISTMUN_2026_UNGA_Online_Delegates${suffix}_${dateStr}.xlsx`);
+    showToast(`Exported ${list.length} UNGA online delegate(s) to Excel!`);
+  };
+
   const handleUpdatePriorityStatus = async (
     id: string,
     newStatus: string,
@@ -1109,6 +1326,92 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       console.error("Failed to delete priority registration:", err);
+      showToast("Error deleting registration.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUpdateUngaStatus = async (
+    id: string,
+    newStatus: string,
+    newPaymentStatus?: "Pending" | "Verified" | "Rejected"
+  ) => {
+    setIsUpdatingUngaStatus(true);
+    try {
+      const updates: any = { status: newStatus };
+      if (newPaymentStatus) {
+        updates.paymentStatus = newPaymentStatus;
+      }
+      await updateDoc(doc(db, "unga_registrations", id), updates).catch(() => {});
+      await updateDoc(doc(db, "registrations", id), updates).catch(() => {});
+
+      showToast(`Updated UNGA status to ${newStatus}`);
+      if (selectedUngaReg && (selectedUngaReg.id === id || selectedUngaReg.uid === id)) {
+        setSelectedUngaReg((prev) => (prev ? { ...prev, ...updates } : null));
+      }
+      if (selectedReg && (selectedReg.id === id || selectedReg.uid === id)) {
+        setSelectedReg((prev) => (prev ? { ...prev, ...updates } : null));
+      }
+      setUngaRegistrations((prev) =>
+        prev.map((r) => ((r.id === id || r.uid === id) ? { ...r, ...updates } : r))
+      );
+    } catch (err) {
+      console.error("UNGA status update error:", err);
+      showToast("Failed to update status. Check permissions.");
+    } finally {
+      setIsUpdatingUngaStatus(false);
+    }
+  };
+
+  const handleSaveUngaAllotment = async () => {
+    if (!allotUngaModalReg) return;
+    const id = allotUngaModalReg.uid || allotUngaModalReg.id || "";
+    if (!id) return;
+    try {
+      const updates: any = {
+        allottedCommittee: "unga",
+        allottedCountry: allotUngaForm.country,
+        adminNotes: allotUngaForm.adminNotes,
+        status: "Portfolio Allotted"
+      };
+      await updateDoc(doc(db, "unga_registrations", id), updates).catch(() => {});
+      await updateDoc(doc(db, "registrations", id), updates).catch(() => {});
+      showToast(`Allotted ${allotUngaForm.country || "Portfolio"} in UNGA to ${allotUngaModalReg.name}!`);
+      if (selectedUngaReg && (selectedUngaReg.id === id || selectedUngaReg.uid === id)) {
+        setSelectedUngaReg((prev) => (prev ? { ...prev, ...updates } : null));
+      }
+      if (selectedReg && (selectedReg.id === id || selectedReg.uid === id)) {
+        setSelectedReg((prev) => (prev ? { ...prev, ...updates } : null));
+      }
+      setUngaRegistrations((prev) =>
+        prev.map((r) => ((r.id === id || r.uid === id) ? { ...r, ...updates } : r))
+      );
+      setAllotUngaModalReg(null);
+    } catch (err) {
+      console.error("UNGA allotment update error:", err);
+      showToast("Error updating portfolio allotment.");
+    }
+  };
+
+  const handleUngaDelete = async (id: string, name: string) => {
+    setActionLoading(true);
+    try {
+      await deleteDoc(doc(db, "unga_registrations", id)).catch(() => {});
+      await deleteDoc(doc(db, "registrations", id)).catch(() => {});
+      fetch(`/api/registrations/${id}`, { method: "DELETE" }).catch(() => {});
+      setUngaRegistrations((prev) => prev.filter((p) => p.id !== id && p.uid !== id));
+      setRegistrations((prev) => prev.filter((r) => r.id !== id && r.uid !== id));
+      showToast(`Deleted UNGA registration for ${name}.`);
+      setConfirmUngaDeleteId(null);
+      if (selectedUngaReg?.id === id || selectedUngaReg?.uid === id) {
+        setSelectedUngaReg(null);
+      }
+      if (selectedReg?.id === id || selectedReg?.uid === id) {
+        setSelectedReg(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete UNGA registration:", err);
       showToast("Error deleting registration.");
     } finally {
       setActionLoading(false);
@@ -1435,7 +1738,42 @@ export default function AdminDashboard() {
     return matchesSearch && matchesCategory && matchesCommittee && matchesStatus && matchesMerch;
   });
 
-  // Filter general registrations (strictly exclude priority registrations)
+  // Filter UNGA Online registrations
+  const filteredUnga = ungaRegistrations.filter((r) => {
+    const q = ungaSearch.toLowerCase();
+    const matchesSearch =
+      (r.name || "").toLowerCase().includes(q) ||
+      (r.email || "").toLowerCase().includes(q) ||
+      (r.phone || "").toLowerCase().includes(q) ||
+      (r.aadharNumber || "").toLowerCase().includes(q) ||
+      (r.institution || "").toLowerCase().includes(q) ||
+      (r.fullAddress || "").toLowerCase().includes(q) ||
+      (r.cityState || "").toLowerCase().includes(q) ||
+      (r.utrNumber || "").toLowerCase().includes(q) ||
+      (r.transactionId || "").toLowerCase().includes(q) ||
+      (r.payerName || "").toLowerCase().includes(q) ||
+      (r.id || "").toLowerCase().includes(q) ||
+      (r.uid || "").toLowerCase().includes(q) ||
+      (r.merchSize || "").toLowerCase().includes(q) ||
+      (r.hasMerch && "merchandise t-shirt merch".includes(q));
+
+    const matchesStatus =
+      ungaStatusFilter === "all" ||
+      r.status === ungaStatusFilter;
+
+    const matchesPaymentStatus =
+      ungaPaymentStatusFilter === "all" ||
+      r.paymentStatus === ungaPaymentStatusFilter;
+
+    const matchesMerch =
+      ungaMerchFilter === "all" ||
+      (ungaMerchFilter === "merch" && r.hasMerch) ||
+      (ungaMerchFilter === "no_merch" && !r.hasMerch);
+
+    return matchesSearch && matchesStatus && matchesPaymentStatus && matchesMerch;
+  });
+
+  // Filter general registrations (strictly exclude priority and UNGA registrations)
   const filtered = generalRegistrations.filter(r => {
     const queryLower = searchQuery.toLowerCase();
     const matchesSearch = 
@@ -1568,6 +1906,20 @@ export default function AdminDashboard() {
               </span>
             </button>
 
+            {/* Direct 1-Click UNGA Online Excel Download */}
+            <button
+              onClick={() => exportUngaToExcel()}
+              disabled={ungaRegistrations.length === 0}
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#C9A86A] bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-sans font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              title="Download UNGA Online Delegations as Excel spreadsheet (.xlsx)"
+            >
+              <Globe className="h-3.5 w-3.5" />
+              <span>UNGA Excel</span>
+              <span className="px-1.5 py-0.5 bg-[#1A1F1A] text-[#C9A86A] text-[10px] font-bold">
+                {ungaRegistrations.length}
+              </span>
+            </button>
+
             {/* Direct 1-Click EB Excel Download */}
             <button
               onClick={() => exportEbToExcel()}
@@ -1630,6 +1982,23 @@ export default function AdminDashboard() {
                       </div>
                       <span className="text-[10px] font-mono text-[#1A1F1A] bg-[#C9A86A] font-bold px-1.5 py-0.5 rounded">
                         {priorityRegistrations.length}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        exportUngaToExcel();
+                        setShowExportMenu(false);
+                      }}
+                      disabled={ungaRegistrations.length === 0}
+                      className="w-full flex items-center justify-between px-3 py-2 text-xs text-[#EDE6D3] hover:bg-[#2E3B2F] hover:text-[#C9A86A] transition-colors text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4 text-[#C9A86A]" />
+                        <span className="font-semibold">UNGA Online Delegates</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-[#1A1F1A] bg-[#C9A86A] font-bold px-1.5 py-0.5 rounded">
+                        {ungaRegistrations.length}
                       </span>
                     </button>
 
@@ -1760,7 +2129,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Dashboard Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3.5 mb-10">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3.5 mb-10">
           <div 
             onClick={() => setActiveSubTab("priority")}
             className={`border p-4 text-left shadow-sm cursor-pointer transition-all relative group ${
@@ -1794,6 +2163,41 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+
+          <div 
+            onClick={() => setActiveSubTab("unga")}
+            className={`border p-4 text-left shadow-sm cursor-pointer transition-all relative group ${
+              activeSubTab === "unga"
+                ? "border-[#C9A86A] bg-[#2E3B2F] ring-1 ring-[#C9A86A]"
+                : "border-[#C9A86A]/40 bg-[#2E3B2F] hover:border-[#C9A86A]"
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#C9A86A] font-bold block flex items-center gap-1">
+                <Globe className="h-3 w-3 text-[#C9A86A]" />
+                UNGA ONLINE
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  exportUngaToExcel();
+                }}
+                disabled={ungaRegistrations.length === 0}
+                className="opacity-80 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 bg-[#1A1F1A] border border-[#C9A86A]/40 hover:border-[#C9A86A] text-[#C9A86A] text-[9px] font-sans font-bold flex items-center gap-1 cursor-pointer disabled:opacity-20"
+                title="Quick Download UNGA Online Excel (.xlsx)"
+              >
+                <Download className="h-2.5 w-2.5" />
+                <span>XLSX</span>
+              </button>
+            </div>
+            <div className="flex justify-between items-end mt-1.5">
+              <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{ungaRegistrations.length}</span>
+              <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                <Globe className="h-3.5 w-3.5" />
+              </div>
+            </div>
+          </div>
+
           <div 
             onClick={() => setActiveSubTab("registrations")}
             className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm cursor-pointer hover:border-[#C9A86A] transition-all"
@@ -1923,6 +2327,22 @@ export default function AdminDashboard() {
             {priorityRegistrations.length > 0 && (
               <span className="px-1.5 py-0.5 bg-[#C9A86A] text-[#1A1F1A] text-[9px] font-bold">
                 {priorityRegistrations.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveSubTab("unga")}
+            className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeSubTab === "unga"
+                ? "border-[#C9A86A] text-[#C9A86A] font-semibold bg-[#2E3B2F]/40"
+                : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
+            }`}
+          >
+            <Globe className="h-3.5 w-3.5 text-[#C9A86A]" />
+            <span>UNGA Online ({ungaRegistrations.length})</span>
+            {ungaRegistrations.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-[#C9A86A] text-[#1A1F1A] text-[9px] font-bold">
+                {ungaRegistrations.length}
               </span>
             )}
           </button>
@@ -2359,6 +2779,13 @@ export default function AdminDashboard() {
                             {item.payerName && (
                               <div className="text-[9px] text-[#8A9A7E] mt-0.5 truncate max-w-[140px]">By: {item.payerName}</div>
                             )}
+                            {item.campusAmbassadorCode && (
+                              <div className="mt-1">
+                                <span className="inline-flex items-center gap-1 font-mono text-[9px] font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 px-1 py-0.5" title="₹50 refund due">
+                                  CA: {item.campusAmbassadorCode}
+                                </span>
+                              </div>
+                            )}
                           </td>
 
                           {/* Receipt */}
@@ -2391,6 +2818,22 @@ export default function AdminDashboard() {
                               </div>
                             ) : (
                               <span className="text-[10px] text-[#8A9A7E] italic">None</span>
+                            )}
+                            {item.idCardUrl && (
+                              <div className="mt-1">
+                                <button
+                                  onClick={() => setViewProofModal({
+                                    url: item.idCardUrl || "",
+                                    name: item.idCardName || "Student ID Proof",
+                                    candidateName: item.name
+                                  })}
+                                  className="text-[9px] text-[#8BA06F] hover:underline flex items-center gap-0.5 cursor-pointer"
+                                  title="View School / College ID Proof"
+                                >
+                                  <FileText className="h-2.5 w-2.5" />
+                                  <span>ID Proof</span>
+                                </button>
+                              </div>
                             )}
                           </td>
 
@@ -2447,6 +2890,493 @@ export default function AdminDashboard() {
                                 onClick={() => setConfirmPriorityDeleteId(item.uid || item.id || "")}
                                 className="p-1.5 border border-rose-500/30 bg-[#1A1F1A] hover:bg-rose-900/30 text-rose-400 transition-colors cursor-pointer"
                                 title="Delete Registration"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            SUB-TAB: UNGA (ONLINE COMMITTEE) DELEGATE REGISTRATIONS
+           ======================================================== */}
+        {activeSubTab === "unga" && (
+          <div className="space-y-8 animate-fade-in text-left">
+            {/* Header & Export Actions */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#C9A86A]/20 pb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                    // UNGA ONLINE COMMITTEE REGISTRY
+                  </span>
+                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E]">
+                    Secretariat Desk • Online Telemetry
+                  </span>
+                </div>
+                <h2 className="font-serif text-2xl sm:text-3xl font-normal text-[#EDE6D3] tracking-wide">
+                  UNGA (Online) Delegations Ledger
+                </h2>
+                <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                  Exhaustive archival monitoring of online delegates, postal delivery addresses, 5 ranked country preferences, student ID proofs, UTR verification, and portfolio allocations.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => exportUngaToExcel()}
+                  disabled={ungaRegistrations.length === 0}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  title="Download all UNGA Online registrations as an Excel spreadsheet (.xlsx)"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  <span>Download UNGA Excel ({ungaRegistrations.length})</span>
+                </button>
+                {filteredUnga.length !== ungaRegistrations.length && (
+                  <button
+                    onClick={() => exportUngaToExcel(filteredUnga, "Filtered")}
+                    disabled={filteredUnga.length === 0}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 border border-[#C9A86A] bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#C9A86A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    title="Download currently filtered UNGA registrations as an Excel spreadsheet"
+                  >
+                    <Filter className="h-3.5 w-3.5" />
+                    <span>Download Filtered ({filteredUnga.length})</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E]">TOTAL ONLINE</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{ungaRegistrations.length}</span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                    <Globe className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-emerald-400">PAYMENT CONFIRMED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {ungaRegistrations.filter(r => r.paymentStatus === "Verified" || r.status === "Payment Confirmed" || r.status === "Portfolio Allotted").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-emerald-500/30 text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-amber-300">PENDING VERIFICATION</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {ungaRegistrations.filter(r => r.paymentStatus === "Pending" || r.status === "Pending Verification").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-amber-500/30 text-amber-300">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A]">PORTFOLIO ALLOTTED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {ungaRegistrations.filter(r => r.status === "Portfolio Allotted" || r.allottedCountry).length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                    <Award className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A]">MERCH ORDERS</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <div>
+                    <span className="font-serif text-2xl font-normal text-[#EDE6D3] block">
+                      {ungaRegistrations.filter(r => r.hasMerch).length}
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                      ₹{ungaRegistrations.filter(r => r.hasMerch).length * 599}
+                    </span>
+                  </div>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                    <Shirt className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Search and Filters */}
+            <div className="flex flex-col lg:flex-row gap-3 justify-between items-center bg-[#2E3B2F]/60 border border-[#C9A86A]/30 p-4">
+              <div className="relative w-full lg:max-w-md">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8A9A7E]" />
+                <input
+                  type="text"
+                  placeholder="Search by name, email, phone, Aadhaar, address, UTR, ticket..."
+                  value={ungaSearch}
+                  onChange={(e) => setUngaSearch(e.target.value)}
+                  className="w-full bg-[#1A1F1A] border border-[#C9A86A]/30 focus:border-[#C9A86A] pl-10 pr-4 py-2 font-sans text-xs text-[#EDE6D3] focus:outline-none transition-all placeholder-[#8A9A7E]/50"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2.5 w-full lg:w-auto justify-end">
+                {/* Merch Filter */}
+                <div className="flex items-center gap-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 px-3 py-1.5">
+                  <Shirt className="h-3 w-3 text-[#C9A86A]" />
+                  <select
+                    value={ungaMerchFilter}
+                    onChange={(e) => setUngaMerchFilter(e.target.value)}
+                    className="bg-transparent text-[#EDE6D3] font-sans text-[11px] uppercase tracking-wider focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="bg-[#1A1F1A] text-[#EDE6D3]">ALL MERCH</option>
+                    <option value="merch" className="bg-[#1A1F1A] text-[#EDE6D3]">WITH MERCH (+₹599)</option>
+                    <option value="no_merch" className="bg-[#1A1F1A] text-[#EDE6D3]">WITHOUT MERCH</option>
+                  </select>
+                </div>
+
+                {/* Payment Status Filter */}
+                <div className="flex items-center gap-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 px-3 py-1.5">
+                  <CheckCircle2 className="h-3 w-3 text-[#C9A86A]" />
+                  <select
+                    value={ungaPaymentStatusFilter}
+                    onChange={(e) => setUngaPaymentStatusFilter(e.target.value)}
+                    className="bg-transparent text-[#EDE6D3] font-sans text-[11px] uppercase tracking-wider focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="bg-[#1A1F1A] text-[#EDE6D3]">ALL PAYMENT STATUSES</option>
+                    <option value="Pending" className="bg-[#1A1F1A] text-amber-300">PAYMENT: PENDING</option>
+                    <option value="Verified" className="bg-[#1A1F1A] text-emerald-400">PAYMENT: VERIFIED</option>
+                    <option value="Rejected" className="bg-[#1A1F1A] text-rose-400">PAYMENT: REJECTED</option>
+                  </select>
+                </div>
+
+                {/* Overall Status Filter */}
+                <div className="flex items-center gap-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 px-3 py-1.5">
+                  <ShieldCheck className="h-3 w-3 text-[#C9A86A]" />
+                  <select
+                    value={ungaStatusFilter}
+                    onChange={(e) => setUngaStatusFilter(e.target.value)}
+                    className="bg-transparent text-[#EDE6D3] font-sans text-[11px] uppercase tracking-wider focus:outline-none cursor-pointer"
+                  >
+                    <option value="all" className="bg-[#1A1F1A] text-[#EDE6D3]">ALL STATUSES</option>
+                    <option value="Pending Verification" className="bg-[#1A1F1A] text-[#EDE6D3]">PENDING VERIFICATION</option>
+                    <option value="Payment Confirmed" className="bg-[#1A1F1A] text-emerald-400">PAYMENT CONFIRMED</option>
+                    <option value="Portfolio Allotted" className="bg-[#1A1F1A] text-[#C9A86A]">PORTFOLIO ALLOTTED</option>
+                    <option value="Waitlisted" className="bg-[#1A1F1A] text-amber-300">WAITLISTED</option>
+                    <option value="Rejected" className="bg-[#1A1F1A] text-rose-400">REJECTED</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* UNGA Online Ledger Table */}
+            <div className="border border-[#C9A86A]/30 bg-[#2E3B2F]/40 shadow-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[1250px]">
+                  <thead>
+                    <tr className="border-b border-[#C9A86A]/20 bg-[#1A1F1A]">
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Ticket & Date</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Candidate Identity</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Postal Address</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Institution & Student ID</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">5 Ranked Country Choices</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Merch</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Fee & UTR Payment</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Receipt</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Status</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#8A9A7E]/10">
+                    {filteredUnga.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="p-12 text-center text-[#8A9A7E]">
+                          <Globe className="h-8 w-8 mx-auto mb-2 text-[#C9A86A]/50" />
+                          <p className="font-serif text-lg text-[#EDE6D3]">No online delegates match criteria</p>
+                          <p className="text-xs text-[#8A9A7E] mt-1">Registrations submitted via the UNGA (Online Committee) registration form appear here in real time.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredUnga.map((item) => (
+                        <tr key={item.uid || item.id} className="hover:bg-[#2E3B2F]/60 transition-colors text-xs text-[#EDE6D3]">
+                          {/* Ticket & Date */}
+                          <td className="p-3.5">
+                            <span className="font-mono text-[11px] text-[#C9A86A] font-bold block">
+                              {item.id || item.uid}
+                            </span>
+                            <span className="text-[10px] text-[#8A9A7E] block mt-0.5">
+                              {item.timestamp ? new Date(item.timestamp).toLocaleDateString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : (item.paymentDate || "N/A")}
+                            </span>
+                            <span className="inline-block mt-1 font-mono text-[9px] uppercase tracking-widest px-1.5 py-0.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A] font-semibold">
+                              INDIVIDUAL
+                            </span>
+                          </td>
+
+                          {/* Candidate Identity */}
+                          <td className="p-3.5">
+                            <div className="font-bold text-[#EDE6D3] text-sm flex items-center gap-1.5">
+                              {item.name}
+                            </div>
+                            <div className="text-[11px] text-[#8A9A7E] mt-0.5">{item.email}</div>
+                            <div className="font-mono text-[11px] text-[#EDE6D3] mt-0.5">{item.phone}</div>
+                            <div className="text-[10px] text-[#8A9A7E] mt-0.5">
+                              Aadhaar: <span className="font-mono text-[#EDE6D3]">{item.aadharNumber || "N/A"}</span>
+                            </div>
+                            <div className="text-[10px] text-[#8A9A7E]">
+                              {item.gender || "N/A"} • DOB: {item.dob || "N/A"}
+                            </div>
+                          </td>
+
+                          {/* Postal Address */}
+                          <td className="p-3.5 max-w-[220px]">
+                            <span className="font-semibold text-[#EDE6D3] block">
+                              {item.cityState || "Location not given"}
+                            </span>
+                            {item.fullAddress ? (
+                              <p className="text-[11px] text-[#8A9A7E] mt-1 line-clamp-3 leading-relaxed" title={item.fullAddress}>
+                                {item.fullAddress}
+                              </p>
+                            ) : (
+                              <span className="text-[10px] text-amber-400 italic block mt-0.5">
+                                Full address missing
+                              </span>
+                            )}
+                            {item.emergencyContactPhone && (
+                              <div className="text-[10px] text-[#8A9A7E] mt-1 pt-1 border-t border-[#8A9A7E]/10">
+                                Emg: {item.emergencyContactName ? `${item.emergencyContactName} (${item.emergencyContactRelation || "Rel"}): ` : ""}{item.emergencyContactPhone}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Institution & ID Proof */}
+                          <td className="p-3.5 max-w-[200px]">
+                            <span className="font-semibold text-[#EDE6D3] block truncate" title={item.institution}>
+                              {item.institution}
+                            </span>
+                            <div className="text-[11px] text-[#8A9A7E] mt-0.5">
+                              {item.course || "General"} • {item.yearOfStudy || item.classGrade || "N/A"}
+                            </div>
+                            {item.rollNumber && (
+                              <div className="text-[10px] font-mono text-[#8A9A7E] mt-0.5">
+                                Roll: <strong className="text-[#EDE6D3]">{item.rollNumber}</strong>
+                              </div>
+                            )}
+                            {item.idCardUrl ? (
+                              <div className="mt-1.5 flex items-center gap-1.5">
+                                <img
+                                  src={item.idCardUrl}
+                                  alt="Student ID thumbnail"
+                                  onClick={() => setViewProofModal({
+                                    url: item.idCardUrl || "",
+                                    name: item.idCardName || "Student ID Proof",
+                                    candidateName: item.name
+                                  })}
+                                  className="h-8 w-12 object-cover border border-[#8BA06F]/50 rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                />
+                                <button
+                                  onClick={() => setViewProofModal({
+                                    url: item.idCardUrl || "",
+                                    name: item.idCardName || "Student ID Proof",
+                                    candidateName: item.name
+                                  })}
+                                  className="text-[9px] text-[#8BA06F] hover:underline flex items-center gap-0.5 cursor-pointer font-semibold"
+                                  title="View uploaded student ID proof"
+                                >
+                                  <Eye className="h-2.5 w-2.5" />
+                                  <span>View ID</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-[#8A9A7E] italic block mt-1">No ID card attached</span>
+                            )}
+                          </td>
+
+                          {/* 5 Ranked Country Preferences */}
+                          <td className="p-3.5 max-w-[220px]">
+                            <div className="space-y-1">
+                              {item.pref1Portfolios && item.pref1Portfolios.length > 0 ? (
+                                item.pref1Portfolios.map((country, idx) => country ? (
+                                  <div key={idx} className="flex items-center gap-1.5 text-[11px]">
+                                    <span className={`px-1 py-0.2 text-[9px] font-mono font-bold ${
+                                      idx === 0 ? "bg-[#C9A86A] text-[#1A1F1A]" : "bg-[#1A1F1A] text-[#8A9A7E] border border-[#8A9A7E]/30"
+                                    }`}>
+                                      #{idx + 1}
+                                    </span>
+                                    <span className={`truncate ${idx === 0 ? "font-bold text-[#EDE6D3]" : "text-[#8A9A7E]"}`}>
+                                      {country}
+                                    </span>
+                                  </div>
+                                ) : null)
+                              ) : (
+                                <span className="font-semibold text-[#EDE6D3]">{item.pref1Country || "Any country"}</span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-[#8A9A7E] mt-1.5 pt-1 border-t border-[#8A9A7E]/10">
+                              Exp: <strong className="text-[#EDE6D3]">{item.munExperience || "Novice"}</strong>
+                            </div>
+                          </td>
+
+                          {/* Merch */}
+                          <td className="p-3.5">
+                            {item.hasMerch ? (
+                              <div className="space-y-1">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-mono font-bold uppercase">
+                                  <Shirt className="h-2.5 w-2.5" />
+                                  Ordered
+                                </span>
+                                <div className="text-[11px] font-mono font-bold text-amber-300">
+                                  Size: {item.merchSize || "M"}
+                                </div>
+                                <div className="text-[10px] text-emerald-400 font-semibold">
+                                  +₹599
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-[#8A9A7E] italic">No Merch</span>
+                            )}
+                          </td>
+
+                          {/* Fee & Payment / UTR */}
+                          <td className="p-3.5">
+                            <span className="font-bold text-emerald-400 font-mono text-sm block">
+                              ₹{item.feeAmount !== undefined ? item.feeAmount : (item.hasMerch ? 1498 : 899)}
+                            </span>
+                            <div className="mt-1 flex items-center gap-1">
+                              <span className="font-mono text-[11px] text-[#C9A86A] font-bold bg-[#1A1F1A] px-1.5 py-0.5 border border-[#C9A86A]/40 truncate max-w-[130px]" title={item.utrNumber || item.transactionId}>
+                                {item.utrNumber || item.transactionId || "No UTR"}
+                              </span>
+                              {(item.utrNumber || item.transactionId) && (
+                                <button
+                                  onClick={() => handleCopyUtr(item.utrNumber || item.transactionId || "")}
+                                  className="text-[9px] text-[#8A9A7E] hover:text-[#C9A86A] p-0.5 cursor-pointer"
+                                  title="Copy UTR to clipboard"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                            {item.payerName && (
+                              <div className="text-[10px] text-[#8A9A7E] mt-0.5 truncate max-w-[130px]" title={item.payerName}>
+                                By: {item.payerName}
+                              </div>
+                            )}
+                            <div className="mt-1">
+                              <span className={`inline-block px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider ${
+                                item.paymentStatus === "Verified"
+                                  ? "bg-emerald-950/60 text-emerald-400 border border-emerald-500/40"
+                                  : item.paymentStatus === "Rejected"
+                                  ? "bg-rose-950/60 text-rose-400 border border-rose-500/40"
+                                  : "bg-amber-950/60 text-amber-300 border border-amber-500/40"
+                              }`}>
+                                {item.paymentStatus || "Pending"}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Receipt Screenshot */}
+                          <td className="p-3.5">
+                            {item.paymentScreenshotUrl ? (
+                              <div className="flex items-center gap-2">
+                                <img
+                                  src={item.paymentScreenshotUrl}
+                                  alt="Payment Receipt"
+                                  onClick={() => setViewProofModal({
+                                    url: item.paymentScreenshotUrl || "",
+                                    name: item.paymentScreenshotName,
+                                    utr: item.utrNumber || item.transactionId,
+                                    candidateName: item.name
+                                  })}
+                                  className="h-10 w-10 object-cover border border-[#C9A86A]/40 rounded hover:opacity-80 transition-opacity cursor-pointer shrink-0"
+                                />
+                                <button
+                                  onClick={() => setViewProofModal({
+                                    url: item.paymentScreenshotUrl || "",
+                                    name: item.paymentScreenshotName,
+                                    utr: item.utrNumber || item.transactionId,
+                                    candidateName: item.name
+                                  })}
+                                  className="text-[10px] text-[#C9A86A] hover:underline flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
+                                >
+                                  <Eye className="h-3 w-3" />
+                                  <span>View</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-[#8A9A7E] italic">None</span>
+                            )}
+                          </td>
+
+                          {/* Status */}
+                          <td className="p-3.5">
+                            <select
+                              value={item.status || "Pending Verification"}
+                              onChange={(e) => handleUpdateUngaStatus(item.uid || item.id || "", e.target.value)}
+                              className={`px-2 py-1 text-[10px] font-sans font-semibold uppercase tracking-wider border focus:outline-none cursor-pointer ${
+                                item.status === "Payment Confirmed"
+                                  ? "bg-emerald-950/60 text-emerald-400 border-emerald-500/40"
+                                  : item.status === "Portfolio Allotted"
+                                  ? "bg-[#C9A86A]/20 text-[#C9A86A] border-[#C9A86A]/40 font-bold"
+                                  : item.status === "Waitlisted"
+                                  ? "bg-amber-950/60 text-amber-300 border-amber-500/40"
+                                  : item.status === "Rejected"
+                                  ? "bg-rose-950/60 text-rose-400 border-rose-500/40"
+                                  : "bg-[#1A1F1A] text-[#EDE6D3] border-[#8A9A7E]/40"
+                              }`}
+                            >
+                              <option value="Pending Verification" className="bg-[#1A1F1A] text-[#EDE6D3]">Pending Verification</option>
+                              <option value="Payment Confirmed" className="bg-[#1A1F1A] text-emerald-400">Payment Confirmed</option>
+                              <option value="Portfolio Allotted" className="bg-[#1A1F1A] text-[#C9A86A]">Portfolio Allotted</option>
+                              <option value="Waitlisted" className="bg-[#1A1F1A] text-amber-300">Waitlisted</option>
+                              <option value="Rejected" className="bg-[#1A1F1A] text-rose-400">Rejected</option>
+                            </select>
+                            {item.allottedCountry && (
+                              <div className="mt-1 text-[10px] text-[#C9A86A] font-semibold flex items-center gap-1">
+                                <Award className="h-3 w-3 shrink-0" />
+                                <span className="truncate" title={item.allottedCountry}>{item.allottedCountry}</span>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="p-3.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => {
+                                  setAllotUngaModalReg(item);
+                                  setAllotUngaForm({
+                                    country: item.allottedCountry || (item.pref1Portfolios && item.pref1Portfolios[0]) || item.pref1Country || "",
+                                    adminNotes: item.adminNotes || ""
+                                  });
+                                }}
+                                className="p-1.5 border border-[#C9A86A]/40 bg-[#2E3B2F] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-[#C9A86A] transition-colors cursor-pointer"
+                                title="Allot UNGA Country Portfolio"
+                              >
+                                <Compass className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setSelectedUngaReg(item)}
+                                className="p-1.5 border border-[#8A9A7E]/40 bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#EDE6D3] transition-colors cursor-pointer"
+                                title="Inspect Complete Dossier (Every detail filled)"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setConfirmUngaDeleteId(item.uid || item.id || "")}
+                                className="p-1.5 border border-rose-500/30 bg-[#1A1F1A] hover:bg-rose-900/30 text-rose-400 transition-colors cursor-pointer"
+                                title="Delete UNGA Registration"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -4173,8 +5103,8 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Inspection Modal */}
-        {selectedReg && (
+        {/* Inspection Modal (General Delegates only; UNGA Online uses the exhaustive dossier) */}
+        {selectedReg && !isUngaRecord(selectedReg) && (
           <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in" id="admin-inspector-modal">
             <div className="flex min-h-full items-start sm:items-center justify-center p-4 text-center">
               <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-2xl w-full p-6 sm:p-8 relative shadow-2xl my-8 text-left">
@@ -5400,6 +6330,15 @@ export default function AdminDashboard() {
                         </div>
                         <div><strong className="text-[#8A9A7E]">Payer Name:</strong> {selectedPriorityReg.payerName || "N/A"}</div>
                         <div><strong className="text-[#8A9A7E]">Payment Mode:</strong> {selectedPriorityReg.paymentMode || "UPI"}</div>
+                        {selectedPriorityReg.campusAmbassadorCode && (
+                          <div className="pt-1">
+                            <strong className="text-[#8BA06F]">Ambassador Code:</strong>{" "}
+                            <span className="font-mono text-xs font-bold text-emerald-300 bg-[#141814] px-2 py-0.5 border border-emerald-500/40 inline-block">
+                              {selectedPriorityReg.campusAmbassadorCode}
+                            </span>
+                            <span className="text-[10px] text-emerald-400 font-semibold ml-1.5">(₹50 refund due)</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Screenshot Preview */}
@@ -5435,6 +6374,50 @@ export default function AdminDashboard() {
                         </div>
                       )}
                     </div>
+                  </div>
+
+                  {/* Student ID Proof Photo */}
+                  <div className="bg-[#1A1F1A] border border-[#8A9A7E]/30 p-4">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold block mb-2">
+                      // STUDENT SCHOOL / COLLEGE ID PROOF
+                    </span>
+                    {selectedPriorityReg.idCardUrl ? (
+                      <div className="flex items-center gap-3 bg-[#141814] p-3 border border-[#8A9A7E]/30">
+                        <img
+                          src={selectedPriorityReg.idCardUrl}
+                          alt="Student ID Proof"
+                          className="h-16 w-24 object-cover border border-[#C9A86A]/40 cursor-pointer"
+                          onClick={() => setViewProofModal({
+                            url: selectedPriorityReg.idCardUrl || "",
+                            name: selectedPriorityReg.idCardName || "Student ID Proof",
+                            candidateName: selectedPriorityReg.name
+                          })}
+                        />
+                        <div className="flex-1 text-xs">
+                          <span className="text-[#EDE6D3] font-medium block">
+                            {selectedPriorityReg.idCardName || "Student ID Proof Document"}
+                          </span>
+                          <span className="text-[#8A9A7E] text-[10px] block mt-0.5">
+                            Attached for institutional verification
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setViewProofModal({
+                            url: selectedPriorityReg.idCardUrl || "",
+                            name: selectedPriorityReg.idCardName || "Student ID Proof",
+                            candidateName: selectedPriorityReg.name
+                          })}
+                          className="px-3 py-1.5 bg-[#2E3B2F] hover:bg-[#3d4f3e] text-[#EDE6D3] border border-[#C9A86A]/40 text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                        >
+                          <Eye className="h-3.5 w-3.5 text-[#C9A86A]" />
+                          <span>View ID</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-[#8A9A7E] italic">
+                        No School / College ID photo attached.
+                      </div>
+                    )}
                   </div>
 
                   {/* Portfolio Allotment Card (if allotted) */}
@@ -5516,6 +6499,751 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            UNGA (ONLINE COMMITTEE): EXHAUSTIVE DELEGATE DOSSIER MODAL
+            Displays EACH AND EVERY detail filled in the UNGA form
+           ======================================================== */}
+        {(() => {
+          const activeUnga = selectedUngaReg || (selectedReg && isUngaRecord(selectedReg) ? selectedReg : null);
+          if (!activeUnga) return null;
+          const closeUngaModal = () => {
+            setSelectedUngaReg(null);
+            if (selectedReg && isUngaRecord(selectedReg)) setSelectedReg(null);
+          };
+
+          const calculatedTotalFee = activeUnga.feeAmount !== undefined 
+            ? activeUnga.feeAmount 
+            : (activeUnga.hasMerch ? 1498 : 899);
+
+          return (
+            <div className="fixed inset-0 z-[115] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in text-left">
+              <div className="flex min-h-full items-start sm:items-center justify-center p-3 sm:p-4 text-center">
+                <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-4xl w-full p-6 sm:p-8 text-left relative shadow-2xl my-6">
+                  
+                  {/* Header */}
+                  <div className="flex items-start justify-between border-b border-[#C9A86A]/30 pb-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold flex items-center gap-1">
+                          <Globe className="h-3 w-3 text-[#C9A86A]" />
+                          // UNGA (ONLINE COMMITTEE) DOSSIER
+                        </span>
+                        <span className="font-mono text-xs text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 px-2 py-0.5 font-bold">
+                          {activeUnga.id || activeUnga.uid}
+                        </span>
+                        <span className={`px-2 py-0.5 text-[9px] font-sans font-bold uppercase tracking-wider border ${
+                          activeUnga.status === "Payment Confirmed"
+                            ? "bg-emerald-950/60 text-emerald-400 border-emerald-500/40"
+                            : activeUnga.status === "Portfolio Allotted"
+                            ? "bg-[#C9A86A]/20 text-[#C9A86A] border-[#C9A86A]/40"
+                            : activeUnga.status === "Waitlisted"
+                            ? "bg-amber-950/60 text-amber-300 border-amber-500/40"
+                            : activeUnga.status === "Rejected"
+                            ? "bg-rose-950/60 text-rose-400 border-rose-500/40"
+                            : "bg-[#1A1F1A] text-[#EDE6D3] border-[#8A9A7E]/40"
+                        }`}>
+                          {activeUnga.status || "Pending Verification"}
+                        </span>
+                      </div>
+                      <h3 className="font-serif text-2xl sm:text-3xl font-normal text-[#EDE6D3]">
+                        {activeUnga.name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[#8A9A7E]">
+                        <span>Submitted on: <strong className="text-[#EDE6D3]">{activeUnga.timestamp || activeUnga.paymentDate || "N/A"}</strong></span>
+                        <span>•</span>
+                        <span>Accreditation: <strong className="text-[#C9A86A]">{activeUnga.role || "Delegate"}</strong></span>
+                        <span>•</span>
+                        <span>Mode: <strong className="text-[#C9A86A]">Individual Delegation</strong></span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={closeUngaModal}
+                      className="p-1.5 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#8A9A7E] hover:text-[#EDE6D3] hover:border-[#C9A86A] transition-colors cursor-pointer shrink-0"
+                      title="Close Dossier"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  {/* Dossier Body - Scrollable */}
+                  <div className="mt-6 space-y-6 max-h-[70vh] overflow-y-auto pr-2 scrollbar-thin">
+                    
+                    {/* Financial & Registry Banner */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#1A1F1A] border border-[#C9A86A]/30 p-3.5">
+                      <div>
+                        <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Committee Chamber</span>
+                        <span className="text-xs font-bold text-[#EDE6D3]">
+                          UNGA (Online)
+                        </span>
+                        <span className="text-[10px] text-[#8A9A7E] block mt-0.5">Virtual Sessions</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Delegation Mode</span>
+                        <span className="text-xs font-bold text-[#C9A86A] uppercase">
+                          Individual Delegation
+                        </span>
+                        <span className="text-[10px] text-[#8A9A7E] block mt-0.5">Single Seat</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Total Fee Paid</span>
+                        <span className="text-xs font-bold text-emerald-400 font-mono">
+                          ₹{calculatedTotalFee}
+                        </span>
+                        <span className="text-[10px] text-[#8A9A7E] block mt-0.5">
+                          Base: ₹899 {activeUnga.hasMerch ? "+ ₹599 Merch" : ""}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Payment Verification</span>
+                        <span className={`text-xs font-bold ${activeUnga.paymentStatus === "Verified" ? "text-emerald-400" : activeUnga.paymentStatus === "Rejected" ? "text-rose-400" : "text-amber-300"}`}>
+                          {activeUnga.paymentStatus || "Pending"}
+                        </span>
+                        <span className="text-[10px] text-[#8A9A7E] block mt-0.5 font-mono">
+                          Mode: {activeUnga.paymentMode || "UPI"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Section 1: Candidate Personal Demographics & Section 2: Emergency Contact */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Personal Demographics */}
+                      <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold block mb-2.5 flex items-center gap-1.5">
+                          <User className="h-3 w-3 text-[#C9A86A]" />
+                          // CANDIDATE LEGAL PROFILE & IDENTITY
+                        </span>
+                        <div className="space-y-2 text-xs text-[#EDE6D3]">
+                          <div><strong className="text-[#8A9A7E]">Full Legal Name:</strong> <span className="font-semibold">{activeUnga.name}</span></div>
+                          <div><strong className="text-[#8A9A7E]">Email Address:</strong> <a href={`mailto:${activeUnga.email}`} className="text-[#C9A86A] hover:underline">{activeUnga.email}</a></div>
+                          <div><strong className="text-[#8A9A7E]">Phone / WhatsApp:</strong> <a href={`tel:${activeUnga.phone}`} className="font-mono text-[#EDE6D3] hover:underline">{activeUnga.phone}</a></div>
+                          <div>
+                            <strong className="text-[#8A9A7E]">Aadhaar Card Number:</strong>{" "}
+                            <span className="font-mono bg-[#141814] px-1.5 py-0.5 border border-[#8A9A7E]/30 text-[#EDE6D3]">
+                              {activeUnga.aadharNumber || "Not specified"}
+                            </span>
+                          </div>
+                          <div><strong className="text-[#8A9A7E]">Gender:</strong> {activeUnga.gender || "Prefer not to say"}</div>
+                          <div><strong className="text-[#8A9A7E]">Date of Birth:</strong> {activeUnga.dob || "Not specified"}</div>
+                          <div><strong className="text-[#8A9A7E]">City & State / Country:</strong> {activeUnga.cityState || "Not specified"}</div>
+                        </div>
+                      </div>
+
+                      {/* Emergency Contact */}
+                      <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4 flex flex-col justify-between">
+                        <div>
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold block mb-2.5 flex items-center gap-1.5">
+                            <Phone className="h-3 w-3 text-[#C9A86A]" />
+                            // EMERGENCY CONTACT DETAILS
+                          </span>
+                          <div className="space-y-2 text-xs text-[#EDE6D3]">
+                            <div><strong className="text-[#8A9A7E]">Contact Name:</strong> {activeUnga.emergencyContactName || "Not specified"}</div>
+                            <div><strong className="text-[#8A9A7E]">Relationship:</strong> {activeUnga.emergencyContactRelation || "Parent / Guardian"}</div>
+                            <div>
+                              <strong className="text-[#8A9A7E]">Emergency Phone:</strong>{" "}
+                              <span className="font-mono font-bold text-amber-300">
+                                {activeUnga.emergencyContactPhone || "Not specified"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-[#8A9A7E]/15 text-[11px] text-[#8A9A7E]">
+                          <span className="text-[#C9A86A] font-semibold">Secretariat Note:</span> Verified emergency guardian line on record for all delegate communications and credential security.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 3: Full Residential / Postal Dispatch Address */}
+                    <div className="bg-[#1A1F1A] border-2 border-[#C9A86A]/40 p-4">
+                      <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold flex items-center gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 text-[#C9A86A]" />
+                          // FULL RESIDENTIAL / POSTAL DISPATCH ADDRESS
+                        </span>
+                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5">
+                          Required for Certificate / Merch Courier Dispatch
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#8A9A7E] mb-2">
+                        This is the complete physical address filled in the registration form for delivering the delegate kit, certificates, and merchandise.
+                      </p>
+                      <div className="bg-[#141814] p-3.5 border border-[#C9A86A]/30 text-xs text-[#EDE6D3] font-sans leading-relaxed whitespace-pre-wrap select-all">
+                        {activeUnga.fullAddress ? (
+                          activeUnga.fullAddress
+                        ) : (
+                          <span className="text-amber-400 italic">No full postal address was filled in the form submission.</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Section 4: Institution & Student ID Proof */}
+                    <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold block mb-2.5 flex items-center gap-1.5">
+                        <GraduationCap className="h-3 w-3 text-[#C9A86A]" />
+                        // ACADEMIC INSTITUTION & STUDENT VERIFICATION
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs text-[#EDE6D3]">
+                        <div className="sm:col-span-2">
+                          <span className="text-[#8A9A7E] block text-[10px] uppercase font-mono">Academic Institution</span>
+                          <span className="font-semibold text-sm text-[#EDE6D3] block mt-0.5">{activeUnga.institution}</span>
+                        </div>
+                        <div>
+                          <span className="text-[#8A9A7E] block text-[10px] uppercase font-mono">Course / Degree</span>
+                          <span className="font-medium text-[#EDE6D3] block mt-0.5">{activeUnga.course || "N/A"}</span>
+                        </div>
+                        <div>
+                          <span className="text-[#8A9A7E] block text-[10px] uppercase font-mono">Year / Grade</span>
+                          <span className="font-medium text-[#EDE6D3] block mt-0.5">{activeUnga.yearOfStudy || activeUnga.classGrade || "N/A"}</span>
+                        </div>
+                      </div>
+
+                      {activeUnga.rollNumber && (
+                        <div className="mt-2.5 text-xs text-[#8A9A7E]">
+                          Student / Roll Number: <strong className="text-[#EDE6D3] font-mono">{activeUnga.rollNumber}</strong>
+                        </div>
+                      )}
+
+                      {/* Student ID Proof Photo Display */}
+                      <div className="mt-3.5 pt-3.5 border-t border-[#8A9A7E]/15">
+                        <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block mb-1.5">
+                          Uploaded School / College ID Card Document:
+                        </span>
+                        {activeUnga.idCardUrl ? (
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#141814] p-3 border border-[#8A9A7E]/30">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={activeUnga.idCardUrl}
+                                alt="Student ID Proof"
+                                className="h-16 w-24 object-cover border border-[#C9A86A]/40 cursor-pointer hover:opacity-85 transition-opacity"
+                                onClick={() => setViewProofModal({
+                                  url: activeUnga.idCardUrl || "",
+                                  name: activeUnga.idCardName || "Student ID Proof",
+                                  candidateName: activeUnga.name
+                                })}
+                              />
+                              <div className="text-xs">
+                                <span className="text-[#EDE6D3] font-semibold block">
+                                  {activeUnga.idCardName || "Student ID Proof Document"}
+                                </span>
+                                <span className="text-[#8A9A7E] text-[10px] block mt-0.5">
+                                  Click thumbnail or button to preview at full resolution
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setViewProofModal({
+                                  url: activeUnga.idCardUrl || "",
+                                  name: activeUnga.idCardName || "Student ID Proof",
+                                  candidateName: activeUnga.name
+                                })}
+                                className="px-3 py-1.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                <span>Enlarge ID</span>
+                              </button>
+                              <a
+                                href={activeUnga.idCardUrl}
+                                download={activeUnga.idCardName || "student_id_proof"}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 border border-[#8A9A7E]/30 bg-[#2E3B2F] hover:bg-[#3d4f3e] text-[#EDE6D3] text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                                <span>Download</span>
+                              </a>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-[#8A9A7E] italic bg-[#141814] p-2.5 border border-[#8A9A7E]/20">
+                            No School / College ID card photo was uploaded.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Section 5: All 5 Ranked Country Preferences */}
+                    <div className="bg-[#1A1F1A] border-2 border-[#C9A86A]/30 p-4">
+                      <div className="flex items-center justify-between mb-2.5 flex-wrap gap-2">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold flex items-center gap-1.5">
+                          <Compass className="h-3.5 w-3.5 text-[#C9A86A]" />
+                          // ALL 5 RANKED COUNTRY PREFERENCES (UNGA ONLINE)
+                        </span>
+                        <span className="text-[10px] font-mono text-[#8A9A7E]">
+                          Ranked in order of preference (1 to 5)
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+                        {/* Choice 1 */}
+                        <div className="border-2 border-[#C9A86A] bg-[#2E3B2F] p-3 text-left">
+                          <div className="flex items-center justify-between">
+                            <span className="px-1.5 py-0.5 bg-[#C9A86A] text-[#1A1F1A] font-mono text-[9px] font-black uppercase">
+                              #1 CHOICE
+                            </span>
+                            <Sparkles className="h-3 w-3 text-[#C9A86A]" />
+                          </div>
+                          <div className="mt-2 font-serif text-sm font-bold text-[#EDE6D3] break-words">
+                            {(activeUnga.pref1Portfolios && activeUnga.pref1Portfolios[0]) || activeUnga.pref1Country || "None"}
+                          </div>
+                          <span className="text-[9px] text-[#C9A86A] block mt-1">Top Delegate Choice</span>
+                        </div>
+
+                        {/* Choice 2 */}
+                        <div className="border border-[#8A9A7E]/30 bg-[#2E3B2F]/40 p-3 text-left">
+                          <span className="px-1.5 py-0.5 bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#8A9A7E] font-mono text-[9px] font-bold">
+                            #2 CHOICE
+                          </span>
+                          <div className="mt-2 font-serif text-sm font-bold text-[#EDE6D3] break-words">
+                            {(activeUnga.pref1Portfolios && activeUnga.pref1Portfolios[1]) || "None"}
+                          </div>
+                          <span className="text-[9px] text-[#8A9A7E] block mt-1">Secondary Option</span>
+                        </div>
+
+                        {/* Choice 3 */}
+                        <div className="border border-[#8A9A7E]/30 bg-[#2E3B2F]/40 p-3 text-left">
+                          <span className="px-1.5 py-0.5 bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#8A9A7E] font-mono text-[9px] font-bold">
+                            #3 CHOICE
+                          </span>
+                          <div className="mt-2 font-serif text-sm font-bold text-[#EDE6D3] break-words">
+                            {(activeUnga.pref1Portfolios && activeUnga.pref1Portfolios[2]) || "None"}
+                          </div>
+                          <span className="text-[9px] text-[#8A9A7E] block mt-1">Tertiary Option</span>
+                        </div>
+
+                        {/* Choice 4 */}
+                        <div className="border border-[#8A9A7E]/30 bg-[#2E3B2F]/40 p-3 text-left">
+                          <span className="px-1.5 py-0.5 bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#8A9A7E] font-mono text-[9px] font-bold">
+                            #4 CHOICE
+                          </span>
+                          <div className="mt-2 font-serif text-sm font-bold text-[#EDE6D3] break-words">
+                            {(activeUnga.pref1Portfolios && activeUnga.pref1Portfolios[3]) || "None"}
+                          </div>
+                          <span className="text-[9px] text-[#8A9A7E] block mt-1">Quaternary Option</span>
+                        </div>
+
+                        {/* Choice 5 */}
+                        <div className="border border-[#8A9A7E]/30 bg-[#2E3B2F]/40 p-3 text-left">
+                          <span className="px-1.5 py-0.5 bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#8A9A7E] font-mono text-[9px] font-bold">
+                            #5 CHOICE
+                          </span>
+                          <div className="mt-2 font-serif text-sm font-bold text-[#EDE6D3] break-words">
+                            {(activeUnga.pref1Portfolios && activeUnga.pref1Portfolios[4]) || "None"}
+                          </div>
+                          <span className="text-[9px] text-[#8A9A7E] block mt-1">Quinary Option</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 6: Experience & Academic Intent */}
+                    <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold block mb-2.5 flex items-center gap-1.5">
+                        <Award className="h-3 w-3 text-[#C9A86A]" />
+                        // MUN EXPERIENCE & STATEMENT OF INTENT
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <strong className="text-[#8A9A7E]">MUN Experience Level:</strong>{" "}
+                          <span className="font-semibold text-[#EDE6D3]">{activeUnga.munExperience || "Novice"}</span>
+                        </div>
+                        <div>
+                          <strong className="text-[#8A9A7E]">Past MUN Accolades / Distinctions:</strong>{" "}
+                          <span className="text-[#EDE6D3]">{activeUnga.pastMunDetails || "None provided"}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3.5 pt-3 border-t border-[#8A9A7E]/15">
+                        <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block mb-1">
+                          Statement of Motivation / Academic Purpose:
+                        </span>
+                        <div className="bg-[#141814] p-3.5 text-xs text-[#EDE6D3] italic leading-relaxed border border-[#8A9A7E]/20 whitespace-pre-wrap">
+                          "{activeUnga.motivation || "No statement compiled."}"
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 7: Official Commemorative Merchandise */}
+                    <div className={`p-4 border ${activeUnga.hasMerch ? "bg-amber-950/20 border-amber-500/40" : "bg-[#1A1F1A] border-[#8A9A7E]/20"}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold flex items-center gap-1.5">
+                          <Shirt className="h-3.5 w-3.5" />
+                          // OFFICIAL COMMEMORATIVE MERCHANDISE
+                        </span>
+                        {activeUnga.hasMerch ? (
+                          <span className="px-2 py-0.5 text-[9px] font-mono font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                            Ordered (+₹599)
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 text-[9px] font-mono text-[#8A9A7E] bg-[#141814] border border-[#8A9A7E]/30">
+                            Not Purchased
+                          </span>
+                        )}
+                      </div>
+                      {activeUnga.hasMerch ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-[#EDE6D3] mt-3">
+                          <div>
+                            <span className="text-[#8A9A7E] block text-[10px] uppercase font-mono">Size Selected:</span>
+                            <span className="font-mono text-sm font-bold text-amber-300 bg-[#141814] px-2 py-0.5 border border-amber-500/30 inline-block mt-0.5">
+                              {activeUnga.merchSize || "M"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[#8A9A7E] block text-[10px] uppercase font-mono">Merchandise Extra:</span>
+                            <span className="font-bold text-emerald-400 mt-0.5 block">
+                              ₹599
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[#8A9A7E] block text-[10px] uppercase font-mono">Courier Dispatch:</span>
+                            <span className="text-[#EDE6D3] text-[11px] mt-0.5 block leading-snug">
+                              To be dispatched via postal courier to the provided address
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-[#8A9A7E] mt-1">
+                          Delegate opted out of the merchandise add-on or is an internal IIST delegate.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Section 8: Payment Verification & UTR Transaction Proof */}
+                    <div className="bg-[#1A1F1A] border-2 border-[#C9A86A]/40 p-4">
+                      <div className="flex items-center justify-between mb-2.5 flex-wrap gap-2">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-[#C9A86A]" />
+                          // PAYMENT VERIFICATION & UTR TRANSACTION PROOF
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleUpdateUngaStatus(activeUnga.uid || activeUnga.id || "", activeUnga.status || "Payment Confirmed", "Verified")}
+                            className="px-2 py-0.5 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold uppercase transition-colors cursor-pointer"
+                          >
+                            Mark Verified
+                          </button>
+                          <button
+                            onClick={() => handleUpdateUngaStatus(activeUnga.uid || activeUnga.id || "", "Rejected", "Rejected")}
+                            className="px-2 py-0.5 bg-rose-900/60 hover:bg-rose-800 text-rose-300 border border-rose-500/40 text-[10px] font-mono font-bold uppercase transition-colors cursor-pointer"
+                          >
+                            Mark Rejected
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2 text-xs">
+                          <div>
+                            <span className="text-[#8A9A7E] block text-[10px] uppercase font-mono">12-Digit UTR / Transaction ID:</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="font-mono text-sm text-[#C9A86A] font-bold bg-[#141814] px-2 py-1 border border-[#C9A86A]/40 inline-block">
+                                {activeUnga.utrNumber || activeUnga.transactionId || "Not Provided"}
+                              </span>
+                              {(activeUnga.utrNumber || activeUnga.transactionId) && (
+                                <button
+                                  onClick={() => handleCopyUtr(activeUnga.utrNumber || activeUnga.transactionId || "")}
+                                  className="px-2 py-1 bg-[#2E3B2F] hover:bg-[#3d4f3e] text-[#C9A86A] border border-[#C9A86A]/40 text-xs font-bold uppercase flex items-center gap-1 cursor-pointer"
+                                  title="Copy UTR to clipboard"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                  <span>{copiedUtr === (activeUnga.utrNumber || activeUnga.transactionId) ? "Copied!" : "Copy"}</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div><strong className="text-[#8A9A7E]">Payer Name:</strong> {activeUnga.payerName || "N/A"}</div>
+                          <div><strong className="text-[#8A9A7E]">Payment Mode:</strong> {activeUnga.paymentMode || "UPI"}</div>
+                          <div><strong className="text-[#8A9A7E]">Payment Date:</strong> {activeUnga.paymentDate || "N/A"}</div>
+                          <div>
+                            <strong className="text-[#8A9A7E]">Verification Status:</strong>{" "}
+                            <span className={`font-mono font-bold ${activeUnga.paymentStatus === "Verified" ? "text-emerald-400" : activeUnga.paymentStatus === "Rejected" ? "text-rose-400" : "text-amber-300"}`}>
+                              {activeUnga.paymentStatus || "Pending"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Screenshot Preview */}
+                        <div>
+                          <span className="text-[#8A9A7E] block text-[10px] uppercase font-mono mb-1">
+                            Uploaded Payment Receipt Screenshot:
+                          </span>
+                          {activeUnga.paymentScreenshotUrl ? (
+                            <div className="flex items-center gap-3 bg-[#141814] p-3 border border-[#8A9A7E]/30">
+                              <img
+                                src={activeUnga.paymentScreenshotUrl}
+                                alt="Payment Proof"
+                                className="h-16 w-16 object-cover border border-[#C9A86A]/40 cursor-pointer hover:opacity-85"
+                                onClick={() => setViewProofModal({
+                                  url: activeUnga.paymentScreenshotUrl || "",
+                                  name: activeUnga.paymentScreenshotName,
+                                  utr: activeUnga.utrNumber || activeUnga.transactionId,
+                                  candidateName: activeUnga.name
+                                })}
+                              />
+                              <div className="flex-1 text-xs">
+                                <span className="text-[#EDE6D3] font-semibold block truncate" title={activeUnga.paymentScreenshotName}>
+                                  {activeUnga.paymentScreenshotName || "payment_receipt.jpg"}
+                                </span>
+                                <div className="flex gap-2 mt-2">
+                                  <button
+                                    onClick={() => setViewProofModal({
+                                      url: activeUnga.paymentScreenshotUrl || "",
+                                      name: activeUnga.paymentScreenshotName,
+                                      utr: activeUnga.utrNumber || activeUnga.transactionId,
+                                      candidateName: activeUnga.name
+                                    })}
+                                    className="px-2.5 py-1 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Eye className="h-3 w-3" />
+                                    <span>Enlarge</span>
+                                  </button>
+                                  <a
+                                    href={activeUnga.paymentScreenshotUrl}
+                                    download={activeUnga.paymentScreenshotName || "receipt"}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-2.5 py-1 border border-[#8A9A7E]/30 bg-[#2E3B2F] hover:bg-[#3d4f3e] text-[#EDE6D3] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Download className="h-3 w-3" />
+                                    <span>Download</span>
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-[#8A9A7E] italic bg-[#141814] p-3 border border-[#8A9A7E]/20">
+                              No payment receipt screenshot uploaded.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 9: Secretariat Allotment Record (if allotted) */}
+                    {activeUnga.allottedCountry && (
+                      <div className="bg-emerald-950/30 border border-emerald-500/40 p-4">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold block mb-1">
+                          // ALLOTTED DIPLOMATIC PORTFOLIO
+                        </span>
+                        <div className="text-sm font-serif text-[#EDE6D3]">
+                          Allotted Country: <strong className="text-[#C9A86A] text-base">{activeUnga.allottedCountry}</strong> in{" "}
+                          <strong className="text-emerald-300 uppercase">UNGA (Online Committee)</strong>
+                        </div>
+                        {activeUnga.adminNotes && (
+                          <div className="text-xs text-[#8A9A7E] mt-1 pt-1 border-t border-emerald-500/20">
+                            Secretariat Notes: <span className="text-[#EDE6D3]">{activeUnga.adminNotes}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                  </div>
+
+                  {/* Footer Controls */}
+                  <div className="mt-6 pt-4 border-t border-[#C9A86A]/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] mr-1">
+                        Set Status:
+                      </span>
+                      {(["Payment Confirmed", "Portfolio Allotted", "Waitlisted", "Rejected", "Pending Verification"] as const).map((statusOption) => (
+                        <button
+                          key={statusOption}
+                          disabled={isUpdatingUngaStatus || activeUnga.status === statusOption}
+                          onClick={() => handleUpdateUngaStatus(activeUnga.uid || activeUnga.id || "", statusOption)}
+                          className={`px-2.5 py-1 text-[10px] font-sans font-bold uppercase tracking-wider border transition-all cursor-pointer disabled:opacity-40 ${
+                            activeUnga.status === statusOption
+                              ? "bg-[#C9A86A] text-[#1A1F1A] border-[#C9A86A]"
+                              : "bg-[#1A1F1A] text-[#EDE6D3] border-[#8A9A7E]/30 hover:border-[#C9A86A]"
+                          }`}
+                        >
+                          {statusOption}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 justify-end flex-wrap">
+                      <button
+                        onClick={() => {
+                          setAllotUngaModalReg(activeUnga);
+                          setAllotUngaForm({
+                            country: activeUnga.allottedCountry || (activeUnga.pref1Portfolios && activeUnga.pref1Portfolios[0]) || activeUnga.pref1Country || "",
+                            adminNotes: activeUnga.adminNotes || ""
+                          });
+                        }}
+                        className="px-3.5 py-2 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-sans font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <Compass className="h-3.5 w-3.5" />
+                        <span>Allot Country</span>
+                      </button>
+                      <button
+                        onClick={() => exportUngaToExcel([activeUnga], activeUnga.id || activeUnga.name)}
+                        className="px-3.5 py-2 border border-[#C9A86A]/40 bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#C9A86A] text-xs font-sans font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <FileSpreadsheet className="h-3.5 w-3.5" />
+                        <span>Export XLSX</span>
+                      </button>
+                      <button
+                        onClick={() => setConfirmUngaDeleteId(activeUnga.uid || activeUnga.id || "")}
+                        className="px-3 py-2 border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 text-xs font-sans uppercase tracking-wider transition-colors cursor-pointer"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={closeUngaModal}
+                        className="px-4 py-2 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#EDE6D3] hover:text-[#C9A86A] text-xs font-sans uppercase tracking-wider transition-colors cursor-pointer"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ========================================================
+            UNGA (ONLINE COMMITTEE): COUNTRY ALLOTMENT MODAL
+           ======================================================== */}
+        {allotUngaModalReg && (
+          <div className="fixed inset-0 z-[125] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in flex items-center justify-center p-4">
+            <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-md w-full p-6 text-left relative shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[#C9A86A]/30 pb-3">
+                <div>
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold block">
+                    // UNGA ONLINE ALLOTMENT DESK
+                  </span>
+                  <h4 className="font-serif text-xl text-[#EDE6D3]">
+                    Allot UNGA Country Portfolio
+                  </h4>
+                  <span className="font-sans text-xs text-[#8A9A7E]">
+                    Candidate: <strong className="text-[#EDE6D3]">{allotUngaModalReg.name}</strong> ({allotUngaModalReg.id || allotUngaModalReg.uid})
+                  </span>
+                </div>
+                <button
+                  onClick={() => setAllotUngaModalReg(null)}
+                  className="p-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#8A9A7E] hover:text-[#EDE6D3] hover:border-[#C9A86A] cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Preferences Reference */}
+              <div className="mt-4 p-3 bg-[#1A1F1A] border border-[#8A9A7E]/20 text-xs">
+                <span className="text-[10px] font-mono text-[#C9A86A] uppercase block mb-1">Candidate's 5 Country Preferences:</span>
+                {allotUngaModalReg.pref1Portfolios && allotUngaModalReg.pref1Portfolios.length > 0 ? (
+                  <div className="space-y-1">
+                    {allotUngaModalReg.pref1Portfolios.map((country, idx) => country ? (
+                      <div key={idx} className="flex items-center justify-between text-[#EDE6D3]">
+                        <span className="text-[#8A9A7E]">Choice #{idx + 1}:</span>
+                        <button
+                          type="button"
+                          onClick={() => setAllotUngaForm({ ...allotUngaForm, country })}
+                          className="font-bold text-[#C9A86A] hover:underline cursor-pointer"
+                          title="Click to select as allotted country"
+                        >
+                          {country}
+                        </button>
+                      </div>
+                    ) : null)}
+                  </div>
+                ) : (
+                  <div className="text-[#EDE6D3]">{allotUngaModalReg.pref1Country || "No specific preferences"}</div>
+                )}
+              </div>
+
+              {/* Allotment Form */}
+              <div className="mt-4 space-y-3.5">
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                    Committee Chamber
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value="United Nations General Assembly (UNGA - Online)"
+                    className="w-full bg-[#141814] border border-[#8A9A7E]/30 text-[#C9A86A] px-3 py-2 text-xs font-semibold focus:outline-none cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                    Allotted Country Portfolio *
+                  </label>
+                  <input
+                    type="text"
+                    value={allotUngaForm.country}
+                    onChange={(e) => setAllotUngaForm({ ...allotUngaForm, country: e.target.value })}
+                    placeholder="e.g. France / Brazil / Japan"
+                    className="w-full bg-[#1A1F1A] border border-[#C9A86A]/40 text-[#EDE6D3] px-3 py-2 text-xs focus:outline-none placeholder-[#8A9A7E]/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                    Admin Notes / Remarks (Optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={allotUngaForm.adminNotes}
+                    onChange={(e) => setAllotUngaForm({ ...allotUngaForm, adminNotes: e.target.value })}
+                    placeholder="e.g. Allotted 1st preference via merit review."
+                    className="w-full bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#EDE6D3] px-3 py-2 text-xs focus:outline-none placeholder-[#8A9A7E]/50 resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="mt-6 pt-3 border-t border-[#C9A86A]/30 flex gap-3">
+                <button
+                  onClick={() => setAllotUngaModalReg(null)}
+                  className="flex-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] py-2.5 text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] hover:border-[#C9A86A] transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={!allotUngaForm.country.trim()}
+                  onClick={handleSaveUngaAllotment}
+                  className="flex-1 bg-[#C9A86A] hover:bg-[#dfbe7e] py-2.5 text-xs font-bold uppercase tracking-wider text-[#1A1F1A] transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-md"
+                >
+                  Confirm Allotment
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            UNGA (ONLINE COMMITTEE): DELETE CONFIRMATION MODAL
+           ======================================================== */}
+        {confirmUngaDeleteId && (
+          <div className="fixed inset-0 z-[125] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in flex items-center justify-center p-4">
+            <div className="bg-[#2E3B2F] border-2 border-rose-500/50 max-w-sm w-full p-6 text-center relative shadow-2xl">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center bg-[#1A1F1A] border border-rose-500/40 text-rose-400 mb-4">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h3 className="font-serif text-xl font-normal text-[#EDE6D3]">Purge UNGA Online Record?</h3>
+              <p className="mt-2 font-sans text-[#8A9A7E] text-xs leading-relaxed">
+                Are you certain you want to remove UNGA registration <strong className="text-[#EDE6D3] font-mono">{confirmUngaDeleteId}</strong>? This action will permanently remove it from Firestore.
+              </p>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setConfirmUngaDeleteId(null)}
+                  className="flex-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] py-2 text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleUngaDelete(confirmUngaDeleteId, confirmUngaDeleteId)}
+                  className="flex-1 bg-rose-700 hover:bg-rose-600 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-md cursor-pointer"
+                >
+                  Purge
+                </button>
               </div>
             </div>
           </div>

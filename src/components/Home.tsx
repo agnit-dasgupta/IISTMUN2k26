@@ -252,60 +252,88 @@ export default function Home({ setActiveTab }: HomeProps) {
             {/* Priority Delegate Registration Highlight Banner */}
 
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
 
-              {/* Notice 1: Priority registrations opening soon */}
+              {/* Notice 1: Priority registrations now open */}
               <button
                 type="button"
                 onClick={() => {
                   setActiveTab("register-portal-priority");
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="border border-[#C9A86A]/70 hover:border-[#C9A86A] bg-[#1A1F1A]/95 hover:bg-[#2E3B2F]/60 p-5 text-left flex items-start gap-3.5 shadow-lg group transition-all duration-300 cursor-pointer"
+                className="border border-[#C9A86A]/70 hover:border-[#C9A86A] bg-[#1A1F1A]/95 hover:bg-[#2E3B2F]/60 p-4 sm:p-5 text-left flex items-start gap-3 shadow-lg group transition-all duration-300 cursor-pointer"
               >
-                <span className="relative flex h-3 w-3 mt-1 shrink-0">
+                <span className="relative flex h-2.5 w-2.5 mt-1 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9A86A] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#C9A86A]"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#C9A86A]"></span>
                 </span>
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] block font-medium">
-                      Priority Registration
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#C9A86A] block font-medium">
+                      Priority Round
                     </span>
-                    <span className="text-[9px] font-mono text-[#1A1F1A] bg-[#C9A86A] px-1.5 rounded-none font-semibold">
-                      OPENING SOON
+                    <span className="text-[8px] font-mono text-[#1A1F1A] bg-[#C9A86A] px-1 rounded-none font-semibold">
+                      NOW OPEN
                     </span>
                   </div>
-                  <span className="font-sans text-xs sm:text-sm text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#C9A86A] transition-colors">
-                    Priority Delegate Intake • Opening Soon
+                  <span className="font-sans text-xs text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#C9A86A] transition-colors truncate">
+                    On-Campus Delegations
                   </span>
                 </div>
               </button>
 
-              {/* Notice 2: Campus ambassador registrations open */}
+              {/* Notice 2: UNGA (Online Committee) registrations now open */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("register-portal-unga");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="border border-[#C9A86A]/70 hover:border-[#C9A86A] bg-[#2E3B2F]/80 hover:bg-[#2E3B2F] p-4 sm:p-5 text-left flex items-start gap-3 shadow-lg group transition-all duration-300 cursor-pointer"
+              >
+                <span className="relative flex h-2.5 w-2.5 mt-1 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9A86A] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#C9A86A]"></span>
+                </span>
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#C9A86A] block font-medium">
+                      UNGA Online
+                    </span>
+                    <span className="text-[8px] font-mono text-[#1A1F1A] bg-[#C9A86A] px-1 rounded-none font-bold">
+                      NOW OPEN
+                    </span>
+                  </div>
+                  <span className="font-sans text-xs text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#C9A86A] transition-colors truncate">
+                    Virtual Deliberation
+                  </span>
+                </div>
+              </button>
+
+              {/* Notice 3: Campus ambassador registrations open */}
               <button
                 type="button"
                 onClick={() => {
                   setActiveTab("register-portal-ca");
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="border border-[#8BA06F]/70 hover:border-[#8BA06F] bg-[#1A1F1A]/95 hover:bg-[#2E3B2F]/60 p-5 text-left flex items-start gap-3.5 shadow-lg group transition-all duration-300 cursor-pointer"
+                className="border border-[#8BA06F]/70 hover:border-[#8BA06F] bg-[#1A1F1A]/95 hover:bg-[#2E3B2F]/60 p-4 sm:p-5 text-left flex items-start gap-3 shadow-lg group transition-all duration-300 cursor-pointer"
               >
-                <span className="relative flex h-3 w-3 mt-1 shrink-0">
+                <span className="relative flex h-2.5 w-2.5 mt-1 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8BA06F] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#8BA06F]"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#8BA06F]"></span>
                 </span>
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8BA06F] block font-medium">
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#8BA06F] block font-medium">
                       Campus Ambassador
                     </span>
-                    <span className="text-[9px] font-mono text-[#1A1F1A] bg-[#8BA06F] px-1 rounded-none font-semibold">
+                    <span className="text-[8px] font-mono text-[#1A1F1A] bg-[#8BA06F] px-1 rounded-none font-semibold">
                       JOIN
                     </span>
                   </div>
-                  <span className="font-sans text-xs sm:text-sm text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#8BA06F] transition-colors">
-                    Registrations Open • Join Fellowship
+                  <span className="font-sans text-xs text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#8BA06F] transition-colors truncate">
+                    Outreach Fellowship
                   </span>
                 </div>
               </button>

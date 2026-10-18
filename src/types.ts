@@ -19,6 +19,7 @@ export interface Committee {
   color: string; // e.g. "cyan" | "purple" | "emerald" | "amber"
   eb: EBReference[];
   guideUrl?: string;
+  portfolioUrl?: string;
 }
 
 export interface SecretariatMember {
@@ -84,8 +85,9 @@ export interface RegistrationDetails {
   regType: "individual" | "double" | "contingent";
   delegationMode?: "individual" | "part_of_delegation";
   isPrivateDelegation?: boolean;
-  round?: "priority" | "regular" | "late";
+  round?: "priority" | "regular" | "late" | "online" | "unga";
   isPriority?: boolean;
+  isUnga?: boolean;
   name: string;
   email: string;
   phone: string;
@@ -93,6 +95,7 @@ export interface RegistrationDetails {
   gender?: string;
   dob?: string;
   cityState?: string;
+  fullAddress?: string;
   delegateCategory?: "college" | "school" | "iist";
   institution: string;
   course: string;
@@ -148,6 +151,11 @@ export interface RegistrationDetails {
   hasMerch?: boolean;
   merchSize?: string;
   merchAmount?: number;
+  // Campus Ambassador Referral
+  campusAmbassadorCode?: string;
+  // School or College ID Proof
+  idCardUrl?: string;
+  idCardName?: string;
 }
 
 export type PriorityRegistrationDetails = RegistrationDetails;

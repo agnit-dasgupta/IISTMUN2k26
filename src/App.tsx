@@ -15,7 +15,6 @@ import Registration from "./components/Registration";
 import AdminDashboard from "./components/AdminDashboard";
 import WorkshopRegistration from "./components/WorkshopRegistration";
 import RegisterPortal from "./components/RegisterPortal";
-import OpeningSoonPlaceholder from "./components/OpeningSoonPlaceholder";
 import MarqueeTicker from "./components/MarqueeTicker";
 import CherryBlossomBackground from "./components/CherryBlossomBackground";
 import { motion } from "motion/react";
@@ -41,7 +40,11 @@ export default function App() {
       case "matrix":
         return <CountryMatrix onSelectPreference={(country, committee) => {
           setInitialPreference({ country, committee });
-          setActiveTab("register");
+          if (committee === "unga") {
+            setActiveTab("register-portal-unga");
+          } else {
+            setActiveTab("register-portal-priority");
+          }
         }} />;
       case "schedule":
         return <Schedule />;
@@ -51,14 +54,13 @@ export default function App() {
       case "register-portal-priority":
       case "register-portal-eb":
         return <RegisterPortal initialPortalTab="priority" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={setActiveTab} />;
+      case "register-portal-unga":
+      case "register-unga":
+        return <RegisterPortal initialPortalTab="unga" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={setActiveTab} />;
       case "register-portal-ca":
         return <RegisterPortal initialPortalTab="campus-ambassador" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={setActiveTab} />;
       case "register":
-        return <OpeningSoonPlaceholder 
-          title="Priority Delegate Registration"
-          subtitle="Accreditation & Representation Dossier"
-          roundName="Priority Round"
-          badge="OPENING SOON"
+        return <Registration 
           initialPreference={initialPreference} 
           clearInitialPreference={() => setInitialPreference(null)} 
           setActiveTab={setActiveTab}
@@ -191,7 +193,13 @@ export default function App() {
                 <li>
                   <button onClick={() => { setActiveTab("register-portal-priority"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
                     <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">Priority Registration</span>
-                    <span className="block text-[10px] text-[#C9A86A]/80">Opening Soon &bull; Priority Round</span>
+                    <span className="block text-[10px] text-[#C9A86A]/80">Now Open &bull; Priority Round</span>
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => { setActiveTab("register-portal-unga"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
+                    <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">UNGA (Online Committee)</span>
+                    <span className="block text-[10px] text-[#C9A86A]/80">Now Open &bull; Virtual Simulation Chamber</span>
                   </button>
                 </li>
                 <li>

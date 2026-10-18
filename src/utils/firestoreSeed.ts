@@ -40,6 +40,7 @@ export interface CollectionCounts {
   portfolio_states: number;
   registrations: number;
   priority_registrations: number;
+  unga_registrations: number;
   workshop_registrations: number;
   eb_registrations: number;
   campus_ambassador_registrations: number;
@@ -60,6 +61,7 @@ export async function fetchCollectionCounts(db: Firestore): Promise<CollectionCo
     "portfolio_states",
     "registrations",
     "priority_registrations",
+    "unga_registrations",
     "workshop_registrations",
     "eb_registrations",
     "campus_ambassador_registrations",

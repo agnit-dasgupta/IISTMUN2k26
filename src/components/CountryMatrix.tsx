@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from "react";
 import { COUNTRY_MATRIX } from "../data";
 import { CountryMatrixRow, PortfolioStatus, CommitteeId } from "../types";
-import { Search, CheckCircle2, AlertCircle, ShieldAlert, Filter, Table, Globe, Sparkles, Clock, Ban, Compass } from "lucide-react";
+import { Search, CheckCircle2, AlertCircle, ShieldAlert, Filter, Table, Globe, Sparkles, Clock, Ban, Compass, ExternalLink, FileSpreadsheet } from "lucide-react";
 import { db } from "../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import SatelliteCarousel from "./SatelliteCarousel";
@@ -236,6 +236,18 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
                     <option value="ip_photojournalism" className="bg-[#1A1F1A] text-[#EDE6D3]">IP (Photojournalism)</option>
                   </select>
                 </div>
+
+                {/* NES'75 Reference Link Button */}
+                <a
+                  href="https://docs.google.com/spreadsheets/d/1jXZQ9IHvoSYjUnrJBU5lFZpJFb-iJZy19LqRj7p-dDY/edit?usp=sharing"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#1A1F1A] border border-[#C9A86A]/40 text-[#C9A86A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] font-sans text-[10px] uppercase tracking-wider font-semibold transition-all shadow-sm"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                  <span>NES'75 Portfolio Sheet</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
               </div>
             </div>
 
@@ -261,7 +273,18 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
                       UNODC
                     </th>
                     <th className={`px-3 py-4 font-semibold ${activeCommitteeCol === "nes75" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
-                      NES'75
+                      <div className="inline-flex items-center gap-1">
+                        <span>NES'75</span>
+                        <a
+                          href="https://docs.google.com/spreadsheets/d/1jXZQ9IHvoSYjUnrJBU5lFZpJFb-iJZy19LqRj7p-dDY/edit?usp=sharing"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Open NES'75 Portfolio Reference Sheet"
+                          className="text-[#C9A86A] hover:text-[#EDE6D3] inline-flex items-center"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
                     </th>
                     <th className={`px-3 py-4 font-semibold ${activeCommitteeCol === "undp" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
                       UNDP

@@ -177,9 +177,26 @@ export default function OpeningSoonPlaceholder({
                   </p>
                 </button>
 
-
-
-
+                {/* Pathway 2: UNGA Online Committee */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("register-portal-unga");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="p-3.5 text-left border border-[#C9A86A]/40 bg-[#2E3B2F]/60 hover:bg-[#2E3B2F] hover:border-[#C9A86A] transition-all group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-serif text-xs text-[#EDE6D3] font-medium group-hover:text-[#C9A86A] transition-colors flex items-center gap-1.5">
+                      <span>UNGA (Online)</span>
+                      <span className="text-[8px] font-mono bg-[#1A1F1A] text-[#C9A86A] border border-[#C9A86A]/40 px-1 font-bold">OPEN</span>
+                    </span>
+                    <ArrowRight className="h-3 w-3 text-[#8A9A7E] group-hover:translate-x-1 group-hover:text-[#C9A86A] transition-all" />
+                  </div>
+                  <p className="font-sans text-[10px] text-[#8A9A7E]">
+                    Global virtual deliberative chamber &bull; Live online delegate intake.
+                  </p>
+                </button>
               </div>
             </div>
           )}

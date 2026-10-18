@@ -13,7 +13,7 @@ import {
   CreditCard, Sparkles, Building2, MapPin, Phone, Mail,
   Calendar, HelpCircle, ArrowLeft, RefreshCw,
   Clock, ShieldAlert, Award, ExternalLink,
-  Shirt, ShoppingBag, Ruler, X, Tag
+  Shirt, ShoppingBag, Ruler, X, Tag, FileSpreadsheet
 } from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { db, handleFirestoreError, OperationType } from "../firebase";
@@ -23,6 +23,10 @@ import { InstitutionSelect } from "./InstitutionSelect";
 import FileUploadZone from "./FileUploadZone";
 import QRCodeDisplay from "./QRCodeDisplay";
 import { downloadBoardingPassPDF } from "../utils/pdfGenerator";
+
+// Priority Round Committees (offline/on-campus simulation chambers; excludes UNGA Online Committee)
+export const PRIORITY_COMMITTEES = COMMITTEES.filter(c => c.id !== "unga");
+export const NES75_PORTFOLIO_LINK = "https://docs.google.com/spreadsheets/d/1jXZQ9IHvoSYjUnrJBU5lFZpJFb-iJZy19LqRj7p-dDY/edit?usp=sharing";
 
 export const isIISTInstitution = (institution?: string): boolean => {
   if (!institution) return false;
@@ -86,6 +90,9 @@ export default function Registration({ initialPreference, clearInitialPreference
     classGrade: "Class 11",
     rollNumber: "",
     role: "Delegate" as "Delegate" | "Photographer" | "Journalist",
+    idCardUrl: "",
+    idCardName: "",
+    campusAmbassadorCode: "",
 
     // Double Delegation partner details
     partnerName: "",
@@ -157,17 +164,24 @@ export default function Registration({ initialPreference, clearInitialPreference
   // Auto-fill selected committee preferences if navigated with initial preference
   useEffect(() => {
     if (initialPreference) {
-      setFormData((prev) => ({
-        ...prev,
-        pref1Committee: initialPreference.committee || prev.pref1Committee,
-      }));
+      if (initialPreference.committee === "unga") {
+        if (setActiveTab) {
+          setActiveTab("register-portal-unga");
+          return;
+        }
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          pref1Committee: initialPreference.committee || prev.pref1Committee,
+        }));
+      }
 
       setStep(3); // jump directly to preferences step if initiated from link
       if (clearInitialPreference) {
         clearInitialPreference();
       }
     }
-  }, [initialPreference, clearInitialPreference]);
+  }, [initialPreference, clearInitialPreference, setActiveTab]);
 
   // Auto-fill user profile fields on successful login
   useEffect(() => {
@@ -463,6 +477,9 @@ export default function Registration({ initialPreference, clearInitialPreference
         motivation: formData.motivation.trim(),
         accommodationRequired: "no",
         feeAmount: calculatedFee,
+        campusAmbassadorCode: formData.campusAmbassadorCode.trim().toUpperCase(),
+        idCardUrl: formData.idCardUrl || "",
+        idCardName: formData.idCardName || "",
         hasMerch: !isIISTInstitution(formData.institution) && formData.hasMerch,
         merchSize: (!isIISTInstitution(formData.institution) && formData.hasMerch) ? (formData.merchSize || "M") : undefined,
         merchAmount: (!isIISTInstitution(formData.institution) && formData.hasMerch) ? 599 : 0,
@@ -842,6 +859,16 @@ export default function Registration({ initialPreference, clearInitialPreference
                   {/* Stamp Notice */}
                   <div className="p-3 bg-[#2E3B2F]/10 border-l-2 border-[#C9A86A] text-[11px] text-[#2E3B2F] leading-relaxed">
                     <strong>Priority Allotment Protocol:</strong> Committee portfolios will be assigned and emailed by the Secretariat based on candidate preferences and merit. Please present this ticket at the registration desk upon campus arrival.
+                    {submittedPass.campusAmbassadorCode && (
+                      <div className="mt-1 font-mono text-[10px] text-[#8B5A3C] font-semibold">
+                        Ambassador Code: {submittedPass.campusAmbassadorCode} (₹50 refund eligible)
+                      </div>
+                    )}
+                    {submittedPass.idCardUrl && (
+                      <div className="mt-0.5 text-[10px] text-emerald-800 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3 inline" /> Student ID Proof Attached
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1329,6 +1356,55 @@ export default function Registration({ initialPreference, clearInitialPreference
                           <option value="Photographer" className="bg-[#1A1F1A]">International Press (Photojournalist)</option>
                         </select>
                       </div>
+
+                      {/* Photo of School / College ID Upload Option */}
+                      <div className="sm:col-span-2 border border-[#8A9A7E]/30 bg-[#1A1F1A] p-4 text-left">
+                        <div className="mb-2">
+                          <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] font-semibold flex items-center gap-1.5">
+                            <FileText className="h-3.5 w-3.5 text-[#C9A86A]" />
+                            Photo of School or College ID (Optional)
+                          </label>
+                          <p className="text-[11px] text-[#8A9A7E] mt-0.5 leading-relaxed">
+                            Attach a clear photo or scanned copy of your student identity card or bonafide letter for campus security verification.
+                          </p>
+                        </div>
+                        <FileUploadZone
+                          label="Upload School or College ID Card"
+                          sublabel="Attach photo/scan (JPG/PNG/PDF, max 5MB) or provide Google Drive link"
+                          fileType="image"
+                          maxSizeMB={5}
+                          valueUrl={formData.idCardUrl}
+                          valueName={formData.idCardName}
+                          onChange={(url, name) => setFormData({ ...formData, idCardUrl: url, idCardName: name })}
+                          onClear={() => setFormData({ ...formData, idCardUrl: "", idCardName: "" })}
+                        />
+                      </div>
+
+                      {/* Campus Ambassador Referral Code */}
+                      <div className="sm:col-span-2 border border-[#8BA06F]/40 bg-[#1A1F1A] p-4 text-left">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1.5">
+                          <label className="block font-sans text-[10px] uppercase tracking-wider text-[#8BA06F] font-semibold flex items-center gap-1.5">
+                            <Award className="h-3.5 w-3.5 text-[#8BA06F]" />
+                            Campus Ambassador Code (Optional)
+                          </label>
+                          <span className="text-[9px] font-mono uppercase tracking-wider text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-2 py-0.5 font-bold">
+                            ₹50 Refund Eligible
+                          </span>
+                        </div>
+                        <input
+                          type="text"
+                          value={formData.campusAmbassadorCode}
+                          onChange={(e) => setFormData({ ...formData, campusAmbassadorCode: e.target.value.toUpperCase() })}
+                          className="w-full border border-[#8A9A7E]/30 bg-[#233124] px-4 py-2.5 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/50 outline-none focus:border-[#8BA06F] font-mono tracking-wider transition-all"
+                          placeholder="e.g. CA-2027-XXXX or Ambassador Code"
+                        />
+                        <div className="mt-2 text-[11px] text-[#8A9A7E] flex items-center gap-1.5 leading-relaxed">
+                          <Sparkles className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                          <span>
+                            <strong className="text-emerald-400">Note:</strong> Rs 50 will be refunded with applicable campus ambassador code.
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -1408,6 +1484,24 @@ export default function Registration({ initialPreference, clearInitialPreference
                       <p className="text-[11px] text-[#8A9A7E] mt-0.5">
                         Select your preferred simulation chambers and specify exactly 5 ranked portfolio / country choices for each committee. All 5 portfolio choices per committee are mandatory.
                       </p>
+                      {/* Global NES'75 Portfolio Link Callout */}
+                      <div className="mt-2.5 p-3 bg-[#1A1F1A] border border-[#C9A86A]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <FileSpreadsheet className="h-4 w-4 text-[#C9A86A] shrink-0" />
+                          <span className="text-xs text-[#EDE6D3]">
+                            Interested in <strong className="text-[#C9A86A]">National Emergency Summit 1975 (NES'75)</strong>?
+                          </span>
+                        </div>
+                        <a
+                          href={NES75_PORTFOLIO_LINK}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#C9A86A] hover:text-[#e0c388] transition-colors"
+                        >
+                          <span>Open NES'75 Portfolio Reference Sheet</span>
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      </div>
                     </div>
 
                     {/* Preference 1 Card */}
@@ -1431,7 +1525,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                           onChange={(e) => setFormData({ ...formData, pref1Committee: e.target.value })}
                           className="w-full border border-[#8A9A7E]/40 bg-[#1A1F1A] px-3.5 py-2.5 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A] font-medium"
                         >
-                          {COMMITTEES.map(c => (
+                          {PRIORITY_COMMITTEES.map(c => (
                             <option key={c.id} value={c.id} className="bg-[#1A1F1A]">
                               {c.abbreviation} - {c.name}
                             </option>
@@ -1441,6 +1535,32 @@ export default function Registration({ initialPreference, clearInitialPreference
                           {COMMITTEES.find(c => c.id === formData.pref1Committee)?.agenda || "Diplomatic chamber"}
                         </div>
                         {errors.pref1Committee && <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.pref1Committee}</p>}
+
+                        {/* NES'75 Portfolio Reference Sheet Link */}
+                        {formData.pref1Committee === "nes75" && (
+                          <div className="mt-2.5 p-3 bg-[#141814] border border-[#C9A86A] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-md">
+                            <div className="flex items-center gap-2">
+                              <FileSpreadsheet className="h-4 w-4 text-[#C9A86A] shrink-0" />
+                              <div className="text-left">
+                                <span className="font-serif text-xs font-bold text-[#EDE6D3] block">
+                                  NES'75 Portfolio Reference Matrix
+                                </span>
+                                <span className="text-[10px] text-[#8A9A7E] block">
+                                  Review available cabinet portfolios, ministers, and opposition leaders.
+                                </span>
+                              </div>
+                            </div>
+                            <a
+                              href={NES75_PORTFOLIO_LINK}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#C9A86A] hover:bg-[#bfa060] text-[#1A1F1A] font-sans font-bold text-[10px] uppercase tracking-wider shrink-0 transition-colors shadow"
+                            >
+                              <span>View Portfolios</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </div>
+                        )}
                       </div>
 
                       {/* 5 Portfolio Inputs for Preference 1 */}
@@ -1466,7 +1586,13 @@ export default function Registration({ initialPreference, clearInitialPreference
                                   }
                                 }}
                                 className={`w-full border ${errors.pref1Portfolios && !formData.pref1Portfolios[idx]?.trim() ? "border-rose-400 bg-rose-950/20" : "border-[#8A9A7E]/30"} bg-[#1A1F1A] px-3 py-2 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/40 outline-none focus:border-[#C9A86A] transition-all font-medium`}
-                                placeholder={formData.pref1Committee.startsWith("ip") ? `Press Bureau #${idx + 1}` : `Country Choice #${idx + 1}`}
+                                placeholder={
+                                  formData.pref1Committee === "nes75"
+                                    ? `NES'75 Leader #${idx + 1}`
+                                    : formData.pref1Committee.startsWith("ip")
+                                    ? `Press Bureau #${idx + 1}`
+                                    : `Country Choice #${idx + 1}`
+                                }
                               />
                             </div>
                           ))}
@@ -1498,7 +1624,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                           onChange={(e) => setFormData({ ...formData, pref2Committee: e.target.value })}
                           className="w-full border border-[#8A9A7E]/40 bg-[#141814] px-3.5 py-2.5 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A] font-medium"
                         >
-                          {COMMITTEES.map(c => (
+                          {PRIORITY_COMMITTEES.map(c => (
                             <option key={c.id} value={c.id} className="bg-[#1A1F1A]">
                               {c.abbreviation} - {c.name}
                             </option>
@@ -1508,6 +1634,32 @@ export default function Registration({ initialPreference, clearInitialPreference
                           {COMMITTEES.find(c => c.id === formData.pref2Committee)?.agenda || "Diplomatic chamber"}
                         </div>
                         {errors.pref2Committee && <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.pref2Committee}</p>}
+
+                        {/* NES'75 Portfolio Reference Sheet Link */}
+                        {formData.pref2Committee === "nes75" && (
+                          <div className="mt-2.5 p-3 bg-[#141814] border border-[#C9A86A] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-md">
+                            <div className="flex items-center gap-2">
+                              <FileSpreadsheet className="h-4 w-4 text-[#C9A86A] shrink-0" />
+                              <div className="text-left">
+                                <span className="font-serif text-xs font-bold text-[#EDE6D3] block">
+                                  NES'75 Portfolio Reference Matrix
+                                </span>
+                                <span className="text-[10px] text-[#8A9A7E] block">
+                                  Review available cabinet portfolios, ministers, and opposition leaders.
+                                </span>
+                              </div>
+                            </div>
+                            <a
+                              href={NES75_PORTFOLIO_LINK}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#C9A86A] hover:bg-[#bfa060] text-[#1A1F1A] font-sans font-bold text-[10px] uppercase tracking-wider shrink-0 transition-colors shadow"
+                            >
+                              <span>View Portfolios</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </div>
+                        )}
                       </div>
 
                       {/* 5 Portfolio Inputs for Preference 2 */}
@@ -1533,7 +1685,13 @@ export default function Registration({ initialPreference, clearInitialPreference
                                   }
                                 }}
                                 className={`w-full border ${errors.pref2Portfolios && !formData.pref2Portfolios[idx]?.trim() ? "border-rose-400 bg-rose-950/20" : "border-[#8A9A7E]/30"} bg-[#141814] px-3 py-2 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/40 outline-none focus:border-[#C9A86A] transition-all font-medium`}
-                                placeholder={formData.pref2Committee.startsWith("ip") ? `Press Bureau #${idx + 1}` : `Country Choice #${idx + 1}`}
+                                placeholder={
+                                  formData.pref2Committee === "nes75"
+                                    ? `NES'75 Leader #${idx + 1}`
+                                    : formData.pref2Committee.startsWith("ip")
+                                    ? `Press Bureau #${idx + 1}`
+                                    : `Country Choice #${idx + 1}`
+                                }
                               />
                             </div>
                           ))}
@@ -1565,7 +1723,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                           onChange={(e) => setFormData({ ...formData, pref3Committee: e.target.value })}
                           className="w-full border border-[#8A9A7E]/40 bg-[#141814] px-3.5 py-2.5 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A] font-medium"
                         >
-                          {COMMITTEES.map(c => (
+                          {PRIORITY_COMMITTEES.map(c => (
                             <option key={c.id} value={c.id} className="bg-[#1A1F1A]">
                               {c.abbreviation} - {c.name}
                             </option>
@@ -1575,6 +1733,32 @@ export default function Registration({ initialPreference, clearInitialPreference
                           {COMMITTEES.find(c => c.id === formData.pref3Committee)?.agenda || "Diplomatic chamber"}
                         </div>
                         {errors.pref3Committee && <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.pref3Committee}</p>}
+
+                        {/* NES'75 Portfolio Reference Sheet Link */}
+                        {formData.pref3Committee === "nes75" && (
+                          <div className="mt-2.5 p-3 bg-[#141814] border border-[#C9A86A] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-md">
+                            <div className="flex items-center gap-2">
+                              <FileSpreadsheet className="h-4 w-4 text-[#C9A86A] shrink-0" />
+                              <div className="text-left">
+                                <span className="font-serif text-xs font-bold text-[#EDE6D3] block">
+                                  NES'75 Portfolio Reference Matrix
+                                </span>
+                                <span className="text-[10px] text-[#8A9A7E] block">
+                                  Review available cabinet portfolios, ministers, and opposition leaders.
+                                </span>
+                              </div>
+                            </div>
+                            <a
+                              href={NES75_PORTFOLIO_LINK}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#C9A86A] hover:bg-[#bfa060] text-[#1A1F1A] font-sans font-bold text-[10px] uppercase tracking-wider shrink-0 transition-colors shadow"
+                            >
+                              <span>View Portfolios</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </div>
+                        )}
                       </div>
 
                       {/* 5 Portfolio Inputs for Preference 3 */}
@@ -1600,7 +1784,13 @@ export default function Registration({ initialPreference, clearInitialPreference
                                   }
                                 }}
                                 className={`w-full border ${errors.pref3Portfolios && !formData.pref3Portfolios[idx]?.trim() ? "border-rose-400 bg-rose-950/20" : "border-[#8A9A7E]/30"} bg-[#141814] px-3 py-2 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/40 outline-none focus:border-[#C9A86A] transition-all font-medium`}
-                                placeholder={formData.pref3Committee.startsWith("ip") ? `Press Bureau #${idx + 1}` : `Country Choice #${idx + 1}`}
+                                placeholder={
+                                  formData.pref3Committee === "nes75"
+                                    ? `NES'75 Leader #${idx + 1}`
+                                    : formData.pref3Committee.startsWith("ip")
+                                    ? `Press Bureau #${idx + 1}`
+                                    : `Country Choice #${idx + 1}`
+                                }
                               />
                             </div>
                           ))}
@@ -1971,6 +2161,40 @@ export default function Registration({ initialPreference, clearInitialPreference
                     </div>
                   </div>
 
+                  {/* Campus Ambassador Referral Code Card with Rs 50 Refund Note */}
+                  <div className="border border-[#8BA06F]/50 bg-[#1A1F1A] p-5 text-left shadow-lg">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 pb-2 border-b border-[#8BA06F]/20">
+                      <div className="flex items-center gap-2">
+                        <Award className="h-4 w-4 text-[#8BA06F]" />
+                        <span className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-bold">
+                          Campus Ambassador Referral Code
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-2 py-0.5 font-bold self-start sm:self-auto">
+                        ₹50 Cash Refund Eligible
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block font-sans text-[10px] uppercase tracking-wider text-[#EDE6D3] font-semibold">
+                        Campus Ambassador Code (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.campusAmbassadorCode}
+                        onChange={(e) => setFormData({ ...formData, campusAmbassadorCode: e.target.value.toUpperCase() })}
+                        className="w-full border border-[#8A9A7E]/30 bg-[#233124] px-4 py-2.5 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/50 outline-none focus:border-[#8BA06F] font-mono tracking-wider transition-all"
+                        placeholder="e.g. CA-2027-XXXX or Ambassador Code"
+                      />
+                      <div className="p-2.5 bg-emerald-950/30 border border-emerald-500/30 flex items-start gap-2 text-xs text-[#EDE6D3] leading-relaxed">
+                        <Sparkles className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="text-emerald-300">Refund Note:</strong> Rs 50 will be refunded with applicable campus ambassador code upon verification by the Secretariat.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Payment Verification Input Fields */}
                   <div className="border border-[#8A9A7E]/30 bg-[#1A1F1A]/80 p-5 space-y-4">
                     <span className="font-sans text-[10px] uppercase tracking-widest text-[#C9A86A] font-bold block flex items-center gap-1.5">
@@ -2055,6 +2279,56 @@ export default function Registration({ initialPreference, clearInitialPreference
                     </div>
                   </div>
 
+                  {/* Priority Round Protocol & Guidelines Document Attachment */}
+                  <div className="border border-[#C9A86A]/40 bg-[#141814] p-4 sm:p-5 relative overflow-hidden shadow-xl transition-all hover:border-[#C9A86A]">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#C9A86A]/5 rounded-full blur-2xl pointer-events-none" />
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-start gap-3.5">
+                        <div className="h-11 w-11 rounded-lg bg-[#C9A86A]/10 border border-[#C9A86A]/30 flex items-center justify-center shrink-0 text-[#C9A86A]">
+                          <FileText className="h-5 w-5" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-sans text-xs uppercase tracking-wider text-[#C9A86A] font-bold">
+                              Official Priority Round Document
+                            </span>
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] bg-[#1A1F1A] border border-[#8A9A7E]/30 px-2 py-0.5">
+                              PDF Document
+                            </span>
+                          </div>
+                          <h3 className="font-serif text-sm sm:text-base text-[#EDE6D3] font-medium">
+                            Priority Round Guidelines & Allotment Policy
+                          </h3>
+                          <p className="text-[11px] text-[#8A9A7E] leading-relaxed max-w-xl">
+                            Please review the official Priority Round document before checking the declaration and submitting your accreditation dossier.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+                        <a
+                          href="/Priority_Round.pdf"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#C9A86A] hover:bg-[#bfa060] text-[#1A1F1A] text-xs font-sans font-bold uppercase tracking-wider transition-all shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
+                          id="view-priority-round-pdf"
+                        >
+                          <span>Read in New Tab</span>
+                          <ExternalLink className="h-3.5 w-3.5 stroke-[2.5]" />
+                        </a>
+                        <a
+                          href="/Priority_Round.pdf"
+                          download="Priority_Round.pdf"
+                          title="Download Priority Round PDF"
+                          className="p-2.5 border border-[#8A9A7E]/40 hover:border-[#C9A86A] bg-[#1A1F1A] text-[#EDE6D3] hover:text-[#C9A86A] transition-all cursor-pointer"
+                        >
+                          <Download className="h-4 w-4" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Declaration Checkbox */}
                   <div className="border border-[#C9A86A]/30 bg-[#2E3B2F]/40 p-4 space-y-2">
                     <label className="flex items-start gap-3 cursor-pointer">
@@ -2065,7 +2339,17 @@ export default function Registration({ initialPreference, clearInitialPreference
                         className="mt-1 h-4 w-4 rounded-none accent-[#C9A86A] cursor-pointer"
                       />
                       <span className="text-xs text-[#EDE6D3] leading-relaxed">
-                        I hereby declare that all information furnished in this priority accreditation dossier is accurate, the payment reference belongs to my registration, and I agree to the IISTMUN 2026 conference guidelines and allotment protocols.
+                        I hereby declare that all information furnished in this priority accreditation dossier is accurate, the payment reference belongs to my registration, and I have read and agree to the{" "}
+                        <a
+                          href="/Priority_Round.pdf"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#C9A86A] underline hover:text-[#d6b77c] inline-flex items-center gap-0.5 font-semibold"
+                        >
+                          Priority Round Guidelines (Priority_Round.pdf)
+                          <ExternalLink className="h-3 w-3 inline ml-0.5" />
+                        </a>{" "}
+                        and IISTMUN 2026 conference allotment protocols.
                       </span>
                     </label>
                     {errors.agreedToTerms && (

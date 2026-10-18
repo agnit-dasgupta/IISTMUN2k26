@@ -74,7 +74,8 @@ export const COMMITTEES: Committee[] = [
       { name: "Kunal Deshmukh", role: "Moderator", avatar: "KD" },
       { name: "Anjali Menon", role: "Deputy Moderator", avatar: "AM" }
     ],
-    guideUrl: "#"
+    guideUrl: "https://docs.google.com/spreadsheets/d/1jXZQ9IHvoSYjUnrJBU5lFZpJFb-iJZy19LqRj7p-dDY/edit?usp=sharing",
+    portfolioUrl: "https://docs.google.com/spreadsheets/d/1jXZQ9IHvoSYjUnrJBU5lFZpJFb-iJZy19LqRj7p-dDY/edit?usp=sharing"
   },
   {
     id: "undp",
