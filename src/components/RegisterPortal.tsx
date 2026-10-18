@@ -54,8 +54,8 @@ export default function RegisterPortal({
     initialPortalTab === "campus-ambassador"
       ? "campus-ambassador"
       : initialPortalTab === "unga"
-      ? "unga"
-      : "priority"
+        ? "unga"
+        : "priority"
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
@@ -104,8 +104,8 @@ export default function RegisterPortal({
         initialPortalTab === "campus-ambassador"
           ? "campus-ambassador"
           : initialPortalTab === "unga"
-          ? "unga"
-          : "priority"
+            ? "unga"
+            : "priority"
       );
     }
   }, [initialPortalTab]);
@@ -265,11 +265,10 @@ export default function RegisterPortal({
             setSelectedForm("priority");
             setSubmittedCA(null);
           }}
-          className={`p-5 text-left border transition-all duration-200 cursor-pointer relative ${
-            selectedForm === "priority"
+          className={`p-5 text-left border transition-all duration-200 cursor-pointer relative ${selectedForm === "priority"
               ? "border-[#C9A86A] bg-[#2E3B2F] shadow-lg"
               : "border-[#C9A86A]/20 bg-[#1A1F1A]/70 hover:border-[#C9A86A]/50 hover:bg-[#2E3B2F]/40"
-          }`}
+            }`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C9A86A]">
@@ -288,6 +287,7 @@ export default function RegisterPortal({
           <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
             Individual, double delegation &amp; contingent intake &bull; On-campus chambers.
           </p>
+
           {selectedForm === "priority" && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#C9A86A]" />
           )}
@@ -300,11 +300,10 @@ export default function RegisterPortal({
             setSelectedForm("unga");
             setSubmittedCA(null);
           }}
-          className={`p-5 text-left border transition-all duration-200 cursor-pointer relative ${
-            selectedForm === "unga"
+          className={`p-5 text-left border transition-all duration-200 cursor-pointer relative ${selectedForm === "unga"
               ? "border-[#C9A86A] bg-[#2E3B2F] shadow-lg"
               : "border-[#C9A86A]/20 bg-[#1A1F1A]/70 hover:border-[#C9A86A]/50 hover:bg-[#2E3B2F]/40"
-          }`}
+            }`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C9A86A]">
@@ -335,11 +334,10 @@ export default function RegisterPortal({
             setSelectedForm("campus-ambassador");
             setSubmittedCA(null);
           }}
-          className={`p-5 text-left border transition-all duration-200 cursor-pointer relative ${
-            selectedForm === "campus-ambassador"
+          className={`p-5 text-left border transition-all duration-200 cursor-pointer relative ${selectedForm === "campus-ambassador"
               ? "border-[#8BA06F] bg-[#2E3B2F] shadow-lg"
               : "border-[#C9A86A]/20 bg-[#1A1F1A]/70 hover:border-[#8BA06F]/50 hover:bg-[#2E3B2F]/40"
-          }`}
+            }`}
         >
           <div className="flex items-center justify-between mb-2">
             <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#8BA06F]">

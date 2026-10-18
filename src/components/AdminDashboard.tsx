@@ -783,6 +783,9 @@ export default function AdminDashboard() {
         } as RegistrationDetails);
       });
 
+      // Set immediately with live Firestore list
+      setUngaRegistrations(mergeUngaRecords(list));
+
       fetch("/api/registrations")
         .then((res) => res.json())
         .then((res) => {
@@ -790,7 +793,7 @@ export default function AdminDashboard() {
           setUngaRegistrations(mergeUngaRecords(list, backup));
         })
         .catch(() => {
-          setUngaRegistrations(mergeUngaRecords(list));
+          // Already populated with live list
         });
     }, (error) => {
       console.warn("unga_registrations subscription status:", error instanceof Error ? error.message : "Access error");
@@ -1451,8 +1454,18 @@ export default function AdminDashboard() {
       if (newPaymentStatus) {
         updates.paymentStatus = newPaymentStatus;
       }
-      await updateDoc(doc(db, "unga_registrations", id), updates).catch(() => {});
-      await updateDoc(doc(db, "registrations", id), updates).catch(() => {});
+
+      const regItem = ungaRegistrations.find((r) => r.id === id || r.uid === id);
+      const targetIds = new Set<string>([id]);
+      if (regItem?.uid) targetIds.add(regItem.uid);
+      if (regItem?.id) targetIds.add(regItem.id);
+      if (regItem?.uid) targetIds.add(`${regItem.uid}_unga`);
+      if (id && !id.endsWith("_unga")) targetIds.add(`${id}_unga`);
+
+      await Promise.allSettled([
+        ...Array.from(targetIds).map((targetId) => updateDoc(doc(db, "unga_registrations", targetId), updates)),
+        ...Array.from(targetIds).map((targetId) => updateDoc(doc(db, "registrations", targetId), updates))
+      ]);
 
       showToast(`Updated UNGA status to ${newStatus}`);
       if (selectedUngaReg && (selectedUngaReg.id === id || selectedUngaReg.uid === id)) {
@@ -1483,8 +1496,20 @@ export default function AdminDashboard() {
         adminNotes: allotUngaForm.adminNotes,
         status: "Portfolio Allotted"
       };
-      await updateDoc(doc(db, "unga_registrations", id), updates).catch(() => {});
-      await updateDoc(doc(db, "registrations", id), updates).catch(() => {});
+
+      const regItem = allotUngaModalReg;
+      const targetIds = new Set<string>();
+      if (id) targetIds.add(id);
+      if (regItem?.uid) targetIds.add(regItem.uid);
+      if (regItem?.id) targetIds.add(regItem.id);
+      if (regItem?.uid) targetIds.add(`${regItem.uid}_unga`);
+      if (id && !id.endsWith("_unga")) targetIds.add(`${id}_unga`);
+
+      await Promise.allSettled([
+        ...Array.from(targetIds).map((targetId) => updateDoc(doc(db, "unga_registrations", targetId), updates)),
+        ...Array.from(targetIds).map((targetId) => updateDoc(doc(db, "registrations", targetId), updates))
+      ]);
+
       showToast(`Allotted ${allotUngaForm.country || "Portfolio"} in UNGA to ${allotUngaModalReg.name}!`);
       if (selectedUngaReg && (selectedUngaReg.id === id || selectedUngaReg.uid === id)) {
         setSelectedUngaReg((prev) => (prev ? { ...prev, ...updates } : null));
@@ -1505,9 +1530,21 @@ export default function AdminDashboard() {
   const handleUngaDelete = async (id: string, name: string) => {
     setActionLoading(true);
     try {
-      await deleteDoc(doc(db, "unga_registrations", id)).catch(() => {});
-      await deleteDoc(doc(db, "registrations", id)).catch(() => {});
-      fetch(`/api/registrations/${id}`, { method: "DELETE" }).catch(() => {});
+      const regItem = ungaRegistrations.find((p) => p.id === id || p.uid === id);
+      const targetIds = new Set<string>([id]);
+      if (regItem?.uid) targetIds.add(regItem.uid);
+      if (regItem?.id) targetIds.add(regItem.id);
+      if (regItem?.uid) targetIds.add(`${regItem.uid}_unga`);
+      if (id && !id.endsWith("_unga")) targetIds.add(`${id}_unga`);
+
+      await Promise.allSettled([
+        ...Array.from(targetIds).map((targetId) => deleteDoc(doc(db, "unga_registrations", targetId))),
+        ...Array.from(targetIds).map((targetId) => deleteDoc(doc(db, "registrations", targetId)))
+      ]);
+      targetIds.forEach((targetId) => {
+        fetch(`/api/registrations/${targetId}`, { method: "DELETE" }).catch(() => {});
+      });
+
       setUngaRegistrations((prev) => prev.filter((p) => p.id !== id && p.uid !== id));
       setRegistrations((prev) => prev.filter((r) => r.id !== id && r.uid !== id));
       showToast(`Deleted UNGA registration for ${name}.`);
@@ -5197,6 +5234,33 @@ export default function AdminDashboard() {
                       View in Ledger &rarr;
                     </button>
                     <span className="text-[10px] font-mono text-[#8A9A7E]">Live Submissions</span>
+                  </div>
+                </div>
+
+                {/* UNGA Online Registrations */}
+                <div className="bg-[#2E3B2F]/60 border border-[#C9A86A]/30 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        unga_registrations
+                      </span>
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-[#1A1F1A] text-[#EDE6D3] border border-[#C9A86A]/30">
+                        {collectionCounts.unga_registrations ?? ungaRegistrations.length} delegates
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-base text-[#EDE6D3]">UNGA Online Delegations</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                      Submitted via UNGA Virtual Portal. Stores portfolio preferences, past MUN experience, speech drafts, UPI UTR proofs, and country assignments.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#C9A86A]/20">
+                    <button
+                      onClick={() => setActiveSubTab("unga")}
+                      className="text-xs font-sans text-[#C9A86A] hover:underline cursor-pointer"
+                    >
+                      View in UNGA Ledger &rarr;
+                    </button>
+                    <span className="text-[10px] font-mono text-[#8A9A7E]">Online Edition</span>
                   </div>
                 </div>
 

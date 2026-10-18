@@ -258,6 +258,10 @@
       "schema": "registration",
       "description": "Registrations submitted by delegates"
     },
+    "unga_registrations/{registrationId}": {
+      "schema": "registration",
+      "description": "Registrations submitted by delegates for UNGA Online edition"
+    },
     "portfolio_states/{countryName}": {
       "schema": "portfolio_state",
       "description": "Live overrides for portfolio statuses in different committees"

@@ -204,36 +204,44 @@ export default function UNGARegistration({
         setLoading(false);
       } else {
         // Fallback: Check if registration exists under main registrations collection
-        getDoc(doc(db, "registrations", user.uid)).then((legacySnap) => {
-          if (legacySnap.exists()) {
-            const data = legacySnap.data() as RegistrationDetails;
-            if (data.pref1Committee === "unga" || data.round === "online") {
-              setSubmittedPass(data);
-            } else {
-              setSubmittedPass(null);
-            }
+        getDoc(doc(db, "registrations", `${user.uid}_unga`)).then((ungaDocSnap) => {
+          if (ungaDocSnap.exists()) {
+            const data = ungaDocSnap.data() as RegistrationDetails;
+            setSubmittedPass(data);
             setLoading(false);
-          } else {
-            // Check server fallback
-            fetch("/api/registrations")
-              .then(res => res.json())
-              .then(res => {
-                const match = res.data?.find((r: any) =>
-                  (r.userId === user.uid || (r.email && r.email.toLowerCase() === user.email?.toLowerCase())) &&
-                  (r.pref1Committee === "unga" || r.round === "online" || (r.id && r.id.startsWith("UNGA")))
-                );
-                if (match) {
-                  setSubmittedPass(match);
-                } else {
-                  setSubmittedPass(null);
-                }
-                setLoading(false);
-              })
-              .catch(() => {
-                setSubmittedPass(null);
-                setLoading(false);
-              });
+            return;
           }
+          return getDoc(doc(db, "registrations", user.uid)).then((legacySnap) => {
+            if (legacySnap.exists()) {
+              const data = legacySnap.data() as RegistrationDetails;
+              if (data.pref1Committee === "unga" || data.round === "online" || (data.id && data.id.startsWith("UNGA"))) {
+                setSubmittedPass(data);
+              } else {
+                setSubmittedPass(null);
+              }
+              setLoading(false);
+            } else {
+              // Check server fallback
+              fetch("/api/registrations")
+                .then(res => res.json())
+                .then(res => {
+                  const match = res.data?.find((r: any) =>
+                    (r.userId === user.uid || (r.email && r.email.toLowerCase() === user.email?.toLowerCase())) &&
+                    (r.pref1Committee === "unga" || r.round === "online" || (r.id && r.id.startsWith("UNGA")))
+                  );
+                  if (match) {
+                    setSubmittedPass(match);
+                  } else {
+                    setSubmittedPass(null);
+                  }
+                  setLoading(false);
+                })
+                .catch(() => {
+                  setSubmittedPass(null);
+                  setLoading(false);
+                });
+            }
+          });
         }).catch(() => {
           setSubmittedPass(null);
           setLoading(false);
@@ -383,10 +391,12 @@ export default function UNGARegistration({
       });
 
       const utr = (formData.utrNumber || formData.transactionId).trim();
+      const primaryDocId = user?.uid || primaryTicketId;
 
       const newRegistration: RegistrationDetails = {
         id: primaryTicketId,
-        userId: user?.uid || `guest-${Date.now()}`,
+        uid: primaryDocId,
+        userId: user?.uid || primaryTicketId,
         timestamp,
         round: "online",
         isPriority: false,
@@ -415,9 +425,10 @@ export default function UNGARegistration({
         partnerEmail: "",
         partnerPhone: "",
         partnerInstitution: "",
-        partnerRole: undefined,
-        contingentSize: undefined,
+        partnerRole: "Delegate",
+        contingentSize: "1",
         munExperience: formData.munExperience,
+        pastMunDetails: formData.pastMunDetails?.trim() || "",
         pref1Committee: "unga",
         pref1Country: formData.pref1Portfolios.filter(Boolean).join(", ") || formData.pref1Country.trim(),
         pref1Portfolios: formData.pref1Portfolios.map(p => p.trim()),
@@ -431,55 +442,81 @@ export default function UNGARegistration({
         motivation: formData.motivation.trim(),
         accommodationRequired: "no",
         feeAmount: calculatedFee,
-        campusAmbassadorCode: "",
+        campusAmbassadorCode: formData.campusAmbassadorCode?.trim() || "",
         idCardUrl: formData.idCardUrl || "",
         idCardName: formData.idCardName || "",
         hasMerch: !isIISTInstitution(formData.institution) && formData.hasMerch,
-        merchSize: (!isIISTInstitution(formData.institution) && formData.hasMerch) ? (formData.merchSize || "M") : undefined,
+        merchSize: (!isIISTInstitution(formData.institution) && formData.hasMerch) ? (formData.merchSize || "M") : "",
         merchAmount: (!isIISTInstitution(formData.institution) && formData.hasMerch) ? 599 : 0,
         paymentMode: formData.paymentMode,
         transactionId: utr,
         utrNumber: utr,
         payerName: formData.payerName.trim(),
         paymentDate: formData.paymentDate,
-        paymentScreenshotUrl: formData.paymentScreenshotUrl,
-        paymentScreenshotName: formData.paymentScreenshotName,
+        paymentScreenshotUrl: formData.paymentScreenshotUrl || "",
+        paymentScreenshotName: formData.paymentScreenshotName || "",
         paymentStatus: "Pending",
         status: "Pending Verification"
       };
 
-      // 1. Write to local server backup endpoint (feeds Admin Console & local backup)
+      // Strip any undefined keys so Firestore SDK never throws Unsupported field value: undefined
+      const cleanRegistration: Record<string, any> = {};
+      for (const [key, val] of Object.entries(newRegistration)) {
+        if (val !== undefined) {
+          cleanRegistration[key] = val;
+        }
+      }
+
+      // 1. Write to local server backup endpoint (feeds local server backup if available)
       try {
         await fetch("/api/registrations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newRegistration)
+          body: JSON.stringify(cleanRegistration)
         });
       } catch (backupErr) {
         console.warn("Local server backup note:", backupErr);
       }
 
-      // 2. Persist in Firestore 'registrations' (the primary conference registry)
-      const primaryDocId = user?.uid || primaryTicketId;
+      // 2. Persist in Firestore 'unga_registrations' (dedicated UNGA collection)
+      let ungaFirestoreSuccess = false;
       try {
-        await setDoc(doc(db, "registrations", primaryDocId), newRegistration);
-      } catch (regErr) {
-        console.warn("Firestore 'registrations' write status:", regErr);
+        await setDoc(doc(db, "unga_registrations", primaryDocId), cleanRegistration);
+        ungaFirestoreSuccess = true;
+        console.log("[FIREBASE SUCCESS] UNGA registration uploaded to unga_registrations:", primaryDocId);
+      } catch (ungaErr) {
+        console.error("Firestore 'unga_registrations' primary write status:", ungaErr);
+        if (primaryDocId !== primaryTicketId) {
+          try {
+            await setDoc(doc(db, "unga_registrations", primaryTicketId), cleanRegistration);
+            ungaFirestoreSuccess = true;
+            console.log("[FIREBASE SUCCESS] UNGA registration uploaded to unga_registrations with ticket ID fallback:", primaryTicketId);
+          } catch (fallbackErr) {
+            console.error("Firestore 'unga_registrations' fallback write status:", fallbackErr);
+          }
+        }
       }
 
-      // 3. Persist in Firestore 'unga_registrations' (dedicated UNGA collection)
+      // 3. Persist in Firestore 'registrations' (the primary conference registry)
       try {
-        await setDoc(doc(db, "unga_registrations", primaryDocId), newRegistration);
-      } catch (ungaErr) {
-        console.warn("Firestore 'unga_registrations' write status:", ungaErr);
+        const regDocId = user?.uid ? `${user.uid}_unga` : primaryTicketId;
+        await setDoc(doc(db, "registrations", regDocId), cleanRegistration);
+        console.log("[FIREBASE SUCCESS] UNGA registration uploaded to registrations:", regDocId);
+      } catch (regErr) {
+        console.warn("Firestore 'registrations' write status:", regErr);
+        try {
+          await setDoc(doc(db, "registrations", primaryTicketId), cleanRegistration);
+        } catch (e3) {
+          console.warn("Firestore 'registrations' ticketId write status:", e3);
+        }
       }
 
       // 4. Cache locally in localStorage for persistent session
       try {
-        localStorage.setItem("iistmun_last_unga_pass", JSON.stringify(newRegistration));
+        localStorage.setItem("iistmun_last_unga_pass", JSON.stringify(cleanRegistration));
       } catch { }
 
-      setSubmittedPass(newRegistration);
+      setSubmittedPass(cleanRegistration as RegistrationDetails);
       window.scrollTo({ top: 80, behavior: "smooth" });
     } catch (err) {
       console.error("UNGA submission failed:", err);
@@ -544,6 +581,11 @@ export default function UNGARegistration({
       if (user) {
         try {
           await deleteDoc(doc(db, "unga_registrations", user.uid));
+        } catch { }
+      }
+      if (submittedPass?.id) {
+        try {
+          await deleteDoc(doc(db, "unga_registrations", submittedPass.id));
         } catch { }
       }
       setSubmittedPass(null);
