@@ -147,7 +147,7 @@ export default function Committees() {
                     <div className="flex items-center gap-2">
                       <span className="font-sans text-[10px] text-[#8A9A7E] uppercase tracking-wider">Executive Board:</span>
                       <span className="font-sans text-xs text-[#EDE6D3] font-medium">
-                        {com.eb.map((m) => m.name.split(" ")[0]).join(" & ")}
+                        {com.eb && com.eb.length > 0 ? com.eb.map((m) => m.name.split(" ")[0]).join(" & ") : "To be announced"}
                       </span>
                     </div>
                     
@@ -219,19 +219,25 @@ export default function Committees() {
               {/* Executive Board */}
               <div className="mt-8 border-t border-[#C9A86A]/20 pt-6">
                 <h4 className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E] font-medium mb-4">// EXECUTIVE BOARD PRESIDIUM</h4>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {selectedCommittee.eb.map((member) => (
-                    <div key={member.name} className="flex items-center gap-3 border border-[#C9A86A]/25 bg-[#1A1F1A] p-3">
-                      <div className="h-8 w-8 border border-[#C9A86A] flex items-center justify-center font-serif text-xs text-[#C9A86A] bg-[#2E3B2F]">
-                        {member.avatar}
+                {selectedCommittee.eb && selectedCommittee.eb.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {selectedCommittee.eb.map((member) => (
+                      <div key={member.name} className="flex items-center gap-3 border border-[#C9A86A]/25 bg-[#1A1F1A] p-3">
+                        <div className="h-8 w-8 border border-[#C9A86A] flex items-center justify-center font-serif text-xs text-[#C9A86A] bg-[#2E3B2F]">
+                          {member.avatar}
+                        </div>
+                        <div>
+                          <p className="font-serif text-sm text-[#EDE6D3] font-normal">{member.name}</p>
+                          <p className="font-sans text-[10px] uppercase text-[#8A9A7E] tracking-wider">{member.role}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-serif text-sm text-[#EDE6D3] font-normal">{member.name}</p>
-                        <p className="font-sans text-[10px] uppercase text-[#8A9A7E] tracking-wider">{member.role}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-[#1A1F1A] border border-[#8A9A7E]/20 text-xs text-[#8A9A7E] italic">
+                    Executive Board presidium will be announced shortly by the Secretariat.
+                  </div>
+                )}
               </div>
 
               {/* Footer & Download Button */}

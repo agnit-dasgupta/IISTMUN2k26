@@ -24,14 +24,11 @@ export const COMMITTEES: Committee[] = [
     id: "unga",
     name: "United Nations General Assembly (Online Committee)",
     abbreviation: "UNGA (Online)",
-    agenda: "Reviewing global geopolitical stability, reforming multilateral institutions, and preventing weaponization in international commons.",
+    agenda: "To be announced",
     description: "The premier deliberative organ of the United Nations conducted entirely online, convening delegates worldwide for sovereign equality debate, global consensus-building, and digital diplomatic multilateralism.",
     logo: "Globe",
     color: "blue",
-    eb: [
-      { name: "Siddharth Nair", role: "President", avatar: "SN" },
-      { name: "Diya Roy", role: "Vice-President", avatar: "DR" }
-    ],
+    eb: [],
     guideUrl: "#"
   },
   {

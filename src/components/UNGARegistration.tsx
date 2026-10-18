@@ -24,19 +24,14 @@ import QRCodeDisplay from "./QRCodeDisplay";
 import { downloadBoardingPassPDF } from "../utils/pdfGenerator";
 import { isIISTInstitution, MERCH_SIZES } from "./Registration";
 
-// UNGA Committee metadata from official committees data
-export const UNGA_COMMITTEE_INFO = COMMITTEES.find(c => c.id === "unga") || {
+// UNGA Committee metadata
+export const UNGA_COMMITTEE_INFO = {
   id: "unga",
   name: "United Nations General Assembly (Online Committee)",
   abbreviation: "UNGA (Online)",
-  agenda: "Reviewing global geopolitical stability, reforming multilateral institutions, and preventing weaponization in international commons.",
   description: "The premier deliberative organ of the United Nations conducted entirely online, convening delegates worldwide for sovereign equality debate, global consensus-building, and digital diplomatic multilateralism.",
   logo: "Globe",
   color: "gold",
-  eb: [
-    { name: "Siddharth Nair", role: "President", avatar: "SN" },
-    { name: "Diya Roy", role: "Vice-President", avatar: "DR" }
-  ],
   guideUrl: "#"
 };
 
@@ -311,16 +306,6 @@ export default function UNGARegistration({
     }
 
     if (s === 4) {
-      const utr = (formData.utrNumber || formData.transactionId).trim();
-      if (!utr || utr.length < 6) {
-        err.utrNumber = "Valid UPI Transaction ID / 12-digit UTR reference is required.";
-      }
-      if (!formData.payerName.trim()) {
-        err.payerName = "Payer name as recorded in UPI app is required.";
-      }
-      if (!formData.paymentScreenshotUrl) {
-        err.paymentScreenshotUrl = "Please attach a screenshot of your successful UPI transfer receipt.";
-      }
       if (!formData.agreedToTerms) {
         err.agreedToTerms = "You must acknowledge and accept the conference guidelines and online simulation chamber protocols.";
       }
@@ -620,7 +605,7 @@ export default function UNGARegistration({
             UNGA (Online Committee)
           </h1>
           <p className="mt-2.5 text-xs sm:text-sm text-[#8A9A7E] max-w-xl mx-auto leading-relaxed">
-            Official registration portal for the United Nations General Assembly conducted entirely online. Deliberate globally from anywhere on key geopolitical stability questions.
+            Official registration portal for the United Nations General Assembly conducted entirely online. Deliberate globally from anywhere with accredited delegates worldwide.
           </p>
 
           {/* Online Perks Bar */}
@@ -1271,21 +1256,11 @@ export default function UNGARegistration({
                       United Nations General Assembly (Online Committee)
                     </h3>
                     <p className="text-xs text-[#8A9A7E] mt-1 leading-relaxed">
-                      <strong className="text-[#EDE6D3]">Agenda:</strong> "{UNGA_COMMITTEE_INFO.agenda}"
+                      {UNGA_COMMITTEE_INFO.description}
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-4 pt-2 text-[11px] text-[#8A9A7E] border-t border-[#C9A86A]/20">
-                    <div>
-                      <span className="text-[#EDE6D3] font-medium">President:</span> Siddharth Nair
-                    </div>
-                    <div>
-                      <span className="text-[#EDE6D3] font-medium">Vice-President:</span> Diya Roy
-                    </div>
-                    <div>
-                      <span className="text-[#C9A86A] font-medium">Platform:</span> High-Definition Secure Diplomatic Conclave
-                    </div>
-                  </div>
+
                 </div>
 
                 {/* 5 Ranked Country Preferences - Text Inputs Only (Dropdown Removed) */}
@@ -1372,7 +1347,7 @@ export default function UNGARegistration({
                       rows={4}
                       value={formData.motivation}
                       onChange={(e) => setFormData({ ...formData, motivation: e.target.value })}
-                      placeholder="Outline why you wish to represent your preferred country in the UNGA Online Chamber, your approach to the agenda, and past diplomatic interest..."
+                      placeholder="Outline why you wish to represent your preferred country in the UNGA Online Chamber, your diplomatic perspective, and past conference interest..."
                       className="w-full bg-[#2E3B2F]/40 border border-[#8A9A7E]/30 p-3 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none leading-relaxed"
                     />
                     <div className="flex items-center justify-between text-[11px]">
@@ -1603,7 +1578,7 @@ export default function UNGARegistration({
                       <div className="text-xs text-[#8A9A7E] space-y-1">
                         <div>
                           <span className="text-[#EDE6D3] font-semibold">Account Holder:</span>{" "}
-                          Arnav Jain
+                          Pankaj Kumar Jain
                         </div>
                         <div>
                           <span className="text-[#EDE6D3] font-semibold">Accepted Applications:</span>{" "}
@@ -1640,7 +1615,7 @@ export default function UNGARegistration({
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
                       <label className="font-sans text-xs uppercase tracking-wider text-[#EDE6D3] font-medium block">
-                        12-digit UPI Reference / UTR <span className="text-rose-400">*</span>
+                        12-digit UPI Reference / UTR
                       </label>
                       <input
                         type="text"
@@ -1654,7 +1629,7 @@ export default function UNGARegistration({
 
                     <div className="space-y-1.5">
                       <label className="font-sans text-xs uppercase tracking-wider text-[#EDE6D3] font-medium block">
-                        Payer Name in UPI App <span className="text-rose-400">*</span>
+                        Payer Name in UPI App
                       </label>
                       <input
                         type="text"
@@ -1668,7 +1643,7 @@ export default function UNGARegistration({
 
                     <div className="space-y-1.5">
                       <label className="font-sans text-xs uppercase tracking-wider text-[#EDE6D3] font-medium block">
-                        Date of Transfer <span className="text-rose-400">*</span>
+                        Date of Transfer
                       </label>
                       <input
                         type="date"
@@ -1682,7 +1657,7 @@ export default function UNGARegistration({
                   {/* Payment Screenshot File Upload */}
                   <div className="pt-2">
                     <FileUploadZone
-                      label="Payment Receipt Screenshot"
+                      label="Payment Receipt Screenshot (Optional)"
                       sublabel="Upload screenshot or PDF receipt clearly showing the UTR number, date, and ₹ amount paid (max 1MB)."
                       fileType="document"
                       accept=".pdf,image/*"
@@ -1706,7 +1681,7 @@ export default function UNGARegistration({
                       className="mt-1 h-4 w-4 rounded-none accent-[#C9A86A] cursor-pointer"
                     />
                     <span className="text-xs text-[#EDE6D3] leading-relaxed">
-                      I hereby declare that all information furnished in this UNGA (Online Committee) accreditation dossier is accurate, the payment reference belongs to my registration, and I agree to the IISTMUN 2027 conference guidelines and online simulation chamber allotment protocols.
+                      I hereby declare that all information furnished in this UNGA (Online Committee) accreditation dossier is accurate, any payment reference provided belongs to my registration, and I agree to the IISTMUN 2027 conference guidelines and online simulation chamber allotment protocols.
                     </span>
                   </label>
                   {errors.agreedToTerms && (
@@ -1781,7 +1756,7 @@ export default function UNGARegistration({
                   </span>
                 </div>
                 <h3 className="font-serif text-2xl sm:text-3xl text-[#EDE6D3] font-normal leading-tight">
-                  Official IISTMUN 2026 Edition T-Shirt
+                  Official IISTMUN 2027 Edition T-Shirt
                 </h3>
                 <p className="text-xs sm:text-sm text-[#8A9A7E] mt-1 leading-relaxed">
                   Would you like to purchase the official conference commemorative merchandise delivered directly to your residential postal address?
@@ -1797,33 +1772,30 @@ export default function UNGARegistration({
                     <button
                       type="button"
                       onClick={() => setMerchViewTab("front")}
-                      className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer ${
-                        merchViewTab === "front"
-                          ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
-                          : "text-[#8A9A7E] hover:text-[#EDE6D3]"
-                      }`}
+                      className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer ${merchViewTab === "front"
+                        ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
+                        : "text-[#8A9A7E] hover:text-[#EDE6D3]"
+                        }`}
                     >
                       Front View
                     </button>
                     <button
                       type="button"
                       onClick={() => setMerchViewTab("back")}
-                      className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer ${
-                        merchViewTab === "back"
-                          ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
-                          : "text-[#8A9A7E] hover:text-[#EDE6D3]"
-                      }`}
+                      className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer ${merchViewTab === "back"
+                        ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
+                        : "text-[#8A9A7E] hover:text-[#EDE6D3]"
+                        }`}
                     >
                       Back View
                     </button>
                     <button
                       type="button"
                       onClick={() => setMerchViewTab("size_chart")}
-                      className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                        merchViewTab === "size_chart"
-                          ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
-                          : "text-[#8A9A7E] hover:text-[#EDE6D3]"
-                      }`}
+                      className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer flex items-center justify-center gap-1 ${merchViewTab === "size_chart"
+                        ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
+                        : "text-[#8A9A7E] hover:text-[#EDE6D3]"
+                        }`}
                     >
                       <Ruler className="h-3 w-3" />
                       Size Chart
@@ -1872,9 +1844,8 @@ export default function UNGARegistration({
                     <button
                       type="button"
                       onClick={() => setMerchViewTab("front")}
-                      className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer ${
-                        merchViewTab === "front" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
-                      }`}
+                      className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer ${merchViewTab === "front" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
+                        }`}
                       title="Front view"
                     >
                       <img src="/merch_front.png" alt="Front thumbnail" className="h-full w-full object-contain" />
@@ -1882,9 +1853,8 @@ export default function UNGARegistration({
                     <button
                       type="button"
                       onClick={() => setMerchViewTab("back")}
-                      className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer ${
-                        merchViewTab === "back" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
-                      }`}
+                      className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer ${merchViewTab === "back" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
+                        }`}
                       title="Back view"
                     >
                       <img src="/merch_back.png" alt="Back thumbnail" className="h-full w-full object-contain" />
@@ -1892,9 +1862,8 @@ export default function UNGARegistration({
                     <button
                       type="button"
                       onClick={() => setMerchViewTab("size_chart")}
-                      className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer flex flex-col items-center justify-center ${
-                        merchViewTab === "size_chart" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
-                      }`}
+                      className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer flex flex-col items-center justify-center ${merchViewTab === "size_chart" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
+                        }`}
                       title="Size chart"
                     >
                       <Ruler className="h-4 w-4 text-[#C9A86A]" />
@@ -1946,11 +1915,10 @@ export default function UNGARegistration({
                             setSelectedMerchSize(sz.value);
                             if (merchSizeError) setMerchSizeError("");
                           }}
-                          className={`py-2 text-xs font-mono font-bold border transition-all cursor-pointer ${
-                            selectedMerchSize === sz.value
-                              ? "border-[#C9A86A] bg-[#C9A86A] text-[#1A1F1A]"
-                              : "border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#EDE6D3] hover:border-[#C9A86A]"
-                          }`}
+                          className={`py-2 text-xs font-mono font-bold border transition-all cursor-pointer ${selectedMerchSize === sz.value
+                            ? "border-[#C9A86A] bg-[#C9A86A] text-[#1A1F1A]"
+                            : "border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#EDE6D3] hover:border-[#C9A86A]"
+                            }`}
                         >
                           {sz.value}
                         </button>

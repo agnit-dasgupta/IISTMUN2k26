@@ -313,13 +313,16 @@ export default function Registration({ initialPreference, clearInitialPreference
       if (!formData.pref3Committee) {
         newErrors.pref3Committee = "3rd choice committee preference is required.";
       }
-      if (!formData.pref1Portfolios || formData.pref1Portfolios.length < 5 || formData.pref1Portfolios.some(p => !p.trim())) {
+      const isIp1 = formData.pref1Committee.startsWith("ip");
+      if (!isIp1 && (!formData.pref1Portfolios || formData.pref1Portfolios.length < 5 || formData.pref1Portfolios.some(p => !p.trim()))) {
         newErrors.pref1Portfolios = "All 5 portfolio choices are mandatory for 1st preference.";
       }
-      if (!formData.pref2Portfolios || formData.pref2Portfolios.length < 5 || formData.pref2Portfolios.some(p => !p.trim())) {
+      const isIp2 = formData.pref2Committee.startsWith("ip");
+      if (!isIp2 && (!formData.pref2Portfolios || formData.pref2Portfolios.length < 5 || formData.pref2Portfolios.some(p => !p.trim()))) {
         newErrors.pref2Portfolios = "All 5 portfolio choices are mandatory for 2nd preference.";
       }
-      if (!formData.pref3Portfolios || formData.pref3Portfolios.length < 5 || formData.pref3Portfolios.some(p => !p.trim())) {
+      const isIp3 = formData.pref3Committee.startsWith("ip");
+      if (!isIp3 && (!formData.pref3Portfolios || formData.pref3Portfolios.length < 5 || formData.pref3Portfolios.some(p => !p.trim()))) {
         newErrors.pref3Portfolios = "All 5 portfolio choices are mandatory for 3rd preference.";
       }
       if (!formData.priorityPreference) {
@@ -329,16 +332,7 @@ export default function Registration({ initialPreference, clearInitialPreference
         newErrors.motivation = "Statement of motivation must be at least 20 characters.";
       }
     } else if (currentStep === 4) {
-      // Stage 4: Payment
-      if (calculatedFee > 0) {
-        const utr = (formData.utrNumber || formData.transactionId).trim();
-        if (!utr || utr.length < 6) {
-          newErrors.utrNumber = "Valid 12-digit UPI Reference / UTR Number is required.";
-        }
-        if (!formData.payerName.trim()) {
-          newErrors.payerName = "Payer / Account holder name is required.";
-        }
-      }
+      // Stage 4: Payment (Non-mandatory)
       if (!formData.agreedToTerms) {
         newErrors.agreedToTerms = "You must acknowledge the accreditation terms to submit.";
       }
@@ -465,14 +459,20 @@ export default function Registration({ initialPreference, clearInitialPreference
         contingentSize: formData.contingentSize,
         munExperience: formData.munExperience,
         pref1Committee: formData.pref1Committee,
-        pref1Country: formData.pref1Portfolios.filter(Boolean).join(", ") || formData.pref1Country.trim(),
-        pref1Portfolios: formData.pref1Portfolios.map(p => p.trim()),
+        pref1Country: formData.pref1Portfolios.filter(Boolean).join(", ") || (formData.pref1Committee.startsWith("ip") ? "N/A" : formData.pref1Country.trim()),
+        pref1Portfolios: formData.pref1Committee.startsWith("ip") && formData.pref1Portfolios.every(p => !p.trim())
+          ? ["N/A", "N/A", "N/A", "N/A", "N/A"]
+          : formData.pref1Portfolios.map(p => p.trim() || (formData.pref1Committee.startsWith("ip") ? "N/A" : "")),
         pref2Committee: formData.pref2Committee,
-        pref2Country: formData.pref2Portfolios.filter(Boolean).join(", ") || formData.pref2Country.trim(),
-        pref2Portfolios: formData.pref2Portfolios.map(p => p.trim()),
+        pref2Country: formData.pref2Portfolios.filter(Boolean).join(", ") || (formData.pref2Committee.startsWith("ip") ? "N/A" : formData.pref2Country.trim()),
+        pref2Portfolios: formData.pref2Committee.startsWith("ip") && formData.pref2Portfolios.every(p => !p.trim())
+          ? ["N/A", "N/A", "N/A", "N/A", "N/A"]
+          : formData.pref2Portfolios.map(p => p.trim() || (formData.pref2Committee.startsWith("ip") ? "N/A" : "")),
         pref3Committee: formData.pref3Committee,
-        pref3Country: formData.pref3Portfolios.filter(Boolean).join(", ") || formData.pref3Country.trim(),
-        pref3Portfolios: formData.pref3Portfolios.map(p => p.trim()),
+        pref3Country: formData.pref3Portfolios.filter(Boolean).join(", ") || (formData.pref3Committee.startsWith("ip") ? "N/A" : formData.pref3Country.trim()),
+        pref3Portfolios: formData.pref3Committee.startsWith("ip") && formData.pref3Portfolios.every(p => !p.trim())
+          ? ["N/A", "N/A", "N/A", "N/A", "N/A"]
+          : formData.pref3Portfolios.map(p => p.trim() || (formData.pref3Committee.startsWith("ip") ? "N/A" : "")),
         priorityPreference: formData.priorityPreference,
         motivation: formData.motivation.trim(),
         accommodationRequired: "no",
@@ -551,7 +551,7 @@ export default function Registration({ initialPreference, clearInitialPreference
   const handleSharePass = () => {
     if (!submittedPass) return;
     const commName = COMMITTEES.find(c => c.id === submittedPass.pref1Committee)?.name || submittedPass.pref1Committee?.toUpperCase();
-    const shareText = `IIST MUN 2026 Priority Round Accreditation Confirmed! Primary Committee Choice: ${commName}. Accreditation ID: ${submittedPass.id}.`;
+    const shareText = `IIST MUN 2027 Priority Round Accreditation Confirmed! Primary Committee Choice: ${commName}. Accreditation ID: ${submittedPass.id}.`;
     navigator.clipboard.writeText(shareText);
     alert("Accreditation summary copied to clipboard!");
   };
@@ -713,7 +713,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                   <div className="w-11 h-11 border border-[#C9A86A] rounded-full flex items-center justify-center bg-[#1A1F1A] p-1 shrink-0 shadow-sm">
                     <img
                       src="/logo-emblem-transparent.png"
-                      alt="IIST MUN 2026"
+                      alt="IIST MUN 2027"
                       className="h-full w-full object-contain"
                     />
                   </div>
@@ -722,7 +722,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                       Priority Round Accreditation Pass
                     </div>
                     <div className="font-serif text-xl sm:text-2xl font-bold tracking-wide">
-                      IIST Model United Nations 2026
+                      IIST Model United Nations 2027
                     </div>
                   </div>
                 </div>
@@ -848,10 +848,10 @@ export default function Registration({ initialPreference, clearInitialPreference
                     </div>
                     <div>
                       <span className="block font-sans text-[9px] uppercase tracking-[0.16em] text-[#5B6B4F] font-bold">
-                        Convocation Dates
+                        Event Dates
                       </span>
                       <span className="font-sans text-[11px] text-[#1A1F1A]">
-                        30 Jan – 1 Feb 2026 &bull; IIST Valiamala
+                        30 Jan – 1 Feb 2027 &bull; IIST Valiamala
                       </span>
                     </div>
                   </div>
@@ -861,7 +861,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                     <strong>Priority Allotment Protocol:</strong> Committee portfolios will be assigned and emailed by the Secretariat based on candidate preferences and merit. Please present this ticket at the registration desk upon campus arrival.
                     {submittedPass.campusAmbassadorCode && (
                       <div className="mt-1 font-mono text-[10px] text-[#8B5A3C] font-semibold">
-                        Ambassador Code: {submittedPass.campusAmbassadorCode} (₹50 refund eligible)
+                        Ambassador Code: {submittedPass.campusAmbassadorCode}
                       </div>
                     )}
                     {submittedPass.idCardUrl && (
@@ -885,7 +885,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                       <QRCodeDisplay
                         uniqueId={submittedPass.id}
                         candidateName={submittedPass.name}
-                        title="IIST MUN 2026 Priority Pass"
+                        title="IIST MUN 2027 Priority Pass"
                         size={110}
                         showScannerTest={false}
                       />
@@ -902,7 +902,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                     </div>
                     {submittedPass.feeAmount !== undefined && (
                       <div className="font-mono text-[10px] font-bold text-[#8B5A3C] mt-1">
-                        Amount Paid: ₹{submittedPass.feeAmount}
+                        {submittedPass.utrNumber ? `Amount Paid: ₹${submittedPass.feeAmount}` : `Registration Fee: ₹${submittedPass.feeAmount} (Payment Pending)`}
                       </div>
                     )}
                   </div>
@@ -1307,34 +1307,8 @@ export default function Registration({ initialPreference, clearInitialPreference
                         </select>
                       </div>
 
-                      {/* Delegation Mode */}
-                      <div>
-                        <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] mb-1.5 font-semibold">
-                          Delegation Mode *
-                        </label>
-                        <select
-                          value={formData.delegationMode}
-                          onChange={(e) => {
-                            const mode = e.target.value as "individual" | "part_of_delegation";
-                            setFormData({
-                              ...formData,
-                              delegationMode: mode,
-                              regType: mode === "part_of_delegation" ? "contingent" : "individual"
-                            });
-                          }}
-                          className="w-full border border-[#8A9A7E]/30 bg-[#1A1F1A] px-4 py-3 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A] transition-all cursor-pointer font-medium"
-                        >
-                          <option value="individual" className="bg-[#1A1F1A] text-[#EDE6D3]">
-                            Individual Delegate
-                          </option>
-                          <option value="part_of_delegation" className="bg-[#1A1F1A] text-[#EDE6D3]">
-                            Part of Delegation
-                          </option>
-                        </select>
-                      </div>
-
                       {/* Desired Council Role */}
-                      <div>
+                      <div className="sm:col-span-2">
                         <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] mb-1.5 font-semibold">
                           Role Type
                         </label>
@@ -1387,9 +1361,6 @@ export default function Registration({ initialPreference, clearInitialPreference
                             <Award className="h-3.5 w-3.5 text-[#8BA06F]" />
                             Campus Ambassador Code (Optional)
                           </label>
-                          <span className="text-[9px] font-mono uppercase tracking-wider text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-2 py-0.5 font-bold">
-                            ₹50 Refund Eligible
-                          </span>
                         </div>
                         <input
                           type="text"
@@ -1398,12 +1369,6 @@ export default function Registration({ initialPreference, clearInitialPreference
                           className="w-full border border-[#8A9A7E]/30 bg-[#233124] px-4 py-2.5 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/50 outline-none focus:border-[#8BA06F] font-mono tracking-wider transition-all"
                           placeholder="e.g. CA-2027-XXXX or Ambassador Code"
                         />
-                        <div className="mt-2 text-[11px] text-[#8A9A7E] flex items-center gap-1.5 leading-relaxed">
-                          <Sparkles className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                          <span>
-                            <strong className="text-emerald-400">Note:</strong> Rs 50 will be refunded with applicable campus ambassador code.
-                          </span>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -1482,21 +1447,26 @@ export default function Registration({ initialPreference, clearInitialPreference
                         Council &amp; Committee Preferences (Ranked 1 to 3) *
                       </label>
                       <p className="text-[11px] text-[#8A9A7E] mt-0.5">
-                        Select your preferred simulation chambers and specify exactly 5 ranked portfolio / country choices for each committee. All 5 portfolio choices per committee are mandatory.
+                        Select your preferred simulation chambers and specify exactly 5 ranked portfolio / country choices for each committee. All 5 portfolio choices per committee are mandatory (Note: N/A for IP).
                       </p>
                       {/* Global NES'75 Portfolio Link Callout */}
                       <div className="mt-2.5 p-3 bg-[#1A1F1A] border border-[#C9A86A]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-sm">
                         <div className="flex items-center gap-2">
                           <FileSpreadsheet className="h-4 w-4 text-[#C9A86A] shrink-0" />
-                          <span className="text-xs text-[#EDE6D3]">
-                            Interested in <strong className="text-[#C9A86A]">National Emergency Summit 1975 (NES'75)</strong>?
-                          </span>
+                          <div className="text-left">
+                            <span className="text-xs text-[#EDE6D3] block">
+                              Interested in <strong className="text-[#C9A86A]">National Emergency Summit 1975 (NES'75)</strong>?
+                            </span>
+                            <span className="text-[10px] text-[#8A9A7E] block">
+                              Note: The NES'75 portfolio reference sheet is just a suggestion.
+                            </span>
+                          </div>
                         </div>
                         <a
                           href={NES75_PORTFOLIO_LINK}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#C9A86A] hover:text-[#e0c388] transition-colors"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#C9A86A] hover:text-[#e0c388] transition-colors shrink-0"
                         >
                           <span>Open NES'75 Portfolio Reference Sheet</span>
                           <ExternalLink className="h-3.5 w-3.5" />
@@ -1531,9 +1501,6 @@ export default function Registration({ initialPreference, clearInitialPreference
                             </option>
                           ))}
                         </select>
-                        <div className="mt-1 text-[10px] text-[#8A9A7E] leading-relaxed">
-                          {COMMITTEES.find(c => c.id === formData.pref1Committee)?.agenda || "Diplomatic chamber"}
-                        </div>
                         {errors.pref1Committee && <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.pref1Committee}</p>}
 
                         {/* NES'75 Portfolio Reference Sheet Link */}
@@ -1546,7 +1513,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                                   NES'75 Portfolio Reference Matrix
                                 </span>
                                 <span className="text-[10px] text-[#8A9A7E] block">
-                                  Review available cabinet portfolios, ministers, and opposition leaders.
+                                  Review available cabinet portfolios, ministers, and opposition leaders. <strong className="text-[#C9A86A]">Note:</strong> The portfolio link is just a suggestion.
                                 </span>
                               </div>
                             </div>
@@ -1565,14 +1532,24 @@ export default function Registration({ initialPreference, clearInitialPreference
 
                       {/* 5 Portfolio Inputs for Preference 1 */}
                       <div className="pt-3 border-t border-[#8A9A7E]/20">
-                        <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] mb-2 font-semibold">
-                          5 Portfolio / Country Choices for 1st Preference (Ranked 1 to 5) *
-                        </label>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                          <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] font-semibold">
+                            5 Portfolio / Country Choices for 1st Preference (Ranked 1 to 5) *
+                          </label>
+                          <span className="text-[10px] font-mono text-[#C9A86A]/90 bg-[#1A1F1A] px-2 py-0.5 border border-[#C9A86A]/30 self-start sm:self-auto font-medium">
+                            Note: N/A for IP
+                          </span>
+                        </div>
+                        {formData.pref1Committee.startsWith("ip") && (
+                          <div className="mb-2.5 p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[11px] text-[#EDE6D3] flex items-center gap-2">
+                            <span className="text-[#C9A86A] font-semibold">Note:</span> Portfolio selection is N/A for International Press (IP). You may enter "N/A" or leave empty.
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
                           {[0, 1, 2, 3, 4].map((idx) => (
                             <div key={idx}>
                               <span className="block text-[9px] font-mono text-[#8A9A7E] mb-1">
-                                Portfolio {idx + 1} *
+                                Portfolio {idx + 1} {formData.pref1Committee.startsWith("ip") ? "(Optional)" : "*"}
                               </span>
                               <input
                                 type="text"
@@ -1590,7 +1567,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                                   formData.pref1Committee === "nes75"
                                     ? `NES'75 Leader #${idx + 1}`
                                     : formData.pref1Committee.startsWith("ip")
-                                      ? `Press Bureau #${idx + 1}`
+                                      ? `N/A for IP`
                                       : `Country Choice #${idx + 1}`
                                 }
                               />
@@ -1630,9 +1607,6 @@ export default function Registration({ initialPreference, clearInitialPreference
                             </option>
                           ))}
                         </select>
-                        <div className="mt-1 text-[10px] text-[#8A9A7E] leading-relaxed">
-                          {COMMITTEES.find(c => c.id === formData.pref2Committee)?.agenda || "Diplomatic chamber"}
-                        </div>
                         {errors.pref2Committee && <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.pref2Committee}</p>}
 
                         {/* NES'75 Portfolio Reference Sheet Link */}
@@ -1645,7 +1619,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                                   NES'75 Portfolio Reference Matrix
                                 </span>
                                 <span className="text-[10px] text-[#8A9A7E] block">
-                                  Review available cabinet portfolios, ministers, and opposition leaders.
+                                  Review available cabinet portfolios, ministers, and opposition leaders. <strong className="text-[#C9A86A]">Note:</strong> The portfolio link is just a suggestion.
                                 </span>
                               </div>
                             </div>
@@ -1664,14 +1638,24 @@ export default function Registration({ initialPreference, clearInitialPreference
 
                       {/* 5 Portfolio Inputs for Preference 2 */}
                       <div className="pt-3 border-t border-[#8A9A7E]/20">
-                        <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] mb-2 font-semibold">
-                          5 Portfolio / Country Choices for 2nd Preference (Ranked 1 to 5) *
-                        </label>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                          <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] font-semibold">
+                            5 Portfolio / Country Choices for 2nd Preference (Ranked 1 to 5) *
+                          </label>
+                          <span className="text-[10px] font-mono text-[#C9A86A]/90 bg-[#1A1F1A] px-2 py-0.5 border border-[#C9A86A]/30 self-start sm:self-auto font-medium">
+                            Note: N/A for IP
+                          </span>
+                        </div>
+                        {formData.pref2Committee.startsWith("ip") && (
+                          <div className="mb-2.5 p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[11px] text-[#EDE6D3] flex items-center gap-2">
+                            <span className="text-[#C9A86A] font-semibold">Note:</span> Portfolio selection is N/A for International Press (IP). You may enter "N/A" or leave empty.
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
                           {[0, 1, 2, 3, 4].map((idx) => (
                             <div key={idx}>
                               <span className="block text-[9px] font-mono text-[#8A9A7E] mb-1">
-                                Portfolio {idx + 1} *
+                                Portfolio {idx + 1} {formData.pref2Committee.startsWith("ip") ? "(Optional)" : "*"}
                               </span>
                               <input
                                 type="text"
@@ -1689,7 +1673,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                                   formData.pref2Committee === "nes75"
                                     ? `NES'75 Leader #${idx + 1}`
                                     : formData.pref2Committee.startsWith("ip")
-                                      ? `Press Bureau #${idx + 1}`
+                                      ? `N/A for IP`
                                       : `Country Choice #${idx + 1}`
                                 }
                               />
@@ -1729,9 +1713,6 @@ export default function Registration({ initialPreference, clearInitialPreference
                             </option>
                           ))}
                         </select>
-                        <div className="mt-1 text-[10px] text-[#8A9A7E] leading-relaxed">
-                          {COMMITTEES.find(c => c.id === formData.pref3Committee)?.agenda || "Diplomatic chamber"}
-                        </div>
                         {errors.pref3Committee && <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.pref3Committee}</p>}
 
                         {/* NES'75 Portfolio Reference Sheet Link */}
@@ -1744,7 +1725,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                                   NES'75 Portfolio Reference Matrix
                                 </span>
                                 <span className="text-[10px] text-[#8A9A7E] block">
-                                  Review available cabinet portfolios, ministers, and opposition leaders.
+                                  Review available cabinet portfolios, ministers, and opposition leaders. <strong className="text-[#C9A86A]">Note:</strong> The portfolio link is just a suggestion.
                                 </span>
                               </div>
                             </div>
@@ -1763,14 +1744,24 @@ export default function Registration({ initialPreference, clearInitialPreference
 
                       {/* 5 Portfolio Inputs for Preference 3 */}
                       <div className="pt-3 border-t border-[#8A9A7E]/20">
-                        <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] mb-2 font-semibold">
-                          5 Portfolio / Country Choices for 3rd Preference (Ranked 1 to 5) *
-                        </label>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                          <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] font-semibold">
+                            5 Portfolio / Country Choices for 3rd Preference (Ranked 1 to 5) *
+                          </label>
+                          <span className="text-[10px] font-mono text-[#C9A86A]/90 bg-[#1A1F1A] px-2 py-0.5 border border-[#C9A86A]/30 self-start sm:self-auto font-medium">
+                            Note: N/A for IP
+                          </span>
+                        </div>
+                        {formData.pref3Committee.startsWith("ip") && (
+                          <div className="mb-2.5 p-2 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[11px] text-[#EDE6D3] flex items-center gap-2">
+                            <span className="text-[#C9A86A] font-semibold">Note:</span> Portfolio selection is N/A for International Press (IP). You may enter "N/A" or leave empty.
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
                           {[0, 1, 2, 3, 4].map((idx) => (
                             <div key={idx}>
                               <span className="block text-[9px] font-mono text-[#8A9A7E] mb-1">
-                                Portfolio {idx + 1} *
+                                Portfolio {idx + 1} {formData.pref3Committee.startsWith("ip") ? "(Optional)" : "*"}
                               </span>
                               <input
                                 type="text"
@@ -1788,7 +1779,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                                   formData.pref3Committee === "nes75"
                                     ? `NES'75 Leader #${idx + 1}`
                                     : formData.pref3Committee.startsWith("ip")
-                                      ? `Press Bureau #${idx + 1}`
+                                      ? `N/A for IP`
                                       : `Country Choice #${idx + 1}`
                                 }
                               />
@@ -1958,7 +1949,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                       Stage 4: Fee Payment & Transaction Verification
                     </h2>
                     <p className="text-xs sm:text-sm text-[#8A9A7E] mt-1 leading-relaxed">
-                      Complete your Priority Round registration fee payment using the official QR code or UPI ID.
+                      Complete your Priority Round registration fee payment using the official QR code or UPI ID, or complete payment later (payment is non-mandatory).
                     </p>
                   </div>
 
@@ -2134,7 +2125,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                         <div className="text-xs text-[#8A9A7E] space-y-1">
                           <div>
                             <span className="text-[#EDE6D3] font-semibold">Account Holder:</span>{" "}
-                            Arnav Jain
+                            Pankaj Kumar Jain
                           </div>
                           <div>
                             <span className="text-[#EDE6D3] font-semibold">Accepted Applications:</span>{" "}
@@ -2146,32 +2137,27 @@ export default function Registration({ initialPreference, clearInitialPreference
                         <div className="border border-[#8A9A7E]/30 bg-[#1A1F1A] p-3 text-[11px] text-[#EDE6D3] space-y-1.5 leading-relaxed">
                           <div className="flex items-start gap-1.5">
                             <span className="text-[#C9A86A] font-bold">1.</span>
-                            <span>Scan the official QR code or pay to <strong className="text-[#C9A86A]">arnav.tpj@oksbi</strong>.</span>
+                            <span>Scan the official QR code or pay to <strong className="text-[#C9A86A]">arnav.tpj@oksbi</strong> (Optional at registration).</span>
                           </div>
                           <div className="flex items-start gap-1.5">
                             <span className="text-[#C9A86A] font-bold">2.</span>
-                            <span>Copy the <strong>12-digit UTR / UPI Transaction Reference Number</strong> from your payment receipt.</span>
+                            <span>If paid, copy the <strong>12-digit UTR / UPI Transaction Reference Number</strong> from your payment receipt.</span>
                           </div>
                           <div className="flex items-start gap-1.5">
                             <span className="text-[#C9A86A] font-bold">3.</span>
-                            <span>Enter the UTR number and upload the screenshot proof below to finalize accreditation.</span>
+                            <span>Enter the UTR number and upload the screenshot proof below if available, or proceed without payment to submit your priority dossier.</span>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Campus Ambassador Referral Code Card with Rs 50 Refund Note */}
+                  {/* Campus Ambassador Referral Code Card */}
                   <div className="border border-[#8BA06F]/50 bg-[#1A1F1A] p-5 text-left shadow-lg">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 pb-2 border-b border-[#8BA06F]/20">
-                      <div className="flex items-center gap-2">
-                        <Award className="h-4 w-4 text-[#8BA06F]" />
-                        <span className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-bold">
-                          Campus Ambassador Referral Code
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-2 py-0.5 font-bold self-start sm:self-auto">
-                        ₹50 Cash Refund Eligible
+                    <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#8BA06F]/20">
+                      <Award className="h-4 w-4 text-[#8BA06F]" />
+                      <span className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-bold">
+                        Campus Ambassador Referral Code
                       </span>
                     </div>
 
@@ -2186,12 +2172,6 @@ export default function Registration({ initialPreference, clearInitialPreference
                         className="w-full border border-[#8A9A7E]/30 bg-[#233124] px-4 py-2.5 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/50 outline-none focus:border-[#8BA06F] font-mono tracking-wider transition-all"
                         placeholder="e.g. CA-2027-XXXX or Ambassador Code"
                       />
-                      <div className="p-2.5 bg-emerald-950/30 border border-emerald-500/30 flex items-start gap-2 text-xs text-[#EDE6D3] leading-relaxed">
-                        <Sparkles className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
-                        <div>
-                          <strong className="text-emerald-300">Refund Note:</strong> Rs 50 will be refunded with applicable campus ambassador code upon verification by the Secretariat.
-                        </div>
-                      </div>
                     </div>
                   </div>
 
@@ -2199,13 +2179,13 @@ export default function Registration({ initialPreference, clearInitialPreference
                   <div className="border border-[#8A9A7E]/30 bg-[#1A1F1A]/80 p-5 space-y-4">
                     <span className="font-sans text-[10px] uppercase tracking-widest text-[#C9A86A] font-bold block flex items-center gap-1.5">
                       <CreditCard className="h-3.5 w-3.5 text-[#C9A86A]" />
-                      Payment Transaction Credentials *
+                      Payment Transaction Credentials
                     </span>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Payment Mode */}
                       <div>
-                        <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">Payment Mode *</label>
+                        <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">Payment Mode </label>
                         <select
                           value={formData.paymentMode}
                           onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value })}
@@ -2222,7 +2202,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                       {/* UTR / Transaction ID */}
                       <div>
                         <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">
-                          UPI Ref / 12-Digit UTR Number *
+                          UPI Ref / 12-Digit UTR Number
                         </label>
                         <input
                           type="text"
@@ -2237,7 +2217,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                       {/* Payer Name */}
                       <div>
                         <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">
-                          Payer Name (Bank / UPI Account Holder) *
+                          Payer Name (Bank / UPI Account Holder)
                         </label>
                         <input
                           type="text"
@@ -2251,7 +2231,7 @@ export default function Registration({ initialPreference, clearInitialPreference
 
                       {/* Date of Payment */}
                       <div>
-                        <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">Date of Payment *</label>
+                        <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">Date of Payment </label>
                         <input
                           type="date"
                           value={formData.paymentDate}
@@ -2268,7 +2248,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                       </label>
                       <FileUploadZone
                         label="Upload UPI Payment Receipt"
-                        sublabel="Attach payment screenshot or provide cloud drive link"
+                        sublabel="Attach payment screenshot or provide cloud drive link (optional)"
                         fileType="image"
                         maxSizeMB={5}
                         valueUrl={formData.paymentScreenshotUrl}
@@ -2339,7 +2319,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                         className="mt-1 h-4 w-4 rounded-none accent-[#C9A86A] cursor-pointer"
                       />
                       <span className="text-xs text-[#EDE6D3] leading-relaxed">
-                        I hereby declare that all information furnished in this priority accreditation dossier is accurate, the payment reference belongs to my registration, and I have read and agree to the{" "}
+                        I hereby declare that all information furnished in this priority accreditation dossier is accurate, any payment reference provided belongs to my registration, and I have read and agree to the{" "}
                         <a
                           href="/Priority_Round.pdf"
                           target="_blank"
@@ -2349,7 +2329,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                           Priority Round Guidelines (Priority_Round.pdf)
                           <ExternalLink className="h-3 w-3 inline ml-0.5" />
                         </a>{" "}
-                        and IISTMUN 2026 conference allotment protocols.
+                        and IISTMUN 2027 conference allotment protocols.
                       </span>
                     </label>
                     {errors.agreedToTerms && (
@@ -2436,7 +2416,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                       </span>
                     </div>
                     <h3 className="font-serif text-2xl sm:text-3xl text-[#EDE6D3] font-normal leading-tight">
-                      Official IISTMUN 2026 Edition T-Shirt
+                      Official IISTMUN 2027 Edition T-Shirt
                     </h3>
                     <p className="text-xs sm:text-sm text-[#8A9A7E] mt-1 leading-relaxed">
                       Would you like to purchase the official conference merchandise before finalizing your accreditation payment?
