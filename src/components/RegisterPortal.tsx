@@ -266,8 +266,8 @@ export default function RegisterPortal({
             setSubmittedCA(null);
           }}
           className={`p-5 text-left border transition-all duration-200 cursor-pointer relative ${selectedForm === "priority"
-              ? "border-[#C9A86A] bg-[#2E3B2F] shadow-lg"
-              : "border-[#C9A86A]/20 bg-[#1A1F1A]/70 hover:border-[#C9A86A]/50 hover:bg-[#2E3B2F]/40"
+            ? "border-[#C9A86A] bg-[#2E3B2F] shadow-lg"
+            : "border-[#C9A86A]/20 bg-[#1A1F1A]/70 hover:border-[#C9A86A]/50 hover:bg-[#2E3B2F]/40"
             }`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -284,9 +284,6 @@ export default function RegisterPortal({
           <h2 className="font-serif text-lg text-[#EDE6D3] font-medium block">
             Priority Delegate Registration
           </h2>
-          <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
-            Individual, double delegation &amp; contingent intake &bull; On-campus chambers.
-          </p>
 
           {selectedForm === "priority" && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#C9A86A]" />
@@ -301,8 +298,8 @@ export default function RegisterPortal({
             setSubmittedCA(null);
           }}
           className={`p-5 text-left border transition-all duration-200 cursor-pointer relative ${selectedForm === "unga"
-              ? "border-[#C9A86A] bg-[#2E3B2F] shadow-lg"
-              : "border-[#C9A86A]/20 bg-[#1A1F1A]/70 hover:border-[#C9A86A]/50 hover:bg-[#2E3B2F]/40"
+            ? "border-[#C9A86A] bg-[#2E3B2F] shadow-lg"
+            : "border-[#C9A86A]/20 bg-[#1A1F1A]/70 hover:border-[#C9A86A]/50 hover:bg-[#2E3B2F]/40"
             }`}
         >
           <div className="flex items-center justify-between mb-2">
@@ -335,8 +332,8 @@ export default function RegisterPortal({
             setSubmittedCA(null);
           }}
           className={`p-5 text-left border transition-all duration-200 cursor-pointer relative ${selectedForm === "campus-ambassador"
-              ? "border-[#8BA06F] bg-[#2E3B2F] shadow-lg"
-              : "border-[#C9A86A]/20 bg-[#1A1F1A]/70 hover:border-[#8BA06F]/50 hover:bg-[#2E3B2F]/40"
+            ? "border-[#8BA06F] bg-[#2E3B2F] shadow-lg"
+            : "border-[#C9A86A]/20 bg-[#1A1F1A]/70 hover:border-[#8BA06F]/50 hover:bg-[#2E3B2F]/40"
             }`}
         >
           <div className="flex items-center justify-between mb-2">
