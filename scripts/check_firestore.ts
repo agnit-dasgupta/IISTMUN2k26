@@ -11,29 +11,28 @@ const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 async function run() {
   console.log('Project ID:', firebaseConfig.projectId);
-  console.log('Database ID:', firebaseConfig.firestoreDatabaseId);
   try {
-    const portfolioSnap = await getDocs(collection(db, 'portfolio_states'));
-    console.log('portfolio_states count:', portfolioSnap.size);
-    portfolioSnap.forEach((d) => console.log('portfolio doc:', d.id, d.data()));
-
-    const sentEmailsSnap = await getDocs(collection(db, 'sent_emails'));
-    console.log('sent_emails count:', sentEmailsSnap.size);
-
-    const commSnap = await getDocs(collection(db, 'committees'));
-    console.log('committees count:', commSnap.size);
-
-    const regSnap = await getDocs(collection(db, 'registrations'));
-    console.log('registrations count:', regSnap.size);
-
-    const ebSnap = await getDocs(collection(db, 'eb_registrations'));
-    console.log('eb_registrations count:', ebSnap.size);
-
-    const caSnap = await getDocs(collection(db, 'campus_ambassador_registrations'));
-    console.log('campus_ambassador_registrations count:', caSnap.size);
-
-    const queriesSnap = await getDocs(collection(db, 'contact_queries'));
-    console.log('contact_queries count:', queriesSnap.size);
+    for (const col of ['portfolio_states', 'committees', 'registrations', 'priority_registrations', 'unga_registrations', 'eb_registrations', 'campus_ambassador_registrations', 'contact_queries', 'sent_emails']) {
+      try {
+        const snap = await getDocs(collection(db, col));
+        console.log(`${col} count:`, snap.size);
+        snap.forEach((d) => {
+          const data = d.data();
+          console.log(`  [${col}] doc:`, d.id, {
+            id: data.id,
+            name: data.name,
+            round: data.round,
+            isPriority: data.isPriority,
+            isUnga: data.isUnga,
+            pref1Committee: data.pref1Committee,
+            paymentScreenshotUrl: data.paymentScreenshotUrl ? (data.paymentScreenshotUrl.slice(0, 40) + '...') : undefined,
+            idCardUrl: data.idCardUrl ? (data.idCardUrl.slice(0, 40) + '...') : undefined,
+          });
+        });
+      } catch (err: any) {
+        console.warn(`${col} error:`, err?.message || err);
+      }
+    }
   } catch (e: any) {
     console.error('Check error:', e?.message || e);
   }

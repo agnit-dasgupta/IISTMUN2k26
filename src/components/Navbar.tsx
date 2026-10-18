@@ -32,7 +32,8 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const [activeSection, setActiveSection] = useState<string>("home");
 
   const adminEmails = ["agnit.dg@gmail.com", "iist.mun.club@gmail.com"];
-  const isAdmin = Boolean(user?.email && adminEmails.includes(user.email.toLowerCase()));
+  const isLocalDev = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+  const isAdmin = Boolean(user?.email && adminEmails.includes(user.email.toLowerCase())) || isLocalDev;
 
   // Navigation Items matching the required hierarchy
   const navItems = [

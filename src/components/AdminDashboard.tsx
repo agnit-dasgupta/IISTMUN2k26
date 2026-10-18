@@ -44,7 +44,8 @@ import {
   Layers,
   Copy,
   ChevronDown,
-  Shirt
+  Shirt,
+  ArrowRight
 } from "lucide-react";
 
 export const FIRESTORE_RULES_TEXT = `rules_version = '2';
@@ -211,6 +212,115 @@ function PortfolioStatusSelector({ country, committee, currentStatus, onUpdate }
       <option value="Pending" className="bg-[#1A1F1A] text-[#8A9A7E]">Pending</option>
       <option value="N/A" className="bg-[#1A1F1A] text-[#8A9A7E]/60">N/A</option>
     </select>
+  );
+}
+
+export const resolveMediaUrl = (url?: string): string => {
+  if (!url) return "";
+  const trimmed = url.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("/uploads/")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("uploads/")) {
+    return "/" + trimmed;
+  }
+  if (trimmed.startsWith("/")) {
+    return trimmed;
+  }
+  return `/uploads/${trimmed}`;
+};
+
+export const isPdfDocument = (url?: string, name?: string): boolean => {
+  if (!url) return false;
+  const lowerUrl = url.toLowerCase();
+  const lowerName = (name || "").toLowerCase();
+  return lowerUrl.endsWith(".pdf") || lowerName.endsWith(".pdf") || lowerUrl.startsWith("data:application/pdf");
+};
+
+export const isDriveCloudLink = (url?: string): boolean => {
+  if (!url) return false;
+  return url.includes("drive.google.com") || url.includes("docs.google.com");
+};
+
+interface ProofThumbnailProps {
+  url: string;
+  name?: string;
+  alt?: string;
+  borderColor?: string;
+  className?: string;
+  onView?: () => void;
+  onClick?: () => void;
+}
+
+export function ProofThumbnail({
+  url,
+  name,
+  alt = "Proof Thumbnail",
+  borderColor = "border-[#C9A86A]/40",
+  className,
+  onView,
+  onClick
+}: ProofThumbnailProps) {
+  const handleClick = onView || onClick || (() => {});
+  const resolved = resolveMediaUrl(url);
+  const sizeClass = className || "h-10 w-10";
+
+  if (isPdfDocument(resolved, name)) {
+    return (
+      <div
+        onClick={handleClick}
+        className={`${className || "h-10 w-12"} bg-rose-950/60 border ${borderColor} rounded flex flex-col items-center justify-center cursor-pointer hover:bg-rose-900/60 transition-all shrink-0 p-1 group shadow-sm`}
+        title={`View PDF Document (${name || "PDF Document"})`}
+      >
+        <FileText className="h-4 w-4 text-rose-300 group-hover:scale-110 transition-transform" />
+        <span className="text-[8px] font-mono font-bold text-rose-300 uppercase tracking-wider mt-0.5">PDF</span>
+      </div>
+    );
+  }
+
+  if (isDriveCloudLink(resolved)) {
+    return (
+      <div
+        onClick={handleClick}
+        className={`${className || "h-10 w-12"} bg-blue-950/60 border ${borderColor} rounded flex flex-col items-center justify-center cursor-pointer hover:bg-blue-900/60 transition-all shrink-0 p-1 group shadow-sm`}
+        title={`Open Google Drive Document (${name || "Drive link"})`}
+      >
+        <ExternalLink className="h-4 w-4 text-blue-300 group-hover:scale-110 transition-transform" />
+        <span className="text-[8px] font-mono font-bold text-blue-300 uppercase tracking-wider mt-0.5">DRIVE</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`relative group shrink-0 ${sizeClass}`}>
+      <img
+        src={resolved}
+        alt={alt}
+        onClick={handleClick}
+        onError={(e) => {
+          const target = e.currentTarget;
+          target.style.display = "none";
+          const parent = target.parentElement;
+          if (parent) {
+            const fallback = document.createElement("div");
+            fallback.className = `w-full h-full bg-[#1A1F1A] border ${borderColor} rounded flex flex-col items-center justify-center cursor-pointer text-[#8A9A7E]`;
+            fallback.innerHTML = `<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg><span style="font-size:7px;margin-top:2px;">IMG</span>`;
+            fallback.onclick = handleClick;
+            parent.appendChild(fallback);
+          }
+        }}
+        className={`w-full h-full object-cover border ${borderColor} rounded hover:opacity-80 transition-opacity cursor-pointer shadow-sm`}
+      />
+      <div
+        onClick={handleClick}
+        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded cursor-pointer transition-opacity"
+      >
+        <Eye className="h-3.5 w-3.5 text-white" />
+      </div>
+    </div>
   );
 }
 
@@ -539,7 +649,19 @@ export default function AdminDashboard() {
         });
     }, (error) => {
       console.warn("Firestore registrations query warning:", error instanceof Error ? error.message : "Access error");
-      setLoading(false);
+      fetch("/api/registrations")
+        .then((res) => res.json())
+        .then((res) => {
+          if (res.data && Array.isArray(res.data)) {
+            const list = [...res.data];
+            list.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+            setRegistrations(list);
+          }
+          setLoading(false);
+        })
+        .catch(() => {
+          setLoading(false);
+        });
     });
 
     return () => unsubscribe();
@@ -549,11 +671,17 @@ export default function AdminDashboard() {
     if (!isAdmin) return;
 
     // Helper to merge priority records
-    const mergePriorityRecords = (baseList: PriorityRegistrationDetails[]) => {
+    const mergePriorityRecords = (baseList: PriorityRegistrationDetails[], backupList: any[] = []) => {
       const combined = [...baseList];
 
       // Merge from registrations where round === "priority" or isPriority === true
       registrations.forEach((r) => {
+        if ((r.round === "priority" || r.isPriority) && !combined.some((p) => (p.id && p.id === r.id) || (p.uid && p.uid === r.uid))) {
+          combined.push(r as PriorityRegistrationDetails);
+        }
+      });
+
+      backupList.forEach((r) => {
         if ((r.round === "priority" || r.isPriority) && !combined.some((p) => (p.id && p.id === r.id) || (p.uid && p.uid === r.uid))) {
           combined.push(r as PriorityRegistrationDetails);
         }
@@ -582,33 +710,20 @@ export default function AdminDashboard() {
       fetch("/api/registrations")
         .then((res) => res.json())
         .then((res) => {
-          if (res.data && Array.isArray(res.data)) {
-            res.data.forEach((item: any) => {
-              if ((item.round === "priority" || item.isPriority) && !list.some((p) => (p.id && p.id === item.id) || (p.uid && p.uid === item.uid))) {
-                list.push(item as PriorityRegistrationDetails);
-              }
-            });
-          }
-          setPriorityRegistrations(mergePriorityRecords(list));
+          const backup = (res.data && Array.isArray(res.data)) ? res.data : [];
+          setPriorityRegistrations(mergePriorityRecords(list, backup));
         })
         .catch(() => {
           setPriorityRegistrations(mergePriorityRecords(list));
         });
     }, (error) => {
       console.warn("priority_registrations subscription status:", error instanceof Error ? error.message : "Access error");
-      // Fallback: merge from registrations state directly
+      // Fallback: merge from registrations state directly and /api/registrations
       fetch("/api/registrations")
         .then((res) => res.json())
         .then((res) => {
-          const list: PriorityRegistrationDetails[] = [];
-          if (res.data && Array.isArray(res.data)) {
-            res.data.forEach((item: any) => {
-              if (item.round === "priority" || item.isPriority) {
-                list.push(item as PriorityRegistrationDetails);
-              }
-            });
-          }
-          setPriorityRegistrations(mergePriorityRecords(list));
+          const backup = (res.data && Array.isArray(res.data)) ? res.data : [];
+          setPriorityRegistrations(mergePriorityRecords([], backup));
         })
         .catch(() => {
           setPriorityRegistrations(mergePriorityRecords([]));
@@ -633,13 +748,19 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!isAdmin) return;
 
-    const mergeUngaRecords = (baseList: RegistrationDetails[]) => {
+    const mergeUngaRecords = (baseList: RegistrationDetails[], backupList: any[] = []) => {
       const combined = [...baseList];
 
       // Merge from registrations where isUngaRecord is true
       registrations.forEach((r) => {
         if (isUngaRecord(r) && !combined.some((u) => (u.id && u.id === r.id) || (u.uid && u.uid === r.uid))) {
           combined.push(r);
+        }
+      });
+
+      backupList.forEach((r) => {
+        if (isUngaRecord(r) && !combined.some((u) => (u.id && u.id === r.id) || (u.uid && u.uid === r.uid))) {
+          combined.push(r as RegistrationDetails);
         }
       });
 
@@ -665,14 +786,8 @@ export default function AdminDashboard() {
       fetch("/api/registrations")
         .then((res) => res.json())
         .then((res) => {
-          if (res.data && Array.isArray(res.data)) {
-            res.data.forEach((item: any) => {
-              if (isUngaRecord(item) && !list.some((u) => (u.id && u.id === item.id) || (u.uid && u.uid === item.uid))) {
-                list.push(item as RegistrationDetails);
-              }
-            });
-          }
-          setUngaRegistrations(mergeUngaRecords(list));
+          const backup = (res.data && Array.isArray(res.data)) ? res.data : [];
+          setUngaRegistrations(mergeUngaRecords(list, backup));
         })
         .catch(() => {
           setUngaRegistrations(mergeUngaRecords(list));
@@ -682,15 +797,8 @@ export default function AdminDashboard() {
       fetch("/api/registrations")
         .then((res) => res.json())
         .then((res) => {
-          const list: RegistrationDetails[] = [];
-          if (res.data && Array.isArray(res.data)) {
-            res.data.forEach((item: any) => {
-              if (isUngaRecord(item)) {
-                list.push(item as RegistrationDetails);
-              }
-            });
-          }
-          setUngaRegistrations(mergeUngaRecords(list));
+          const backup = (res.data && Array.isArray(res.data)) ? res.data : [];
+          setUngaRegistrations(mergeUngaRecords([], backup));
         })
         .catch(() => {
           setUngaRegistrations(mergeUngaRecords([]));
@@ -1693,8 +1801,13 @@ export default function AdminDashboard() {
     }
   };
 
+  // Priority Round registrations list (sources from UNGA when UNGA filter is selected)
+  const prioritySourceList = priorityCommitteeFilter === "unga"
+    ? (ungaRegistrations as unknown as PriorityRegistrationDetails[])
+    : priorityRegistrations;
+
   // Filter Priority Round registrations
-  const filteredPriority = priorityRegistrations.filter((r) => {
+  const filteredPriority = prioritySourceList.filter((r) => {
     const q = prioritySearch.toLowerCase();
     const matchesSearch =
       (r.name || "").toLowerCase().includes(q) ||
@@ -1714,12 +1827,13 @@ export default function AdminDashboard() {
     const matchesCategory =
       priorityCategoryFilter === "all" ||
       r.delegateCategory === priorityCategoryFilter ||
-      (priorityCategoryFilter === "College Non-IIST" && (!r.delegateCategory || r.delegateCategory === "college_external")) ||
+      (priorityCategoryFilter === "College Non-IIST" && (!r.delegateCategory || r.delegateCategory === "college" || r.delegateCategory === "college_external")) ||
       (priorityCategoryFilter === "School Delegate" && r.delegateCategory === "school") ||
       (priorityCategoryFilter === "IIST Internal" && (r.delegateCategory === "iist_internal" || r.institution?.toLowerCase().includes("indian institute of space science")));
 
     const matchesCommittee =
       priorityCommitteeFilter === "all" ||
+      priorityCommitteeFilter === "unga" ||
       r.pref1Committee === priorityCommitteeFilter ||
       r.pref2Committee === priorityCommitteeFilter ||
       r.pref3Committee === priorityCommitteeFilter ||
@@ -1773,8 +1887,10 @@ export default function AdminDashboard() {
     return matchesSearch && matchesStatus && matchesPaymentStatus && matchesMerch;
   });
 
-  // Filter general registrations (strictly exclude priority and UNGA registrations)
-  const filtered = generalRegistrations.filter(r => {
+  // Filter general registrations (or UNGA online if UNGA filter is selected)
+  const generalBaseList = filterCommittee === "unga" ? ungaRegistrations : generalRegistrations;
+
+  const filtered = generalBaseList.filter(r => {
     const queryLower = searchQuery.toLowerCase();
     const matchesSearch = 
       (r.name?.toLowerCase() || "").includes(queryLower) ||
@@ -1784,6 +1900,7 @@ export default function AdminDashboard() {
 
     const matchesType = filterType === "all" || r.regType === filterType;
     const matchesCommittee = filterCommittee === "all" || 
+      filterCommittee === "unga" ||
       r.pref1Committee === filterCommittee || 
       r.pref2Committee === filterCommittee || 
       r.pref3Committee === filterCommittee;
@@ -2624,6 +2741,35 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            {/* UNGA Filter Indicator Banner */}
+            {priorityCommitteeFilter === "unga" && (
+              <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#EDE6D3] shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/40 text-[#C9A86A]">
+                    <Globe className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-[#C9A86A] text-sm flex items-center gap-2">
+                      <span>UNGA (ONLINE COMMITTEE) REGISTRATIONS</span>
+                      <span className="px-2 py-0.5 bg-[#C9A86A] text-[#1A1F1A] text-[10px] font-mono font-bold">
+                        {filteredPriority.length} Applicant{filteredPriority.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    <p className="text-[#8A9A7E] text-[11px] mt-0.5">
+                      Showing UNGA Online Committee registrations. You can review dossiers and proof attachments right here, or open the specialized UNGA Ledger tab.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveSubTab("unga")}
+                  className="px-4 py-2 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-bold uppercase tracking-wider transition-all cursor-pointer self-start sm:self-auto flex items-center gap-1.5 shadow whitespace-nowrap"
+                >
+                  <span>Open Dedicated UNGA Online Tab</span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
             {/* Priority Ledger Table */}
             <div className="border border-[#C9A86A]/30 bg-[#2E3B2F]/40 shadow-xl overflow-hidden">
               <div className="overflow-x-auto">
@@ -2636,7 +2782,7 @@ export default function AdminDashboard() {
                       <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Preferences (1st / 2nd)</th>
                       <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Merch</th>
                       <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Payment & UTR</th>
-                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Receipt</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">Proofs (Receipt & ID)</th>
                       <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Status</th>
                       <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold text-center">Actions</th>
                     </tr>
@@ -2788,60 +2934,117 @@ export default function AdminDashboard() {
                             )}
                           </td>
 
-                          {/* Receipt */}
-                          <td className="p-3.5">
-                            {item.paymentScreenshotUrl ? (
-                              <div className="flex items-center gap-2">
-                                <img
-                                  src={item.paymentScreenshotUrl}
-                                  alt="Receipt thumbnail"
-                                  onClick={() => setViewProofModal({
-                                    url: item.paymentScreenshotUrl || "",
-                                    name: item.paymentScreenshotName,
-                                    utr: item.utrNumber || item.transactionId,
-                                    candidateName: item.name
-                                  })}
-                                  className="h-10 w-10 object-cover border border-[#C9A86A]/40 rounded hover:opacity-80 transition-opacity cursor-pointer shrink-0"
-                                />
-                                <button
-                                  onClick={() => setViewProofModal({
-                                    url: item.paymentScreenshotUrl || "",
-                                    name: item.paymentScreenshotName,
-                                    utr: item.utrNumber || item.transactionId,
-                                    candidateName: item.name
-                                  })}
-                                  className="text-[10px] text-[#C9A86A] hover:underline flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
-                                >
-                                  <Eye className="h-3 w-3" />
-                                  <span>View</span>
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-[10px] text-[#8A9A7E] italic">None</span>
-                            )}
-                            {item.idCardUrl && (
-                              <div className="mt-1">
-                                <button
-                                  onClick={() => setViewProofModal({
-                                    url: item.idCardUrl || "",
-                                    name: item.idCardName || "Student ID Proof",
-                                    candidateName: item.name
-                                  })}
-                                  className="text-[9px] text-[#8BA06F] hover:underline flex items-center gap-0.5 cursor-pointer"
-                                  title="View School / College ID Proof"
-                                >
-                                  <FileText className="h-2.5 w-2.5" />
-                                  <span>ID Proof</span>
-                                </button>
-                              </div>
-                            )}
+                          {/* Proofs: Payment Receipt & Student ID */}
+                          <td className="p-3.5 min-w-[170px]">
+                            {(() => {
+                              const receiptUrl = item.paymentScreenshotUrl || (item as any).paymentProofUrl || (item as any).receiptUrl;
+                              const receiptName = item.paymentScreenshotName || (item as any).paymentProofName || "Payment Receipt";
+                              const idUrl = item.idCardUrl || (item as any).idProofUrl || (item as any).photoUrl;
+                              const idName = item.idCardName || (item as any).idProofName || "Student ID Proof";
+
+                              return (
+                                <div className="space-y-2">
+                                  {/* Payment Receipt */}
+                                  <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="font-mono text-[8px] uppercase tracking-wider text-[#C9A86A] font-bold">
+                                        Receipt Proof
+                                      </span>
+                                      {receiptUrl && (
+                                        <button
+                                          onClick={() => setViewProofModal({
+                                            url: receiptUrl,
+                                            name: receiptName,
+                                            utr: item.utrNumber || item.transactionId,
+                                            candidateName: item.name
+                                          })}
+                                          className="text-[9px] text-[#C9A86A] hover:underline inline-flex items-center gap-0.5 cursor-pointer font-semibold"
+                                        >
+                                          <Eye className="h-2.5 w-2.5" />
+                                          <span>View</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                    {receiptUrl ? (
+                                      <div className="flex items-center gap-2">
+                                        <ProofThumbnail
+                                          url={receiptUrl}
+                                          name={receiptName}
+                                          alt={`Receipt for ${item.name}`}
+                                          borderColor="border-[#C9A86A]/50"
+                                          onView={() => setViewProofModal({
+                                            url: receiptUrl,
+                                            name: receiptName,
+                                            utr: item.utrNumber || item.transactionId,
+                                            candidateName: item.name
+                                          })}
+                                        />
+                                        <div className="text-[10px] truncate max-w-[100px] text-[#EDE6D3]/90" title={receiptName}>
+                                          {receiptName}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span className="text-[10px] text-[#8A9A7E] italic block">No receipt</span>
+                                    )}
+                                  </div>
+
+                                  {/* Student ID Proof */}
+                                  <div className="pt-1.5 border-t border-[#8A9A7E]/15">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="font-mono text-[8px] uppercase tracking-wider text-[#8BA06F] font-bold">
+                                        Student ID Card
+                                      </span>
+                                      {idUrl && (
+                                        <button
+                                          onClick={() => setViewProofModal({
+                                            url: idUrl,
+                                            name: idName,
+                                            candidateName: item.name
+                                          })}
+                                          className="text-[9px] text-[#8BA06F] hover:underline inline-flex items-center gap-0.5 cursor-pointer font-semibold"
+                                        >
+                                          <Eye className="h-2.5 w-2.5" />
+                                          <span>View</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                    {idUrl ? (
+                                      <div className="flex items-center gap-2">
+                                        <ProofThumbnail
+                                          url={idUrl}
+                                          name={idName}
+                                          alt={`Student ID for ${item.name}`}
+                                          borderColor="border-[#8BA06F]/50"
+                                          onView={() => setViewProofModal({
+                                            url: idUrl,
+                                            name: idName,
+                                            candidateName: item.name
+                                          })}
+                                        />
+                                        <div className="text-[10px] truncate max-w-[100px] text-[#EDE6D3]/90" title={idName}>
+                                          {idName}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span className="text-[10px] text-[#8A9A7E]/60 italic block">No ID uploaded</span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </td>
 
                           {/* Status Dropdown */}
                           <td className="p-3.5">
                             <select
                               value={item.status || "Pending Verification"}
-                              onChange={(e) => handleUpdatePriorityStatus(item.uid || item.id || "", e.target.value)}
+                              onChange={(e) => {
+                                if (isUngaRecord(item)) {
+                                  handleUpdateUngaStatus(item.uid || item.id || "", e.target.value);
+                                } else {
+                                  handleUpdatePriorityStatus(item.uid || item.id || "", e.target.value);
+                                }
+                              }}
                               className={`px-2 py-1 text-[10px] font-sans font-semibold uppercase tracking-wider border focus:outline-none cursor-pointer ${
                                 item.status === "Payment Confirmed"
                                   ? "bg-emerald-950/60 text-emerald-400 border-emerald-500/40"
@@ -2867,12 +3070,20 @@ export default function AdminDashboard() {
                             <div className="flex items-center justify-center gap-1.5">
                               <button
                                 onClick={() => {
-                                  setAllotModalReg(item);
-                                  setAllotForm({
-                                    committee: item.allottedCommittee || item.pref1Committee || "copuos",
-                                    country: item.allottedCountry || item.pref1Country || "",
-                                    adminNotes: item.adminNotes || ""
-                                  });
+                                  if (isUngaRecord(item)) {
+                                    setAllotUngaModalReg(item as any);
+                                    setAllotUngaForm({
+                                      country: item.allottedCountry || item.pref1Country || "",
+                                      adminNotes: item.adminNotes || ""
+                                    });
+                                  } else {
+                                    setAllotModalReg(item);
+                                    setAllotForm({
+                                      committee: item.allottedCommittee || item.pref1Committee || "copuos",
+                                      country: item.allottedCountry || item.pref1Country || "",
+                                      adminNotes: item.adminNotes || ""
+                                    });
+                                  }
                                 }}
                                 className="p-1.5 border border-[#C9A86A]/40 bg-[#2E3B2F] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-[#C9A86A] transition-colors cursor-pointer"
                                 title="Allot Council Portfolio"
@@ -2880,14 +3091,26 @@ export default function AdminDashboard() {
                                 <Compass className="h-3.5 w-3.5" />
                               </button>
                               <button
-                                onClick={() => setSelectedPriorityReg(item)}
+                                onClick={() => {
+                                  if (isUngaRecord(item)) {
+                                    setSelectedUngaReg(item as any);
+                                  } else {
+                                    setSelectedPriorityReg(item);
+                                  }
+                                }}
                                 className="p-1.5 border border-[#8A9A7E]/40 bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#EDE6D3] transition-colors cursor-pointer"
                                 title="Inspect Full Dossier"
                               >
                                 <Eye className="h-3.5 w-3.5" />
                               </button>
                               <button
-                                onClick={() => setConfirmPriorityDeleteId(item.uid || item.id || "")}
+                                onClick={() => {
+                                  if (isUngaRecord(item)) {
+                                    setConfirmUngaDeleteId(item.uid || item.id || "");
+                                  } else {
+                                    setConfirmPriorityDeleteId(item.uid || item.id || "");
+                                  }
+                                }}
                                 className="p-1.5 border border-rose-500/30 bg-[#1A1F1A] hover:bg-rose-900/30 text-rose-400 transition-colors cursor-pointer"
                                 title="Delete Registration"
                               >
@@ -3446,6 +3669,35 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            {/* UNGA Filter Indicator Banner */}
+            {filterCommittee === "unga" && (
+              <div className="bg-slate-900 border border-purple-500/40 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-200 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-slate-950 border border-purple-500/40 text-purple-400 rounded-xl">
+                    <Globe className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-sm flex items-center gap-2">
+                      <span>UNGA (ONLINE COMMITTEE) REGISTRATIONS</span>
+                      <span className="px-2 py-0.5 bg-purple-500 text-slate-950 text-[10px] font-mono font-bold rounded">
+                        {filtered.length} Applicant{filtered.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    <p className="text-slate-400 text-[11px] mt-0.5">
+                      Showing UNGA Online Committee registrations. You can review dossiers and attachments here or switch to the dedicated UNGA Online tab.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveSubTab("unga")}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-sans text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer self-start sm:self-auto flex items-center gap-1.5 shadow whitespace-nowrap"
+                >
+                  <span>Open Dedicated UNGA Tab</span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
             {/* Content Table */}
             {loading ? (
               <div className="text-center py-24 bg-slate-950/20 border border-slate-900 rounded-3xl">
@@ -3561,14 +3813,26 @@ export default function AdminDashboard() {
                           <td className="p-4 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <button
-                                onClick={() => setSelectedReg(item)}
+                                onClick={() => {
+                                  if (isUngaRecord(item)) {
+                                    setSelectedUngaReg(item as any);
+                                  } else {
+                                    setSelectedReg(item);
+                                  }
+                                }}
                                 className="p-1.5 rounded-lg border border-slate-900 bg-slate-950 hover:bg-slate-900 text-slate-400 hover:text-white transition-all cursor-pointer"
                                 title="Inspect details"
                               >
                                 <FileText className="h-3.5 w-3.5" />
                               </button>
                               <button
-                                onClick={() => setConfirmDeleteId(item.uid || null)}
+                                onClick={() => {
+                                  if (isUngaRecord(item)) {
+                                    setConfirmUngaDeleteId(item.uid || item.id || "");
+                                  } else {
+                                    setConfirmDeleteId(item.uid || null);
+                                  }
+                                }}
                                 className="p-1.5 rounded-lg border border-slate-900 bg-slate-950 hover:bg-slate-900 text-slate-500 hover:text-red-400 hover:border-red-500/20 transition-all cursor-pointer"
                                 title="Deport / Delete candidate"
                               >
@@ -6022,7 +6286,7 @@ export default function AdminDashboard() {
         {/* ========================================================
             PRIORITY ROUND: CANDIDATE DOSSIER DRAWER
            ======================================================== */}
-        {selectedPriorityReg && (
+        {selectedPriorityReg && !isUngaRecord(selectedPriorityReg) && (
           <div className="fixed inset-0 z-[110] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in text-left">
             <div className="flex min-h-full items-start sm:items-center justify-center p-3 sm:p-4 text-center">
               <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-3xl w-full p-6 sm:p-8 text-left relative shadow-2xl my-6">
@@ -6342,37 +6606,43 @@ export default function AdminDashboard() {
                       </div>
 
                       {/* Screenshot Preview */}
-                      {selectedPriorityReg.paymentScreenshotUrl ? (
-                        <div className="flex items-center gap-3 bg-[#141814] p-2 border border-[#8A9A7E]/30 shrink-0">
-                          <img
-                            src={selectedPriorityReg.paymentScreenshotUrl}
-                            alt="Payment Proof"
-                            className="h-16 w-16 object-cover border border-[#C9A86A]/40 cursor-pointer"
-                            onClick={() => setViewProofModal({
-                              url: selectedPriorityReg.paymentScreenshotUrl || "",
-                              name: selectedPriorityReg.paymentScreenshotName,
-                              utr: selectedPriorityReg.utrNumber || selectedPriorityReg.transactionId,
-                              candidateName: selectedPriorityReg.name
-                            })}
-                          />
-                          <button
-                            onClick={() => setViewProofModal({
-                              url: selectedPriorityReg.paymentScreenshotUrl || "",
-                              name: selectedPriorityReg.paymentScreenshotName,
-                              utr: selectedPriorityReg.utrNumber || selectedPriorityReg.transactionId,
-                              candidateName: selectedPriorityReg.name
-                            })}
-                            className="px-3 py-1.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            <span>Enlarge Proof</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="text-xs text-[#8A9A7E] italic">
-                          No receipt screenshot uploaded
-                        </div>
-                      )}
+                      {(() => {
+                        const receiptUrl = selectedPriorityReg.paymentScreenshotUrl || selectedPriorityReg.paymentProofUrl || (selectedPriorityReg as any).photoUrl;
+                        const receiptName = selectedPriorityReg.paymentScreenshotName || (selectedPriorityReg as any).paymentProofName || "payment_receipt";
+
+                        return receiptUrl ? (
+                          <div className="flex items-center gap-3 bg-[#141814] p-2 border border-[#8A9A7E]/30 shrink-0">
+                            <ProofThumbnail
+                              url={receiptUrl}
+                              name={receiptName}
+                              alt="Payment Proof"
+                              className="h-16 w-16"
+                              onClick={() => setViewProofModal({
+                                url: receiptUrl,
+                                name: receiptName,
+                                utr: selectedPriorityReg.utrNumber || selectedPriorityReg.transactionId,
+                                candidateName: selectedPriorityReg.name
+                              })}
+                            />
+                            <button
+                              onClick={() => setViewProofModal({
+                                url: receiptUrl,
+                                name: receiptName,
+                                utr: selectedPriorityReg.utrNumber || selectedPriorityReg.transactionId,
+                                candidateName: selectedPriorityReg.name
+                              })}
+                              className="px-3 py-1.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              <span>Enlarge Proof</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-[#8A9A7E] italic">
+                            No receipt screenshot uploaded
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -6381,43 +6651,49 @@ export default function AdminDashboard() {
                     <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-bold block mb-2">
                       // STUDENT SCHOOL / COLLEGE ID PROOF
                     </span>
-                    {selectedPriorityReg.idCardUrl ? (
-                      <div className="flex items-center gap-3 bg-[#141814] p-3 border border-[#8A9A7E]/30">
-                        <img
-                          src={selectedPriorityReg.idCardUrl}
-                          alt="Student ID Proof"
-                          className="h-16 w-24 object-cover border border-[#C9A86A]/40 cursor-pointer"
-                          onClick={() => setViewProofModal({
-                            url: selectedPriorityReg.idCardUrl || "",
-                            name: selectedPriorityReg.idCardName || "Student ID Proof",
-                            candidateName: selectedPriorityReg.name
-                          })}
-                        />
-                        <div className="flex-1 text-xs">
-                          <span className="text-[#EDE6D3] font-medium block">
-                            {selectedPriorityReg.idCardName || "Student ID Proof Document"}
-                          </span>
-                          <span className="text-[#8A9A7E] text-[10px] block mt-0.5">
-                            Attached for institutional verification
-                          </span>
+                    {(() => {
+                      const idProofUrl = selectedPriorityReg.idCardUrl || (selectedPriorityReg as any).idProofUrl;
+                      const idProofName = selectedPriorityReg.idCardName || (selectedPriorityReg as any).idProofName || "Student ID Proof";
+
+                      return idProofUrl ? (
+                        <div className="flex items-center gap-3 bg-[#141814] p-3 border border-[#8A9A7E]/30">
+                          <ProofThumbnail
+                            url={idProofUrl}
+                            name={idProofName}
+                            alt="Student ID Proof"
+                            className="h-16 w-24"
+                            onClick={() => setViewProofModal({
+                              url: idProofUrl,
+                              name: idProofName,
+                              candidateName: selectedPriorityReg.name
+                            })}
+                          />
+                          <div className="flex-1 text-xs">
+                            <span className="text-[#EDE6D3] font-medium block truncate" title={idProofName}>
+                              {idProofName}
+                            </span>
+                            <span className="text-[#8A9A7E] text-[10px] block mt-0.5">
+                              Attached for institutional verification
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => setViewProofModal({
+                              url: idProofUrl,
+                              name: idProofName,
+                              candidateName: selectedPriorityReg.name
+                            })}
+                            className="px-3 py-1.5 bg-[#2E3B2F] hover:bg-[#3d4f3e] text-[#EDE6D3] border border-[#C9A86A]/40 text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                          >
+                            <Eye className="h-3.5 w-3.5 text-[#C9A86A]" />
+                            <span>View ID</span>
+                          </button>
                         </div>
-                        <button
-                          onClick={() => setViewProofModal({
-                            url: selectedPriorityReg.idCardUrl || "",
-                            name: selectedPriorityReg.idCardName || "Student ID Proof",
-                            candidateName: selectedPriorityReg.name
-                          })}
-                          className="px-3 py-1.5 bg-[#2E3B2F] hover:bg-[#3d4f3e] text-[#EDE6D3] border border-[#C9A86A]/40 text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer"
-                        >
-                          <Eye className="h-3.5 w-3.5 text-[#C9A86A]" />
-                          <span>View ID</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-[#8A9A7E] italic">
-                        No School / College ID photo attached.
-                      </div>
-                    )}
+                      ) : (
+                        <div className="text-xs text-[#8A9A7E] italic">
+                          No School / College ID photo attached.
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Portfolio Allotment Card (if allotted) */}
@@ -6509,11 +6785,14 @@ export default function AdminDashboard() {
             Displays EACH AND EVERY detail filled in the UNGA form
            ======================================================== */}
         {(() => {
-          const activeUnga = selectedUngaReg || (selectedReg && isUngaRecord(selectedReg) ? selectedReg : null);
+          const activeUnga = selectedUngaReg || 
+            (selectedReg && isUngaRecord(selectedReg) ? selectedReg : null) ||
+            (selectedPriorityReg && isUngaRecord(selectedPriorityReg) ? selectedPriorityReg : null);
           if (!activeUnga) return null;
           const closeUngaModal = () => {
             setSelectedUngaReg(null);
             if (selectedReg && isUngaRecord(selectedReg)) setSelectedReg(null);
+            if (selectedPriorityReg && isUngaRecord(selectedPriorityReg)) setSelectedPriorityReg(null);
           };
 
           const calculatedTotalFee = activeUnga.feeAmount !== undefined 
@@ -6716,10 +6995,11 @@ export default function AdminDashboard() {
                         {activeUnga.idCardUrl ? (
                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#141814] p-3 border border-[#8A9A7E]/30">
                             <div className="flex items-center gap-3">
-                              <img
-                                src={activeUnga.idCardUrl}
+                              <ProofThumbnail
+                                url={activeUnga.idCardUrl}
+                                name={activeUnga.idCardName || "Student ID Proof"}
                                 alt="Student ID Proof"
-                                className="h-16 w-24 object-cover border border-[#C9A86A]/40 cursor-pointer hover:opacity-85 transition-opacity"
+                                className="h-16 w-24"
                                 onClick={() => setViewProofModal({
                                   url: activeUnga.idCardUrl || "",
                                   name: activeUnga.idCardName || "Student ID Proof",
@@ -6973,10 +7253,11 @@ export default function AdminDashboard() {
                           </span>
                           {activeUnga.paymentScreenshotUrl ? (
                             <div className="flex items-center gap-3 bg-[#141814] p-3 border border-[#8A9A7E]/30">
-                              <img
-                                src={activeUnga.paymentScreenshotUrl}
+                              <ProofThumbnail
+                                url={activeUnga.paymentScreenshotUrl}
+                                name={activeUnga.paymentScreenshotName || "payment_receipt.jpg"}
                                 alt="Payment Proof"
-                                className="h-16 w-16 object-cover border border-[#C9A86A]/40 cursor-pointer hover:opacity-85"
+                                className="h-16 w-16"
                                 onClick={() => setViewProofModal({
                                   url: activeUnga.paymentScreenshotUrl || "",
                                   name: activeUnga.paymentScreenshotName,
@@ -7250,24 +7531,37 @@ export default function AdminDashboard() {
         )}
 
         {/* ========================================================
-            PRIORITY ROUND: RECEIPT PROOF VIEWER MODAL
+            DOCUMENT & PROOF VIEWER MODAL (IMAGES, PDFS & CLOUD LINKS)
            ======================================================== */}
         {viewProofModal && (
           <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#141814]/95 backdrop-blur-md animate-fade-in flex items-center justify-center p-4">
-            <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-xl w-full p-6 text-left relative shadow-2xl">
+            <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-2xl w-full p-6 text-left relative shadow-2xl">
               <div className="flex items-center justify-between border-b border-[#C9A86A]/30 pb-3">
                 <div>
                   <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold block">
-                    // PAYMENT RECEIPT PROOF
+                    {viewProofModal.name?.toLowerCase().includes("id")
+                      ? "// CANDIDATE IDENTIFICATION PROOF"
+                      : isPdfDocument(viewProofModal.url, viewProofModal.name)
+                      ? "// ATTACHED PDF PROOF DOCUMENT"
+                      : isDriveCloudLink(viewProofModal.url)
+                      ? "// CLOUD DOCUMENT LINK"
+                      : "// PAYMENT RECEIPT PROOF"}
                   </span>
                   <h4 className="font-serif text-lg text-[#EDE6D3]">
-                    {viewProofModal.candidateName || "Priority Candidate"}
+                    {viewProofModal.candidateName || "Candidate Document"}
                   </h4>
-                  {viewProofModal.utr && (
-                    <span className="font-mono text-xs text-[#8A9A7E]">
-                      UTR: <strong className="text-[#C9A86A]">{viewProofModal.utr}</strong>
-                    </span>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                    {viewProofModal.name && (
+                      <span className="text-[11px] text-[#8A9A7E] truncate max-w-xs" title={viewProofModal.name}>
+                        File: <span className="text-[#EDE6D3]">{viewProofModal.name}</span>
+                      </span>
+                    )}
+                    {viewProofModal.utr && (
+                      <span className="font-mono text-xs text-[#8A9A7E]">
+                        • UTR: <strong className="text-[#C9A86A]">{viewProofModal.utr}</strong>
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => setViewProofModal(null)}
@@ -7277,24 +7571,89 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              <div className="mt-4 flex items-center justify-center bg-[#141814] border border-[#8A9A7E]/30 p-2 max-h-[65vh] overflow-auto">
-                <img
-                  src={viewProofModal.url}
-                  alt={viewProofModal.name || "Payment Receipt Screenshot"}
-                  className="max-h-[60vh] max-w-full object-contain"
-                />
+              {/* Modal Body */}
+              <div className="mt-4 flex flex-col items-center justify-center bg-[#141814] border border-[#8A9A7E]/30 p-2 min-h-[300px] max-h-[70vh] overflow-auto">
+                {(() => {
+                  const resolvedUrl = resolveMediaUrl(viewProofModal.url);
+                  const isPdf = isPdfDocument(viewProofModal.url, viewProofModal.name);
+                  const isDrive = isDriveCloudLink(viewProofModal.url);
+
+                  if (isPdf) {
+                    return (
+                      <div className="w-full h-full flex flex-col items-center">
+                        <iframe
+                          src={resolvedUrl}
+                          title={viewProofModal.name || "Proof PDF"}
+                          className="w-full h-[55vh] border-0 rounded bg-white"
+                        />
+                        <div className="mt-2 text-[11px] text-[#8A9A7E] flex items-center gap-2">
+                          <FileText className="h-3.5 w-3.5 text-[#C9A86A]" />
+                          <span>PDF Document embedded above. Use browser viewer or download button below.</span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (isDrive) {
+                    return (
+                      <div className="py-12 px-6 text-center max-w-md mx-auto">
+                        <ExternalLink className="h-10 w-10 text-[#C9A86A] mx-auto mb-3" />
+                        <h5 className="font-sans text-sm font-bold text-[#EDE6D3] uppercase">Cloud Storage Document</h5>
+                        <p className="text-xs text-[#8A9A7E] mt-1.5 mb-4 leading-relaxed">
+                          This document is stored on Google Drive / external cloud storage and cannot be displayed in a frame.
+                        </p>
+                        <a
+                          href={resolvedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-bold uppercase tracking-wider cursor-pointer"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          <span>Open Document in New Tab</span>
+                        </a>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <img
+                      src={resolvedUrl}
+                      alt={viewProofModal.name || "Proof Document"}
+                      className="max-h-[60vh] max-w-full object-contain mx-auto"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector('.img-error-fallback')) {
+                          const fallback = document.createElement('div');
+                          fallback.className = 'img-error-fallback py-10 px-4 text-center text-xs text-[#8A9A7E]';
+                          fallback.innerHTML = `
+                            <p class="text-rose-400 font-bold mb-1">Unable to display image preview</p>
+                            <p class="text-[11px] text-[#8A9A7E] max-w-xs mx-auto mb-3">The attachment may be in an unsupported file format or requires authenticated access.</p>
+                            <a href="${resolvedUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[#C9A86A] underline hover:text-[#EDE6D3]">
+                              Open Direct Link &rarr;
+                            </a>
+                          `;
+                          parent.appendChild(fallback);
+                        }
+                      }}
+                    />
+                  );
+                })()}
               </div>
 
               <div className="mt-4 pt-3 border-t border-[#C9A86A]/20 flex justify-between items-center">
                 <a
-                  href={viewProofModal.url}
-                  download={viewProofModal.name || "payment_proof"}
+                  href={resolveMediaUrl(viewProofModal.url)}
+                  download={viewProofModal.name || "proof_document"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-4 py-2 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <Download className="h-3.5 w-3.5" />
-                  <span>Download Image</span>
+                  <span>
+                    {isPdfDocument(viewProofModal.url, viewProofModal.name) ? "Download / Open PDF" : "Download Proof"}
+                  </span>
                 </a>
                 <button
                   onClick={() => setViewProofModal(null)}

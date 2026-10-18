@@ -650,7 +650,7 @@ export default function Registration({ initialPreference, clearInitialPreference
             Priority Delegate Dossier
           </h1>
           <p className="mt-2.5 text-xs sm:text-sm text-[#8A9A7E] max-w-xl mx-auto leading-relaxed">
-            Early accreditation intake for school and college delegates. Secure priority council allotment, early study guide access, and subsidized registration privileges.
+            Early accreditation intake for college delegates. Secure priority council allotment, early study guide access, and subsidized registration privileges.
           </p>
 
           {/* Priority Perks Bar */}
@@ -1362,7 +1362,7 @@ export default function Registration({ initialPreference, clearInitialPreference
                         <div className="mb-2">
                           <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] font-semibold flex items-center gap-1.5">
                             <FileText className="h-3.5 w-3.5 text-[#C9A86A]" />
-                            Photo of School or College ID (Optional)
+                            Photo of  College ID (Optional)
                           </label>
                           <p className="text-[11px] text-[#8A9A7E] mt-0.5 leading-relaxed">
                             Attach a clear photo or scanned copy of your student identity card or bonafide letter for campus security verification.
@@ -1590,8 +1590,8 @@ export default function Registration({ initialPreference, clearInitialPreference
                                   formData.pref1Committee === "nes75"
                                     ? `NES'75 Leader #${idx + 1}`
                                     : formData.pref1Committee.startsWith("ip")
-                                    ? `Press Bureau #${idx + 1}`
-                                    : `Country Choice #${idx + 1}`
+                                      ? `Press Bureau #${idx + 1}`
+                                      : `Country Choice #${idx + 1}`
                                 }
                               />
                             </div>
@@ -1689,8 +1689,8 @@ export default function Registration({ initialPreference, clearInitialPreference
                                   formData.pref2Committee === "nes75"
                                     ? `NES'75 Leader #${idx + 1}`
                                     : formData.pref2Committee.startsWith("ip")
-                                    ? `Press Bureau #${idx + 1}`
-                                    : `Country Choice #${idx + 1}`
+                                      ? `Press Bureau #${idx + 1}`
+                                      : `Country Choice #${idx + 1}`
                                 }
                               />
                             </div>
@@ -1788,8 +1788,8 @@ export default function Registration({ initialPreference, clearInitialPreference
                                   formData.pref3Committee === "nes75"
                                     ? `NES'75 Leader #${idx + 1}`
                                     : formData.pref3Committee.startsWith("ip")
-                                    ? `Press Bureau #${idx + 1}`
-                                    : `Country Choice #${idx + 1}`
+                                      ? `Press Bureau #${idx + 1}`
+                                      : `Country Choice #${idx + 1}`
                                 }
                               />
                             </div>
@@ -1826,8 +1826,8 @@ export default function Registration({ initialPreference, clearInitialPreference
                           }
                         }}
                         className={`p-3.5 border cursor-pointer transition-all flex items-start gap-3 select-none ${formData.priorityPreference === "committee"
-                            ? "border-[#C9A86A] bg-[#2E3B2F] shadow-md"
-                            : "border-[#8A9A7E]/30 bg-[#141814] hover:border-[#C9A86A]/40"
+                          ? "border-[#C9A86A] bg-[#2E3B2F] shadow-md"
+                          : "border-[#8A9A7E]/30 bg-[#141814] hover:border-[#C9A86A]/40"
                           }`}
                       >
                         <input
@@ -1868,8 +1868,8 @@ export default function Registration({ initialPreference, clearInitialPreference
                           }
                         }}
                         className={`p-3.5 border cursor-pointer transition-all flex items-start gap-3 select-none ${formData.priorityPreference === "portfolio"
-                            ? "border-[#C9A86A] bg-[#2E3B2F] shadow-md"
-                            : "border-[#8A9A7E]/30 bg-[#141814] hover:border-[#C9A86A]/40"
+                          ? "border-[#C9A86A] bg-[#2E3B2F] shadow-md"
+                          : "border-[#8A9A7E]/30 bg-[#141814] hover:border-[#C9A86A]/40"
                           }`}
                       >
                         <input
@@ -1973,8 +1973,8 @@ export default function Registration({ initialPreference, clearInitialPreference
                           {isIISTInstitution(formData.institution)
                             ? "IIST Delegate Priority Fee"
                             : formData.hasMerch
-                            ? "College Delegate Priority Fee + Merch"
-                            : "College Delegate Priority Fee"}
+                              ? "College Delegate Priority Fee + Merch"
+                              : "College Delegate Priority Fee"}
                         </h3>
                       </div>
                       <div className="text-right">
@@ -2392,264 +2392,257 @@ export default function Registration({ initialPreference, clearInitialPreference
             </form>
           </div>
         )}
-      {/* ======================================================== */}
-      {/* CONDITIONAL INTERMEDIATE STAGE: MERCHANDISE POPUP MODAL  */}
-      {/* ======================================================== */}
-      <AnimatePresence>
-        {showMerchModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto"
-          >
+        {/* ======================================================== */}
+        {/* CONDITIONAL INTERMEDIATE STAGE: MERCHANDISE POPUP MODAL  */}
+        {/* ======================================================== */}
+        <AnimatePresence>
+          {showMerchModal && (
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 16 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="relative w-full max-w-3xl border-2 border-[#C9A86A] bg-[#1A1F1A] text-[#EDE6D3] shadow-2xl overflow-hidden my-auto text-left"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto"
             >
-              {/* Golden accent bar */}
-              <div className="h-1.5 w-full bg-gradient-to-r from-[#C9A86A]/40 via-[#C9A86A] to-[#C9A86A]/40" />
-
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={handleSkipMerch}
-                className="absolute top-4 right-4 p-1.5 text-[#8A9A7E] hover:text-[#EDE6D3] hover:bg-[#2E3B2F] border border-[#8A9A7E]/30 transition-all cursor-pointer z-10"
-                title="Skip and proceed to payment"
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 16 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 16 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="relative w-full max-w-3xl border-2 border-[#C9A86A] bg-[#1A1F1A] text-[#EDE6D3] shadow-2xl overflow-hidden my-auto text-left"
               >
-                <X className="h-4 w-4" />
-              </button>
+                {/* Golden accent bar */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-[#C9A86A]/40 via-[#C9A86A] to-[#C9A86A]/40" />
 
-              <div className="p-5 sm:p-7 space-y-6">
-                {/* Modal Header */}
-                <div className="pr-8">
-                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold bg-[#2E3B2F] px-2.5 py-0.5 border border-[#C9A86A]/40 flex items-center gap-1.5">
-                      <Sparkles className="h-3 w-3 text-[#C9A86A]" />
-                      Exclusive Delegate Merch Offer
-                    </span>
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 border border-emerald-500/30">
-                      ₹599 ONLY
-                    </span>
-                  </div>
-                  <h3 className="font-serif text-2xl sm:text-3xl text-[#EDE6D3] font-normal leading-tight">
-                    Official IISTMUN 2026 Edition T-Shirt
-                  </h3>
-                  <p className="text-xs sm:text-sm text-[#8A9A7E] mt-1 leading-relaxed">
-                    Would you like to purchase the official conference merchandise before finalizing your accreditation payment?
-                  </p>
-                </div>
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={handleSkipMerch}
+                  className="absolute top-4 right-4 p-1.5 text-[#8A9A7E] hover:text-[#EDE6D3] hover:bg-[#2E3B2F] border border-[#8A9A7E]/30 transition-all cursor-pointer z-10"
+                  title="Skip and proceed to payment"
+                >
+                  <X className="h-4 w-4" />
+                </button>
 
-                {/* Main Content Grid: Image Preview (Left) & Selection Panel (Right) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                  
-                  {/* Left Column: Visual Showcase with Tabs */}
-                  <div className="space-y-3">
-                    {/* View Switcher Tabs */}
-                    <div className="flex border border-[#8A9A7E]/30 bg-[#141814] p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setMerchViewTab("front")}
-                        className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer ${
-                          merchViewTab === "front"
-                            ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
-                            : "text-[#8A9A7E] hover:text-[#EDE6D3]"
-                        }`}
-                      >
-                        Front View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMerchViewTab("back")}
-                        className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer ${
-                          merchViewTab === "back"
-                            ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
-                            : "text-[#8A9A7E] hover:text-[#EDE6D3]"
-                        }`}
-                      >
-                        Back View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMerchViewTab("size_chart")}
-                        className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                          merchViewTab === "size_chart"
-                            ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
-                            : "text-[#8A9A7E] hover:text-[#EDE6D3]"
-                        }`}
-                      >
-                        <Ruler className="h-3 w-3" />
-                        Size Chart
-                      </button>
+                <div className="p-5 sm:p-7 space-y-6">
+                  {/* Modal Header */}
+                  <div className="pr-8">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold bg-[#2E3B2F] px-2.5 py-0.5 border border-[#C9A86A]/40 flex items-center gap-1.5">
+                        <Sparkles className="h-3 w-3 text-[#C9A86A]" />
+                        Exclusive Delegate Merch Offer
+                      </span>
+                      <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 border border-emerald-500/30">
+                        ₹599 ONLY
+                      </span>
                     </div>
-
-                    {/* Image Viewer Container */}
-                    <div className="relative border border-[#C9A86A]/40 bg-[#141814] p-3 flex items-center justify-center min-h-[280px] max-h-[320px] overflow-hidden group">
-                      {merchViewTab === "front" && (
-                        <motion.img
-                          key="front"
-                          initial={{ opacity: 0, scale: 0.96 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.2 }}
-                          src="/merch_front.png"
-                          alt="IISTMUN Official Merch Front"
-                          className="max-h-[290px] w-auto object-contain mx-auto transition-transform duration-300 group-hover:scale-105"
-                        />
-                      )}
-                      {merchViewTab === "back" && (
-                        <motion.img
-                          key="back"
-                          initial={{ opacity: 0, scale: 0.96 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.2 }}
-                          src="/merch_back.png"
-                          alt="IISTMUN Official Merch Back"
-                          className="max-h-[290px] w-auto object-contain mx-auto transition-transform duration-300 group-hover:scale-105"
-                        />
-                      )}
-                      {merchViewTab === "size_chart" && (
-                        <motion.img
-                          key="size_chart"
-                          initial={{ opacity: 0, scale: 0.96 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.2 }}
-                          src="/size_chart.png"
-                          alt="IISTMUN Official T-Shirt Size Chart"
-                          className="max-h-[290px] w-auto object-contain mx-auto"
-                        />
-                      )}
-                    </div>
-
-                    {/* Thumbnail Switchers */}
-                    <div className="flex items-center gap-2 justify-center pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setMerchViewTab("front")}
-                        className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer ${
-                          merchViewTab === "front" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
-                        }`}
-                        title="Front view"
-                      >
-                        <img src="/merch_front.png" alt="Front thumbnail" className="h-full w-full object-contain" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMerchViewTab("back")}
-                        className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer ${
-                          merchViewTab === "back" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
-                        }`}
-                        title="Back view"
-                      >
-                        <img src="/merch_back.png" alt="Back thumbnail" className="h-full w-full object-contain" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMerchViewTab("size_chart")}
-                        className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer flex flex-col items-center justify-center ${
-                          merchViewTab === "size_chart" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
-                        }`}
-                        title="Size chart"
-                      >
-                        <Ruler className="h-4 w-4 text-[#C9A86A]" />
-                        <span className="text-[7px] font-mono text-[#8A9A7E] uppercase">CHART</span>
-                      </button>
-                    </div>
+                    <h3 className="font-serif text-2xl sm:text-3xl text-[#EDE6D3] font-normal leading-tight">
+                      Official IISTMUN 2026 Edition T-Shirt
+                    </h3>
+                    <p className="text-xs sm:text-sm text-[#8A9A7E] mt-1 leading-relaxed">
+                      Would you like to purchase the official conference merchandise before finalizing your accreditation payment?
+                    </p>
                   </div>
 
-                  {/* Right Column: Details, Size Selection, and CTAs */}
-                  <div className="space-y-4 text-left">
-                    {/* Price and Description Box */}
-                    <div className="p-3.5 border border-[#8A9A7E]/30 bg-[#2E3B2F]/60 space-y-1">
-                      <div className="flex items-baseline justify-between">
-                        <span className="font-sans text-[10px] uppercase tracking-wider text-[#8A9A7E] font-semibold">
-                          Conference Edition Price
-                        </span>
-                        <div className="text-right">
-                          <span className="text-xs text-[#8A9A7E] line-through mr-2">₹899</span>
-                          <span className="font-serif text-2xl font-bold text-[#C9A86A]">₹599</span>
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-[#EDE6D3]/90 leading-relaxed pt-1 border-t border-[#8A9A7E]/20">
-                        Iconic ISRO Space Transport artwork on the front with the historic Chandrayaan Moon Landing celebration on the back. 100% premium combed cotton.
-                      </p>
-                    </div>
+                  {/* Main Content Grid: Image Preview (Left) & Selection Panel (Right) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
 
-                    {/* Size Selector */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] font-semibold">
-                          Choose T-Shirt Size *
-                        </label>
+                    {/* Left Column: Visual Showcase with Tabs */}
+                    <div className="space-y-3">
+                      {/* View Switcher Tabs */}
+                      <div className="flex border border-[#8A9A7E]/30 bg-[#141814] p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setMerchViewTab("front")}
+                          className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer ${merchViewTab === "front"
+                            ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
+                            : "text-[#8A9A7E] hover:text-[#EDE6D3]"
+                            }`}
+                        >
+                          Front View
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMerchViewTab("back")}
+                          className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer ${merchViewTab === "back"
+                            ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
+                            : "text-[#8A9A7E] hover:text-[#EDE6D3]"
+                            }`}
+                        >
+                          Back View
+                        </button>
                         <button
                           type="button"
                           onClick={() => setMerchViewTab("size_chart")}
-                          className="text-[10px] text-[#C9A86A] hover:underline flex items-center gap-1 cursor-pointer font-sans"
+                          className={`flex-1 py-1.5 text-[10px] font-sans uppercase tracking-wider font-semibold transition-all cursor-pointer flex items-center justify-center gap-1 ${merchViewTab === "size_chart"
+                            ? "bg-[#C9A86A] text-[#1A1F1A] shadow"
+                            : "text-[#8A9A7E] hover:text-[#EDE6D3]"
+                            }`}
                         >
                           <Ruler className="h-3 w-3" />
-                          <span>View Size Chart</span>
+                          Size Chart
                         </button>
                       </div>
 
-                      <select
-                        value={selectedMerchSize}
-                        onChange={(e) => {
-                          setSelectedMerchSize(e.target.value);
-                          if (merchSizeError) setMerchSizeError("");
-                        }}
-                        className={`w-full border ${
-                          merchSizeError ? "border-rose-400" : "border-[#8A9A7E]/40"
-                        } bg-[#141814] px-3.5 py-3 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A] font-medium transition-all cursor-pointer`}
-                      >
-                        <option value="" disabled className="bg-[#1A1F1A]">
-                          -- Select your size --
-                        </option>
-                        {MERCH_SIZES.map((sz) => (
-                          <option key={sz.value} value={sz.value} className="bg-[#1A1F1A]">
-                            {sz.label}
+                      {/* Image Viewer Container */}
+                      <div className="relative border border-[#C9A86A]/40 bg-[#141814] p-3 flex items-center justify-center min-h-[280px] max-h-[320px] overflow-hidden group">
+                        {merchViewTab === "front" && (
+                          <motion.img
+                            key="front"
+                            initial={{ opacity: 0, scale: 0.96 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.2 }}
+                            src="/merch_front.png"
+                            alt="IISTMUN Official Merch Front"
+                            className="max-h-[290px] w-auto object-contain mx-auto transition-transform duration-300 group-hover:scale-105"
+                          />
+                        )}
+                        {merchViewTab === "back" && (
+                          <motion.img
+                            key="back"
+                            initial={{ opacity: 0, scale: 0.96 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.2 }}
+                            src="/merch_back.png"
+                            alt="IISTMUN Official Merch Back"
+                            className="max-h-[290px] w-auto object-contain mx-auto transition-transform duration-300 group-hover:scale-105"
+                          />
+                        )}
+                        {merchViewTab === "size_chart" && (
+                          <motion.img
+                            key="size_chart"
+                            initial={{ opacity: 0, scale: 0.96 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.2 }}
+                            src="/size_chart.png"
+                            alt="IISTMUN Official T-Shirt Size Chart"
+                            className="max-h-[290px] w-auto object-contain mx-auto"
+                          />
+                        )}
+                      </div>
+
+                      {/* Thumbnail Switchers */}
+                      <div className="flex items-center gap-2 justify-center pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setMerchViewTab("front")}
+                          className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer ${merchViewTab === "front" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
+                            }`}
+                          title="Front view"
+                        >
+                          <img src="/merch_front.png" alt="Front thumbnail" className="h-full w-full object-contain" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMerchViewTab("back")}
+                          className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer ${merchViewTab === "back" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
+                            }`}
+                          title="Back view"
+                        >
+                          <img src="/merch_back.png" alt="Back thumbnail" className="h-full w-full object-contain" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMerchViewTab("size_chart")}
+                          className={`h-11 w-11 border p-0.5 bg-[#141814] transition-all cursor-pointer flex flex-col items-center justify-center ${merchViewTab === "size_chart" ? "border-[#C9A86A] ring-1 ring-[#C9A86A]" : "border-[#8A9A7E]/30 opacity-70 hover:opacity-100"
+                            }`}
+                          title="Size chart"
+                        >
+                          <Ruler className="h-4 w-4 text-[#C9A86A]" />
+                          <span className="text-[7px] font-mono text-[#8A9A7E] uppercase">CHART</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Details, Size Selection, and CTAs */}
+                    <div className="space-y-4 text-left">
+                      {/* Price and Description Box */}
+                      <div className="p-3.5 border border-[#8A9A7E]/30 bg-[#2E3B2F]/60 space-y-1">
+                        <div className="flex items-baseline justify-between">
+                          <span className="font-sans text-[10px] uppercase tracking-wider text-[#8A9A7E] font-semibold">
+                            Conference Edition Price
+                          </span>
+                          <div className="text-right">
+                            <span className="text-xs text-[#8A9A7E] line-through mr-2">₹899</span>
+                            <span className="font-serif text-2xl font-bold text-[#C9A86A]">₹599</span>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-[#EDE6D3]/90 leading-relaxed pt-1 border-t border-[#8A9A7E]/20">
+                          Iconic ISRO Space Transport artwork on the front with the historic Chandrayaan Moon Landing celebration on the back. 100% premium combed cotton.
+                        </p>
+                      </div>
+
+                      {/* Size Selector */}
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] font-semibold">
+                            Choose T-Shirt Size *
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setMerchViewTab("size_chart")}
+                            className="text-[10px] text-[#C9A86A] hover:underline flex items-center gap-1 cursor-pointer font-sans"
+                          >
+                            <Ruler className="h-3 w-3" />
+                            <span>View Size Chart</span>
+                          </button>
+                        </div>
+
+                        <select
+                          value={selectedMerchSize}
+                          onChange={(e) => {
+                            setSelectedMerchSize(e.target.value);
+                            if (merchSizeError) setMerchSizeError("");
+                          }}
+                          className={`w-full border ${merchSizeError ? "border-rose-400" : "border-[#8A9A7E]/40"
+                            } bg-[#141814] px-3.5 py-3 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A] font-medium transition-all cursor-pointer`}
+                        >
+                          <option value="" disabled className="bg-[#1A1F1A]">
+                            -- Select your size --
                           </option>
-                        ))}
-                      </select>
-                      {merchSizeError && (
-                        <p className="text-[10px] text-rose-400 font-semibold mt-1">{merchSizeError}</p>
-                      )}
+                          {MERCH_SIZES.map((sz) => (
+                            <option key={sz.value} value={sz.value} className="bg-[#1A1F1A]">
+                              {sz.label}
+                            </option>
+                          ))}
+                        </select>
+                        {merchSizeError && (
+                          <p className="text-[10px] text-rose-400 font-semibold mt-1">{merchSizeError}</p>
+                        )}
+                      </div>
+
+                      {/* Summary notice */}
+                      <div className="text-[11px] text-[#8A9A7E] border-l-2 border-[#C9A86A] pl-3 py-1 bg-[#141814]/60 leading-relaxed">
+                        If selected, <strong className="text-[#EDE6D3]">₹599</strong> will be added to your total payment amount (Total: <strong className="text-[#C9A86A]">₹1,898</strong>). Collect your t-shirt at the IISTMUN on-campus kit desk.
+                      </div>
+
+                      {/* Action Decision Buttons */}
+                      <div className="space-y-2.5 pt-2">
+                        <button
+                          type="button"
+                          onClick={handleConfirmMerch}
+                          className="w-full flex items-center justify-center gap-2 bg-[#C9A86A] hover:bg-[#bfa060] px-5 py-3 font-sans text-xs font-bold uppercase tracking-wider text-[#1A1F1A] transition-all shadow-md active:scale-[0.98] cursor-pointer"
+                        >
+                          <ShoppingBag className="h-4 w-4" />
+                          <span>Yes, Add to Registration (+₹599)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleSkipMerch}
+                          className="w-full flex items-center justify-center gap-1.5 border border-[#8A9A7E]/40 bg-[#1A1F1A] hover:bg-[#2E3B2F] px-5 py-2.5 font-sans text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] transition-all cursor-pointer"
+                        >
+                          <span>No, Skip &amp; Proceed to Payment</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Summary notice */}
-                    <div className="text-[11px] text-[#8A9A7E] border-l-2 border-[#C9A86A] pl-3 py-1 bg-[#141814]/60 leading-relaxed">
-                      If selected, <strong className="text-[#EDE6D3]">₹599</strong> will be added to your total payment amount (Total: <strong className="text-[#C9A86A]">₹1,898</strong>). Collect your t-shirt at the IISTMUN on-campus kit desk.
-                    </div>
-
-                    {/* Action Decision Buttons */}
-                    <div className="space-y-2.5 pt-2">
-                      <button
-                        type="button"
-                        onClick={handleConfirmMerch}
-                        className="w-full flex items-center justify-center gap-2 bg-[#C9A86A] hover:bg-[#bfa060] px-5 py-3 font-sans text-xs font-bold uppercase tracking-wider text-[#1A1F1A] transition-all shadow-md active:scale-[0.98] cursor-pointer"
-                      >
-                        <ShoppingBag className="h-4 w-4" />
-                        <span>Yes, Add to Registration (+₹599)</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleSkipMerch}
-                        className="w-full flex items-center justify-center gap-1.5 border border-[#8A9A7E]/40 bg-[#1A1F1A] hover:bg-[#2E3B2F] px-5 py-2.5 font-sans text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] transition-all cursor-pointer"
-                      >
-                        <span>No, Skip &amp; Proceed to Payment</span>
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
-                    </div>
                   </div>
-
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );
