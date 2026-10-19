@@ -72,7 +72,12 @@ async function startServer() {
 
       const list = readLocalRegistrations();
       const identifier = regData.id || regData.uid;
-      const existingIdx = list.findIndex(r => (r.id && r.id === identifier) || (r.uid && r.uid === identifier));
+      const existingIdx = list.findIndex(r => {
+        if (regData.id && r.id) return r.id === regData.id;
+        if (regData.id && r.uid) return r.uid === regData.id;
+        if (regData.uid && r.id) return r.id === regData.uid;
+        return Boolean(regData.uid && r.uid && r.uid === regData.uid);
+      });
 
       if (existingIdx >= 0) {
         list[existingIdx] = { ...list[existingIdx], ...regData, updatedAt: new Date().toISOString() };

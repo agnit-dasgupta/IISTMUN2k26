@@ -321,3 +321,91 @@ export async function purgeSampleData(db: Firestore): Promise<{ success: boolean
   };
 }
 
+/**
+ * Synchronize all local registration records into Cloud Firestore collections
+ */
+export async function syncLocalRegistrationsToFirestore(
+  db: Firestore, 
+  records?: any[]
+): Promise<{ success: boolean; syncedCount: number; message: string }> {
+  try {
+    let list = records;
+    if (!list || list.length === 0) {
+      const res = await fetch("/api/registrations");
+      const json = await res.json();
+      list = json.data && Array.isArray(json.data) ? json.data : [];
+    }
+
+    if (!list || list.length === 0) {
+      return { success: true, syncedCount: 0, message: "No local registration records to sync." };
+    }
+
+    let syncedCount = 0;
+    for (const reg of list) {
+      const ticketId = reg.id || reg.uid;
+      if (!ticketId) continue;
+
+      const isUnga = Boolean(
+        reg.isUnga === true ||
+        reg.round === "online" ||
+        reg.pref1Committee === "unga" ||
+        ticketId.startsWith("UNGA")
+      );
+
+      const clean: Record<string, any> = {};
+      for (const [k, v] of Object.entries(reg)) {
+        if (v !== undefined) {
+          clean[k] = v;
+        }
+      }
+
+      clean.id = ticketId;
+      clean.uid = ticketId;
+      clean.userId = reg.userId || ticketId;
+      clean.round = isUnga ? "online" : "priority";
+      clean.isPriority = !isUnga;
+      clean.isUnga = isUnga;
+      clean.hasMerch = Boolean(reg.hasMerch);
+      clean.merchSize = reg.hasMerch ? (reg.merchSize || "M") : "";
+      clean.paymentScreenshotUrl = reg.paymentScreenshotUrl || "";
+      clean.idCardUrl = reg.idCardUrl || "";
+
+      // 1. Primary registrations
+      try {
+        await setDoc(doc(db, "registrations", ticketId), clean);
+      } catch (err) {
+        console.warn(`Could not sync ${ticketId} to registrations:`, err);
+      }
+
+      // 2. Specific collection
+      if (isUnga) {
+        try {
+          await setDoc(doc(db, "unga_registrations", ticketId), clean);
+          syncedCount++;
+        } catch (err) {
+          console.warn(`Could not sync ${ticketId} to unga_registrations:`, err);
+        }
+      } else {
+        try {
+          await setDoc(doc(db, "priority_registrations", ticketId), clean);
+          syncedCount++;
+        } catch (err) {
+          console.warn(`Could not sync ${ticketId} to priority_registrations:`, err);
+        }
+      }
+    }
+
+    return {
+      success: true,
+      syncedCount,
+      message: `Successfully synchronized ${syncedCount} dossiers (Priority & UNGA) directly into Cloud Firestore!`
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      syncedCount: 0,
+      message: `Sync failed: ${err.message || String(err)}`
+    };
+  }
+}
+

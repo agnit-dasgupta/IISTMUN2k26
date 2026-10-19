@@ -177,6 +177,7 @@ import {
   seedSchedule, 
   seedCountryMatrix,
   purgeSampleData,
+  syncLocalRegistrationsToFirestore,
   CollectionCounts 
 } from "../utils/firestoreSeed";
 import { RegistrationDetails, PriorityRegistrationDetails, CountryMatrixRow, PortfolioStatus, CommitteeId, ContactQuery, EBRegistration, CampusAmbassadorRegistration, WorkshopRegistrationDetails } from "../types";
@@ -536,6 +537,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+
+  const handleSyncLocalToCloud = async () => {
+    if (!isAdmin) return;
+    setIsSyncingCloud(true);
+    setSeedResult(null);
+    try {
+      const res = await syncLocalRegistrationsToFirestore(db, [...registrations, ...priorityRegistrations, ...ungaRegistrations]);
+      showToast(res.message);
+      setSeedResult({ success: res.success, message: res.message });
+      await refreshCollectionStats();
+    } catch (err: any) {
+      console.error("Cloud sync error:", err);
+      showToast("Cloud sync failed: " + (err?.message || "Unknown error"));
+      setSeedResult({ success: false, message: err?.message || "Cloud sync failed" });
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
+
 
   // Listener for contact queries solely from Firestore
   useEffect(() => {
@@ -590,6 +611,42 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, [isAdmin]);
 
+  // Helper to accurately compare registration identity without incorrectly collapsing different tickets from same user
+  const isSameRegistration = (a: any, b: any): boolean => {
+    if (a?.id && b?.id) {
+      return a.id === b.id;
+    }
+    if (a?.id && b?.uid) {
+      return a.id === b.uid;
+    }
+    if (a?.uid && b?.id) {
+      return a.uid === b.id;
+    }
+    return Boolean(a?.uid && b?.uid && a.uid === b.uid);
+  };
+
+  // Helper to test if a registration belongs to UNGA (Online Committee)
+  const isUngaRecord = (r: any): boolean =>
+    Boolean(
+      r &&
+        (r.isUnga === true ||
+          r.round === "online" ||
+          r.round === "unga" ||
+          r.pref1Committee === "unga" ||
+          (typeof r.id === "string" && r.id.startsWith("UNGA")))
+    );
+
+  // Helper to test if a registration belongs to Priority Round
+  const isPriorityRecord = (r: any): boolean =>
+    Boolean(
+      r &&
+        !isUngaRecord(r) &&
+        (r.isPriority === true ||
+          r.round === "priority" ||
+          (typeof r.id === "string" && r.id.startsWith("PRIO")) ||
+          (r.pref1Committee && r.pref1Committee !== "unga"))
+    );
+
   useEffect(() => {
     if (!isAdmin) {
       setLoading(false);
@@ -598,32 +655,56 @@ export default function AdminDashboard() {
 
     setLoading(true);
 
-    // Sync from local server backup endpoint as well
+    // Initial immediate sync from local server backup endpoint
     fetch("/api/registrations")
       .then((res) => res.json())
       .then((res) => {
         if (res.data && Array.isArray(res.data)) {
+          const backupList = [...res.data];
           setRegistrations((prev) => {
             const merged = [...prev];
-            res.data.forEach((item: RegistrationDetails) => {
-              if (!merged.some((m) => (m.id && m.id === item.id) || (m.uid && m.uid === item.uid))) {
+            backupList.forEach((item: RegistrationDetails) => {
+              if (!merged.some((m) => isSameRegistration(m, item))) {
                 merged.push(item);
               }
             });
-            merged.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+            merged.sort((a, b) => new Date(b.timestamp || b.paymentDate || 0).getTime() - new Date(a.timestamp || a.paymentDate || 0).getTime());
             return merged;
           });
+          setPriorityRegistrations((prev) => {
+            const merged = [...prev];
+            backupList.filter(isPriorityRecord).forEach((item: any) => {
+              if (!merged.some((m) => isSameRegistration(m, item))) {
+                merged.push(item as PriorityRegistrationDetails);
+              }
+            });
+            merged.sort((a, b) => new Date(b.timestamp || b.paymentDate || 0).getTime() - new Date(a.timestamp || a.paymentDate || 0).getTime());
+            return merged;
+          });
+          setUngaRegistrations((prev) => {
+            const merged = [...prev];
+            backupList.filter(isUngaRecord).forEach((item: any) => {
+              if (!merged.some((m) => isSameRegistration(m, item))) {
+                merged.push(item as RegistrationDetails);
+              }
+            });
+            merged.sort((a, b) => new Date(b.timestamp || b.paymentDate || 0).getTime() - new Date(a.timestamp || a.paymentDate || 0).getTime());
+            return merged;
+          });
+          setLoading(false);
         }
       })
-      .catch((e) => console.warn("Local registrations sync note:", e));
+      .catch((e) => console.warn("Local registrations initial sync note:", e));
 
     const q = query(collection(db, "registrations"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: RegistrationDetails[] = [];
       snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
         list.push({
           uid: docSnap.id,
-          ...docSnap.data()
+          id: d.id || docSnap.id,
+          ...d
         } as unknown as RegistrationDetails);
       });
 
@@ -633,17 +714,17 @@ export default function AdminDashboard() {
         .then((res) => {
           if (res.data && Array.isArray(res.data)) {
             res.data.forEach((item: RegistrationDetails) => {
-              if (!list.some((m) => (m.id && m.id === item.id) || (m.uid && m.uid === item.uid))) {
+              if (!list.some((m) => isSameRegistration(m, item))) {
                 list.push(item);
               }
             });
           }
-          list.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+          list.sort((a, b) => new Date(b.timestamp || b.paymentDate || 0).getTime() - new Date(a.timestamp || a.paymentDate || 0).getTime());
           setRegistrations(list);
           setLoading(false);
         })
         .catch(() => {
-          list.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+          list.sort((a, b) => new Date(b.timestamp || b.paymentDate || 0).getTime() - new Date(a.timestamp || a.paymentDate || 0).getTime());
           setRegistrations(list);
           setLoading(false);
         });
@@ -654,7 +735,7 @@ export default function AdminDashboard() {
         .then((res) => {
           if (res.data && Array.isArray(res.data)) {
             const list = [...res.data];
-            list.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+            list.sort((a, b) => new Date(b.timestamp || b.paymentDate || 0).getTime() - new Date(a.timestamp || a.paymentDate || 0).getTime());
             setRegistrations(list);
           }
           setLoading(false);
@@ -674,15 +755,15 @@ export default function AdminDashboard() {
     const mergePriorityRecords = (baseList: PriorityRegistrationDetails[], backupList: any[] = []) => {
       const combined = [...baseList];
 
-      // Merge from registrations where round === "priority" or isPriority === true
+      // Merge from registrations state where isPriorityRecord is true
       registrations.forEach((r) => {
-        if ((r.round === "priority" || r.isPriority) && !combined.some((p) => (p.id && p.id === r.id) || (p.uid && p.uid === r.uid))) {
+        if (isPriorityRecord(r) && !combined.some((p) => isSameRegistration(p, r))) {
           combined.push(r as PriorityRegistrationDetails);
         }
       });
 
       backupList.forEach((r) => {
-        if ((r.round === "priority" || r.isPriority) && !combined.some((p) => (p.id && p.id === r.id) || (p.uid && p.uid === r.uid))) {
+        if (isPriorityRecord(r) && !combined.some((p) => isSameRegistration(p, r))) {
           combined.push(r as PriorityRegistrationDetails);
         }
       });
@@ -700,9 +781,11 @@ export default function AdminDashboard() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: PriorityRegistrationDetails[] = [];
       snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
         list.push({
           uid: docSnap.id,
-          ...docSnap.data()
+          id: d.id || docSnap.id,
+          ...d
         } as PriorityRegistrationDetails);
       });
 
@@ -733,17 +816,6 @@ export default function AdminDashboard() {
     return () => unsubscribe();
   }, [isAdmin, registrations]);
 
-  // Helper to test if a registration belongs to UNGA (Online Committee)
-  const isUngaRecord = (r: any): boolean =>
-    Boolean(
-      r &&
-        (r.isUnga === true ||
-          r.round === "online" ||
-          r.round === "unga" ||
-          r.pref1Committee === "unga" ||
-          (typeof r.id === "string" && r.id.startsWith("UNGA")))
-    );
-
   // Sync UNGA Online Registrations from Firestore 'unga_registrations', 'registrations' and '/api/registrations'
   useEffect(() => {
     if (!isAdmin) return;
@@ -753,13 +825,13 @@ export default function AdminDashboard() {
 
       // Merge from registrations where isUngaRecord is true
       registrations.forEach((r) => {
-        if (isUngaRecord(r) && !combined.some((u) => (u.id && u.id === r.id) || (u.uid && u.uid === r.uid))) {
+        if (isUngaRecord(r) && !combined.some((u) => isSameRegistration(u, r))) {
           combined.push(r);
         }
       });
 
       backupList.forEach((r) => {
-        if (isUngaRecord(r) && !combined.some((u) => (u.id && u.id === r.id) || (u.uid && u.uid === r.uid))) {
+        if (isUngaRecord(r) && !combined.some((u) => isSameRegistration(u, r))) {
           combined.push(r as RegistrationDetails);
         }
       });
@@ -777,9 +849,11 @@ export default function AdminDashboard() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: RegistrationDetails[] = [];
       snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
         list.push({
           uid: docSnap.id,
-          ...docSnap.data()
+          id: d.id || docSnap.id,
+          ...d
         } as RegistrationDetails);
       });
 
@@ -4919,8 +4993,17 @@ export default function AdminDashboard() {
                     <span>Seed Content (5 Tables)</span>
                   </button>
                   <button
+                    onClick={handleSyncLocalToCloud}
+                    disabled={isSyncingCloud}
+                    className="flex items-center gap-2 px-4 py-2.5 border border-[#8BA06F] bg-[#1A1F1A] hover:bg-[#8BA06F] hover:text-[#1A1F1A] text-[#8BA06F] text-xs font-sans font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 shadow-sm"
+                    title="Upload all local priority and UNGA registration dossiers directly to Cloud Firestore"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isSyncingCloud ? "animate-spin" : ""}`} />
+                    <span>{isSyncingCloud ? "Syncing to Cloud..." : "Sync Dossiers to Cloud"}</span>
+                  </button>
+                  <button
                     onClick={handlePurgeSampleData}
-                    disabled={isPurging || isSeeding}
+                    disabled={isPurging || isSeeding || isSyncingCloud}
                     className="flex items-center gap-2 px-4 py-2.5 border border-rose-500/50 bg-[#1A1F1A] hover:bg-rose-950/50 text-rose-300 text-xs font-sans font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50"
                     title="Remove any example or sample records from the database"
                   >

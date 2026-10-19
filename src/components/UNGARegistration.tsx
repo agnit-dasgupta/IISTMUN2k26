@@ -478,36 +478,36 @@ export default function UNGARegistration({
         console.warn("Local server backup note:", backupErr);
       }
 
-      // 2. Persist in Firestore 'unga_registrations' (dedicated UNGA collection)
+      // 2. Persist in Firestore 'unga_registrations' (dedicated UNGA collection with unique ticket ID)
       let ungaFirestoreSuccess = false;
       try {
-        await setDoc(doc(db, "unga_registrations", primaryDocId), cleanRegistration);
+        await setDoc(doc(db, "unga_registrations", primaryTicketId), cleanRegistration);
         ungaFirestoreSuccess = true;
-        console.log("[FIREBASE SUCCESS] UNGA registration uploaded to unga_registrations:", primaryDocId);
+        console.log("[FIREBASE SUCCESS] UNGA registration uploaded to unga_registrations:", primaryTicketId);
       } catch (ungaErr) {
-        console.error("Firestore 'unga_registrations' primary write status:", ungaErr);
-        if (primaryDocId !== primaryTicketId) {
+        console.error("Firestore 'unga_registrations' ticketId write status:", ungaErr);
+        if (user?.uid) {
           try {
-            await setDoc(doc(db, "unga_registrations", primaryTicketId), cleanRegistration);
+            await setDoc(doc(db, "unga_registrations", user.uid), cleanRegistration);
             ungaFirestoreSuccess = true;
-            console.log("[FIREBASE SUCCESS] UNGA registration uploaded to unga_registrations with ticket ID fallback:", primaryTicketId);
           } catch (fallbackErr) {
-            console.error("Firestore 'unga_registrations' fallback write status:", fallbackErr);
+            console.error("Firestore 'unga_registrations' uid write status:", fallbackErr);
           }
         }
       }
 
       // 3. Persist in Firestore 'registrations' (the primary conference registry)
       try {
-        const regDocId = user?.uid ? `${user.uid}_unga` : primaryTicketId;
-        await setDoc(doc(db, "registrations", regDocId), cleanRegistration);
-        console.log("[FIREBASE SUCCESS] UNGA registration uploaded to registrations:", regDocId);
+        await setDoc(doc(db, "registrations", primaryTicketId), cleanRegistration);
+        console.log("[FIREBASE SUCCESS] UNGA registration uploaded to registrations:", primaryTicketId);
       } catch (regErr) {
-        console.warn("Firestore 'registrations' write status:", regErr);
-        try {
-          await setDoc(doc(db, "registrations", primaryTicketId), cleanRegistration);
-        } catch (e3) {
-          console.warn("Firestore 'registrations' ticketId write status:", e3);
+        console.warn("Firestore 'registrations' ticketId write status:", regErr);
+        if (user?.uid) {
+          try {
+            await setDoc(doc(db, "registrations", `${user.uid}_unga`), cleanRegistration);
+          } catch (e3) {
+            console.warn("Firestore 'registrations' uid write status:", e3);
+          }
         }
       }
 

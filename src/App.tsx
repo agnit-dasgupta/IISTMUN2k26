@@ -20,9 +20,51 @@ import CherryBlossomBackground from "./components/CherryBlossomBackground";
 import { motion } from "motion/react";
 import { Compass, Globe, Star, ShieldCheck, Mail, ArrowUpRight, Orbit, Sparkles } from "lucide-react";
 
+import { useEffect } from "react";
+
+const getInitialTab = () => {
+  if (typeof window !== "undefined") {
+    const path = window.location.pathname.replace(/^\/+/, "").split("/")[0].toLowerCase();
+    const validTabs = [
+      "home", "secretariat", "committees", "matrix", "schedule", "faq",
+      "register-portal", "register-portal-priority", "register-portal-unga",
+      "register-portal-eb", "register-portal-ca", "register", "register-unga",
+      "workshop-register", "admin"
+    ];
+    if (validTabs.includes(path)) {
+      return path;
+    }
+    const hash = window.location.hash.replace(/^#\/?/, "").toLowerCase();
+    if (validTabs.includes(hash)) {
+      return hash;
+    }
+  }
+  return "home";
+};
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState("home");
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [initialPreference, setInitialPreference] = useState<{ country: string; committee: string } | null>(null);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const initial = getInitialTab();
+      setActiveTab(initial);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    if (typeof window !== "undefined") {
+      const url = newTab === "home" ? "/" : `/${newTab}`;
+      if (window.location.pathname !== url) {
+        window.history.pushState(null, "", url);
+      }
+    }
+  };
 
   const renderActiveContent = () => {
     switch (activeTab) {
@@ -32,7 +74,7 @@ export default function App() {
       case "map":
       case "about-iist":
       case "about-iistmun":
-        return <Home setActiveTab={setActiveTab} />;
+        return <Home setActiveTab={handleTabChange} />;
       case "secretariat":
         return <Secretariat />;
       case "committees":
@@ -41,9 +83,9 @@ export default function App() {
         return <CountryMatrix onSelectPreference={(country, committee) => {
           setInitialPreference({ country, committee });
           if (committee === "unga") {
-            setActiveTab("register-portal-unga");
+            handleTabChange("register-portal-unga");
           } else {
-            setActiveTab("register-portal-priority");
+            handleTabChange("register-portal-priority");
           }
         }} />;
       case "schedule":
@@ -53,24 +95,24 @@ export default function App() {
       case "register-portal":
       case "register-portal-priority":
       case "register-portal-eb":
-        return <RegisterPortal initialPortalTab="priority" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={setActiveTab} />;
+        return <RegisterPortal initialPortalTab="priority" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={handleTabChange} />;
       case "register-portal-unga":
       case "register-unga":
-        return <RegisterPortal initialPortalTab="unga" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={setActiveTab} />;
+        return <RegisterPortal initialPortalTab="unga" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={handleTabChange} />;
       case "register-portal-ca":
-        return <RegisterPortal initialPortalTab="campus-ambassador" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={setActiveTab} />;
+        return <RegisterPortal initialPortalTab="campus-ambassador" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={handleTabChange} />;
       case "register":
         return <Registration 
           initialPreference={initialPreference} 
           clearInitialPreference={() => setInitialPreference(null)} 
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
         />;
       case "workshop-register":
-        return <WorkshopRegistration setActiveTab={setActiveTab} />;
+        return <WorkshopRegistration setActiveTab={handleTabChange} />;
       case "admin":
         return <AdminDashboard />;
       default:
-        return <Home setActiveTab={setActiveTab} />;
+        return <Home setActiveTab={handleTabChange} />;
     }
   };
 
@@ -79,7 +121,7 @@ export default function App() {
   };
 
   const navigateToSection = (sectionId: string) => {
-    setActiveTab("home");
+    handleTabChange("home");
     setTimeout(() => {
       document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth" });
     }, 100);
@@ -92,10 +134,10 @@ export default function App() {
       <CherryBlossomBackground />
 
       {/* Navbar Component */}
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Navbar activeTab={activeTab} setActiveTab={handleTabChange} />
 
       {/* Marquee Announcement Ticker - Positioned Just Below Navbar */}
-      <MarqueeTicker setActiveTab={setActiveTab} />
+      <MarqueeTicker setActiveTab={handleTabChange} />
 
       {/* Main Tabbed Layout Content */}
       <motion.main
@@ -179,7 +221,7 @@ export default function App() {
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => { setActiveTab("secretariat"); handleScrollToTop(); }} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
+                  <button onClick={() => { handleTabChange("secretariat"); handleScrollToTop(); }} className="text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer">
                     Secretariat Board
                   </button>
                 </li>
@@ -191,19 +233,19 @@ export default function App() {
               <h4 className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-semibold">Registrations & Fellowship</h4>
               <ul className="space-y-2 font-sans text-xs text-[#8A9A7E]">
                 <li>
-                  <button onClick={() => { setActiveTab("register-portal-priority"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
+                  <button onClick={() => { handleTabChange("register-portal-priority"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
                     <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">Priority Registration</span>
                     <span className="block text-[10px] text-[#C9A86A]/80">Now Open &bull; Priority Round</span>
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => { setActiveTab("register-portal-unga"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
+                  <button onClick={() => { handleTabChange("register-portal-unga"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
                     <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">UNGA (Online Committee)</span>
                     <span className="block text-[10px] text-[#C9A86A]/80">Now Open &bull; Virtual Simulation Chamber</span>
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => { setActiveTab("register-portal-ca"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
+                  <button onClick={() => { handleTabChange("register-portal-ca"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
                     <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">Campus Ambassador</span>
                     <span className="block text-[10px] text-[#8A9A7E]/70">Register Now &bull; Outreach Network</span>
                   </button>

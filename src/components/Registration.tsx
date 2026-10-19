@@ -481,48 +481,71 @@ export default function Registration({ initialPreference, clearInitialPreference
         idCardUrl: formData.idCardUrl || "",
         idCardName: formData.idCardName || "",
         hasMerch: !isIISTInstitution(formData.institution) && formData.hasMerch,
-        merchSize: (!isIISTInstitution(formData.institution) && formData.hasMerch) ? (formData.merchSize || "M") : undefined,
+        merchSize: (!isIISTInstitution(formData.institution) && formData.hasMerch) ? (formData.merchSize || "M") : "",
         merchAmount: (!isIISTInstitution(formData.institution) && formData.hasMerch) ? 599 : 0,
         paymentMode: formData.paymentMode,
         transactionId: utr,
         utrNumber: utr,
         payerName: formData.payerName.trim(),
-        paymentDate: formData.paymentDate,
-        paymentScreenshotUrl: formData.paymentScreenshotUrl,
-        paymentScreenshotName: formData.paymentScreenshotName,
+        paymentDate: formData.paymentDate || "",
+        paymentScreenshotUrl: formData.paymentScreenshotUrl || "",
+        paymentScreenshotName: formData.paymentScreenshotName || "",
         paymentStatus: calculatedFee === 0 ? "Verified" : "Pending",
         status: calculatedFee === 0 ? "Payment Confirmed" : "Pending Verification"
       };
+
+      // Strip any undefined keys so Firestore SDK never throws Unsupported field value: undefined
+      const cleanRegistration: Record<string, any> = {};
+      for (const [key, val] of Object.entries(newRegistration)) {
+        if (val !== undefined) {
+          cleanRegistration[key] = val;
+        }
+      }
 
       // 1. Write to local server backup endpoint (guaranteed to succeed and immediately feed Admin Console)
       try {
         await fetch("/api/registrations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newRegistration)
+          body: JSON.stringify(cleanRegistration)
         });
       } catch (backupErr) {
         console.warn("Local server backup note:", backupErr);
       }
 
-      // 2. Persist in Firestore 'registrations' (the primary conference registry collection)
-      const primaryDocId = user?.uid || primaryTicketId;
+      // 2. Persist in Firestore 'priority_registrations' (dedicated priority collection with unique ticket ID)
       try {
-        await setDoc(doc(db, "registrations", primaryDocId), newRegistration);
-      } catch (regErr) {
-        console.warn("Firestore 'registrations' write status:", regErr);
+        await setDoc(doc(db, "priority_registrations", primaryTicketId), cleanRegistration);
+        console.log("[FIREBASE SUCCESS] Priority registration uploaded to priority_registrations:", primaryTicketId);
+      } catch (prioErr) {
+        console.warn("Firestore 'priority_registrations' ticketId write status:", prioErr);
+        if (user?.uid) {
+          try {
+            await setDoc(doc(db, "priority_registrations", user.uid), cleanRegistration);
+          } catch (e2) {
+            console.warn("Firestore 'priority_registrations' uid write status:", e2);
+          }
+        }
       }
 
-      // 3. Persist in Firestore 'priority_registrations' (dedicated priority collection)
+      // 3. Persist in Firestore 'registrations' (the primary conference registry collection)
       try {
-        await setDoc(doc(db, "priority_registrations", primaryDocId), newRegistration);
-      } catch (prioErr) {
-        console.warn("Firestore 'priority_registrations' write status:", prioErr);
+        await setDoc(doc(db, "registrations", primaryTicketId), cleanRegistration);
+        console.log("[FIREBASE SUCCESS] Priority registration uploaded to registrations:", primaryTicketId);
+      } catch (regErr) {
+        console.warn("Firestore 'registrations' ticketId write status:", regErr);
+        if (user?.uid) {
+          try {
+            await setDoc(doc(db, "registrations", user.uid), cleanRegistration);
+          } catch (e2) {
+            console.warn("Firestore 'registrations' uid write status:", e2);
+          }
+        }
       }
 
       // Cache locally in localStorage for persistent session
       try {
-        localStorage.setItem("iistmun_last_priority_pass", JSON.stringify(newRegistration));
+        localStorage.setItem("iistmun_last_priority_pass", JSON.stringify(cleanRegistration));
       } catch { }
 
       setSubmittedPass(newRegistration);
