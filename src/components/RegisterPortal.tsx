@@ -317,7 +317,7 @@ export default function RegisterPortal({
             UNGA (Online Committee)
           </h2>
           <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
-            100% online simulation &bull; Sovereign member states &bull; Global delegate intake.
+            Dates: 16th & 17th Jan 2027
           </p>
           {selectedForm === "unga" && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#C9A86A]" />

@@ -657,10 +657,10 @@ export default function UNGARegistration({
               100% Online Simulation Chamber
             </span>
             <span className="px-2.5 py-1 bg-[#2E3B2F]/60 border border-[#C9A86A]/30">
-              Registration Fee: ₹899
+              Dates: 16th & 17th Jan 2027
             </span>
             <span className="px-2.5 py-1 bg-[#2E3B2F]/60 border border-[#C9A86A]/30">
-              Portfolio Allotment: Rolling Intake
+              Registration Fee: ₹899
             </span>
           </div>
         </div>
