@@ -276,11 +276,15 @@ export default function Registration({ initialPreference, clearInitialPreference
       if (!formData.phone.trim() || formData.phone.length < 8) {
         newErrors.phone = "A valid WhatsApp / Phone contact number is required.";
       }
-      const rawAadhar = formData.aadharNumber.replace(/\s+/g, "");
-      if (!rawAadhar) {
-        newErrors.aadharNumber = "Aadhaar Card Number is mandatory for campus security clearance.";
-      } else if (!/^\d{12}$/.test(rawAadhar)) {
-        newErrors.aadharNumber = "Please enter a valid 12-digit Aadhaar Card Number.";
+      const rawId = formData.aadharNumber.replace(/\s+/g, "").toUpperCase();
+      if (!rawId) {
+        newErrors.aadharNumber = "Aadhaar or Passport Number is mandatory for campus security clearance.";
+      } else if (/^\d+$/.test(rawId)) {
+        if (rawId.length !== 12 && (rawId.length < 8 || rawId.length > 9)) {
+          newErrors.aadharNumber = "Please enter a valid 12-digit Aadhaar Number or Passport Number.";
+        }
+      } else if (!/^[A-Z0-9]{6,15}$/.test(rawId)) {
+        newErrors.aadharNumber = "Please enter a valid 12-digit Aadhaar Number or Passport Number (6-15 alphanumeric characters).";
       }
       if (!formData.cityState.trim()) {
         newErrors.cityState = "Current City & State of residence is required.";
@@ -810,7 +814,9 @@ export default function Registration({ initialPreference, clearInitialPreference
                       </div>
                       {submittedPass.aadharNumber && (
                         <div className="mt-1 font-mono text-[10px] text-[#5B6B4F]">
-                          Aadhaar: {submittedPass.aadharNumber.replace(/(\d{4})\s*(\d{4})\s*(\d{4})/, "XXXX XXXX $3")}
+                          {submittedPass.aadharNumber.replace(/\s+/g, "").length === 12 && /^\d+$/.test(submittedPass.aadharNumber.replace(/\s+/g, ""))
+                            ? `Aadhaar: ${submittedPass.aadharNumber.replace(/(\d{4})\s*(\d{4})\s*(\d{4})/, "XXXX XXXX $3")}`
+                            : `Passport: ${submittedPass.aadharNumber}`}
                         </div>
                       )}
                     </div>
@@ -1115,23 +1121,30 @@ export default function Registration({ initialPreference, clearInitialPreference
                       {errors.phone && <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.phone}</p>}
                     </div>
 
-                    {/* Aadhaar Card Number */}
+                    {/* Aadhaar or Passport Number */}
                     <div>
                       <label className="block font-sans text-[10px] uppercase tracking-wider text-[#C9A86A] mb-1.5 font-semibold flex items-center justify-between">
-                        <span>Aadhaar Card Number *</span>
-                        <span className="text-[9px] font-mono text-[#8A9A7E] font-normal">12-Digit UID</span>
+                        <span>Aadhaar or Passport Number *</span>
+                        <span className="text-[9px] font-mono text-[#8A9A7E] font-normal">UID / Passport</span>
                       </label>
                       <input
                         type="text"
-                        maxLength={14}
+                        maxLength={16}
                         value={formData.aadharNumber}
                         onChange={(e) => {
-                          const digits = e.target.value.replace(/\D/g, "").slice(0, 12);
-                          const formatted = digits.replace(/(\d{4})(?=\d)/g, "$1 ");
-                          setFormData({ ...formData, aadharNumber: formatted });
+                          const val = e.target.value.toUpperCase();
+                          const clean = val.replace(/[^A-Z0-9 ]/g, "");
+                          const noSpace = clean.replace(/\s+/g, "");
+                          if (/^\d+$/.test(noSpace)) {
+                            const digits = noSpace.slice(0, 12);
+                            const formatted = digits.replace(/(\d{4})(?=\d)/g, "$1 ");
+                            setFormData({ ...formData, aadharNumber: formatted });
+                          } else {
+                            setFormData({ ...formData, aadharNumber: noSpace.slice(0, 15) });
+                          }
                         }}
                         className={`w-full border ${errors.aadharNumber ? "border-rose-400" : "border-[#8A9A7E]/30"} bg-[#1A1F1A] px-4 py-3 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/50 outline-none focus:border-[#C9A86A] transition-all font-mono tracking-widest`}
-                        placeholder="XXXX XXXX XXXX"
+                        placeholder="XXXX XXXX XXXX or Passport No."
                       />
                       {errors.aadharNumber ? (
                         <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.aadharNumber}</p>

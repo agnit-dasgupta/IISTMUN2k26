@@ -1227,7 +1227,7 @@ export default function AdminDashboard() {
       "Candidate Name": r.name || "",
       "Email Address": r.email || "",
       "Phone / WhatsApp": r.phone || "",
-      "Aadhaar Number": r.aadharNumber || "",
+      "Aadhaar / Passport": r.aadharNumber || "",
       "Gender": r.gender || "",
       "Date of Birth": r.dob || "",
       "City & State": r.cityState || "",
@@ -1345,7 +1345,7 @@ export default function AdminDashboard() {
       "Candidate Legal Name": r.name || "",
       "Email Address": r.email || "",
       "Phone / WhatsApp": r.phone || "",
-      "Aadhaar Number": r.aadharNumber || "",
+      "Aadhaar / Passport": r.aadharNumber || "",
       "Gender": r.gender || "",
       "Date of Birth": r.dob || "",
       "City & State / Country": r.cityState || "",
@@ -3360,7 +3360,7 @@ export default function AdminDashboard() {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8A9A7E]" />
                 <input
                   type="text"
-                  placeholder="Search by name, email, phone, Aadhaar, address, UTR, ticket..."
+                  placeholder="Search by name, email, phone, Aadhaar / Passport, address, UTR, ticket..."
                   value={ungaSearch}
                   onChange={(e) => setUngaSearch(e.target.value)}
                   className="w-full bg-[#1A1F1A] border border-[#C9A86A]/30 focus:border-[#C9A86A] pl-10 pr-4 py-2 font-sans text-xs text-[#EDE6D3] focus:outline-none transition-all placeholder-[#8A9A7E]/50"
@@ -3467,7 +3467,7 @@ export default function AdminDashboard() {
                             <div className="text-[11px] text-[#8A9A7E] mt-0.5">{item.email}</div>
                             <div className="font-mono text-[11px] text-[#EDE6D3] mt-0.5">{item.phone}</div>
                             <div className="text-[10px] text-[#8A9A7E] mt-0.5">
-                              Aadhaar: <span className="font-mono text-[#EDE6D3]">{item.aadharNumber || "N/A"}</span>
+                              Aadhaar / Passport: <span className="font-mono text-[#EDE6D3]">{item.aadharNumber || "N/A"}</span>
                             </div>
                             <div className="text-[10px] text-[#8A9A7E]">
                               {item.gender || "N/A"} • DOB: {item.dob || "N/A"}
@@ -6524,7 +6524,7 @@ export default function AdminDashboard() {
                       <div className="space-y-1.5 text-xs text-[#EDE6D3]">
                         <div><strong className="text-[#8A9A7E]">Email:</strong> {selectedPriorityReg.email}</div>
                         <div><strong className="text-[#8A9A7E]">Phone:</strong> {selectedPriorityReg.phone}</div>
-                        <div><strong className="text-[#8A9A7E]">Aadhaar:</strong> {selectedPriorityReg.aadharNumber || "Not specified"}</div>
+                        <div><strong className="text-[#8A9A7E]">Aadhaar / Passport:</strong> {selectedPriorityReg.aadharNumber || "Not specified"}</div>
                         <div><strong className="text-[#8A9A7E]">Gender:</strong> {selectedPriorityReg.gender || "Not specified"}</div>
                         <div><strong className="text-[#8A9A7E]">DOB:</strong> {selectedPriorityReg.dob || "Not specified"}</div>
                         <div><strong className="text-[#8A9A7E]">Location:</strong> {selectedPriorityReg.cityState || "Not specified"}</div>
@@ -7048,7 +7048,7 @@ export default function AdminDashboard() {
                           <div><strong className="text-[#8A9A7E]">Email Address:</strong> <a href={`mailto:${activeUnga.email}`} className="text-[#C9A86A] hover:underline">{activeUnga.email}</a></div>
                           <div><strong className="text-[#8A9A7E]">Phone / WhatsApp:</strong> <a href={`tel:${activeUnga.phone}`} className="font-mono text-[#EDE6D3] hover:underline">{activeUnga.phone}</a></div>
                           <div>
-                            <strong className="text-[#8A9A7E]">Aadhaar Card Number:</strong>{" "}
+                            <strong className="text-[#8A9A7E]">Aadhaar / Passport:</strong>{" "}
                             <span className="font-mono bg-[#141814] px-1.5 py-0.5 border border-[#8A9A7E]/30 text-[#EDE6D3]">
                               {activeUnga.aadharNumber || "Not specified"}
                             </span>

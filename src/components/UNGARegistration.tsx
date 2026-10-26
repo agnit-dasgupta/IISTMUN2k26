@@ -280,7 +280,16 @@ export default function UNGARegistration({
       if (!formData.name.trim()) err.name = "Full name is required.";
       if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email)) err.email = "Valid email address is required.";
       if (!formData.phone.trim() || formData.phone.length < 10) err.phone = "Valid 10-digit phone number is required.";
-      if (!formData.aadharNumber.trim() || formData.aadharNumber.length < 4) err.aadharNumber = "Aadhar / National ID number is required.";
+      const rawUngaId = formData.aadharNumber.replace(/\s+/g, "").toUpperCase();
+      if (!rawUngaId) {
+        err.aadharNumber = "Aadhaar or Passport number is required.";
+      } else if (/^\d+$/.test(rawUngaId)) {
+        if (rawUngaId.length !== 12 && (rawUngaId.length < 8 || rawUngaId.length > 9)) {
+          err.aadharNumber = "Please enter a valid 12-digit Aadhaar number or Passport number.";
+        }
+      } else if (!/^[A-Z0-9]{6,15}$/.test(rawUngaId)) {
+        err.aadharNumber = "Please enter a valid 12-digit Aadhaar number or Passport number (6-15 alphanumeric characters).";
+      }
       if (!formData.dob) err.dob = "Date of birth is required.";
       if (!formData.cityState.trim()) err.cityState = "City and state are required.";
       if (!formData.fullAddress.trim() || formData.fullAddress.length < 8) {
@@ -1004,14 +1013,26 @@ export default function UNGARegistration({
 
                   <div className="space-y-1.5">
                     <label className="font-sans text-xs uppercase tracking-wider text-[#EDE6D3] font-medium block">
-                      Aadhar Number / National ID <span className="text-rose-400">*</span>
+                      Aadhaar or Passport Number <span className="text-rose-400">*</span>
                     </label>
                     <input
                       type="text"
+                      maxLength={16}
                       value={formData.aadharNumber}
-                      onChange={(e) => setFormData({ ...formData, aadharNumber: e.target.value })}
-                      placeholder="XXXX-XXXX-XXXX"
-                      className="w-full bg-[#2E3B2F]/40 border border-[#8A9A7E]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none"
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase();
+                        const clean = val.replace(/[^A-Z0-9 ]/g, "");
+                        const noSpace = clean.replace(/\s+/g, "");
+                        if (/^\d+$/.test(noSpace)) {
+                          const digits = noSpace.slice(0, 12);
+                          const formatted = digits.replace(/(\d{4})(?=\d)/g, "$1 ");
+                          setFormData({ ...formData, aadharNumber: formatted });
+                        } else {
+                          setFormData({ ...formData, aadharNumber: noSpace.slice(0, 15) });
+                        }
+                      }}
+                      placeholder="XXXX XXXX XXXX or Passport No."
+                      className="w-full bg-[#2E3B2F]/40 border border-[#8A9A7E]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none font-mono"
                     />
                     {errors.aadharNumber && <span className="text-rose-400 text-[11px]">{errors.aadharNumber}</span>}
                   </div>
