@@ -23,7 +23,8 @@ import {
   ExternalLink,
   Award,
   ShieldCheck,
-  Globe
+  Globe,
+  Gift
 } from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { db, handleFirestoreError, OperationType } from "../firebase";
@@ -464,260 +465,343 @@ export default function RegisterPortal({
             </div>
           </motion.div>
         ) : (
-          <form onSubmit={handleSubmitCA} className="space-y-8">
+          <div className="space-y-8">
+            {/* Campus Ambassador Header */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 border border-[#8BA06F]/40 bg-[#2E3B2F]/40 text-[10px] font-sans font-medium uppercase tracking-[0.2em] text-[#8BA06F] mb-3 shadow-sm">
+                <Sparkles className="h-3.5 w-3.5 text-[#8BA06F]" />
+                <span>OUTREACH NETWORK &bull; IISTMUN 2027</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-serif font-normal tracking-wide text-[#EDE6D3]">
+                Campus Ambassador Network
+              </h2>
+              <p className="mt-2 text-xs sm:text-sm text-[#8A9A7E] max-w-xl mx-auto leading-relaxed">
+                Represent IISTMUN 2027 at your college, lead delegate contingents, and unlock exclusive ambassador fee discounts.
+              </p>
+            </div>
 
-            {/* Section 1: Ambassador Credentials */}
-            <div className="border border-[#8BA06F]/40 bg-[#1A1F1A]/90 p-6 sm:p-8 space-y-6">
-              <div className="flex items-center gap-2.5 pb-4 border-b border-[#8BA06F]/20">
-                <User className="h-4 w-4 text-[#8BA06F]" />
-                <h3 className="font-serif text-lg text-[#EDE6D3] font-medium">
-                  1. Campus Ambassador Profile
-                </h3>
+            {/* PERKS Section */}
+            <div className="border border-[#8BA06F]/50 bg-gradient-to-b from-[#233124]/90 via-[#1A1F1A]/95 to-[#1A1F1A]/95 p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden backdrop-blur-md">
+              {/* Subtle background ambiance */}
+              <div className="absolute top-0 right-0 w-96 h-48 bg-[#8BA06F]/10 blur-3xl pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#8BA06F]/30">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-sm bg-[#8BA06F]/20 border border-[#8BA06F] text-[#8BA06F] shadow-sm">
+                    <Gift className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#8BA06F] block font-semibold">
+                      EXCLUSIVE REWARDS FOR CAMPUS AMBASSADORS
+                    </span>
+                    <h3 className="font-serif text-2xl sm:text-3xl text-[#EDE6D3] font-medium tracking-wide">
+                      PERKS
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-3 py-1 font-semibold flex items-center gap-1.5 shadow-sm">
+                    <Award className="h-3.5 w-3.5 text-emerald-400" />
+                    DELEGATE REGISTRATION DISCOUNTS
+                  </span>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
-                    Full Name <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={caForm.name}
-                    onChange={(e) => setCaForm({ ...caForm, name: e.target.value })}
-                    placeholder="e.g. Ananya Sen"
-                    className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
-                  />
-                  {errors.name && <span className="text-rose-400 text-[11px]">{errors.name}</span>}
-                </div>
+              {/* 3 Milestone Cards */}
 
-                <div className="space-y-1.5">
-                  <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
-                    Email Address <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={caForm.email}
-                    onChange={(e) => setCaForm({ ...caForm, email: e.target.value })}
-                    placeholder="e.g. ananya@college.edu"
-                    className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
-                  />
-                  {errors.email && <span className="text-rose-400 text-[11px]">{errors.email}</span>}
-                </div>
 
-                <div className="space-y-1.5">
-                  <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
-                    Phone / WhatsApp Number <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    value={caForm.phone}
-                    onChange={(e) => setCaForm({ ...caForm, phone: e.target.value })}
-                    placeholder="+91 98765 43210"
-                    className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
-                  />
-                  {errors.phone && <span className="text-rose-400 text-[11px]">{errors.phone}</span>}
+              {/* Exact Points Breakdown */}
+              <div className="relative z-10 p-4 bg-[#1A1F1A]/95 border border-[#8BA06F]/30 space-y-2.5">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-[#8BA06F] font-semibold">
+                    OFFICIAL PERKS
+                  </span>
+                  <span className="font-sans text-[11px] text-[#8A9A7E]">
+                    Applicable to Ambassador registration fee upon referral verification
+                  </span>
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
-                    College / University <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={caForm.institution}
-                    onChange={(e) => setCaForm({ ...caForm, institution: e.target.value })}
-                    placeholder="e.g. St. Xavier's College, Mumbai"
-                    className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
-                  />
-                  {errors.institution && <span className="text-rose-400 text-[11px]">{errors.institution}</span>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
-                    Degree / Course <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={caForm.course}
-                    onChange={(e) => setCaForm({ ...caForm, course: e.target.value })}
-                    placeholder="e.g. B.Tech Aerospace / B.A. Political Science"
-                    className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
-                  />
-                  {errors.course && <span className="text-rose-400 text-[11px]">{errors.course}</span>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
-                    Year of Study
-                  </label>
-                  <select
-                    value={caForm.yearOfStudy}
-                    onChange={(e) => setCaForm({ ...caForm, yearOfStudy: e.target.value })}
-                    className="w-full bg-[#1A1F1A] border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
-                  >
-                    <option value="1st Year">1st Year (UG)</option>
-                    <option value="2nd Year">2nd Year (UG)</option>
-                    <option value="3rd Year">3rd Year (UG)</option>
-                    <option value="4th Year">4th Year (UG)</option>
-                    <option value="Postgraduate">Postgraduate (PG)</option>
-                  </select>
-                </div>
-
-                <div className="sm:col-span-2 space-y-1.5">
-                  <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
-                    City &amp; State <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={caForm.cityState}
-                    onChange={(e) => setCaForm({ ...caForm, cityState: e.target.value })}
-                    placeholder="e.g. Bengaluru, Karnataka"
-                    className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
-                  />
-                  {errors.cityState && <span className="text-rose-400 text-[11px]">{errors.cityState}</span>}
-                </div>
+                <ul className="space-y-1.5 font-sans text-xs">
+                  <li className="flex items-start gap-2.5">
+                    <span className="inline-block mt-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                    <span>
+                      <strong className="text-[#EDE6D3] font-medium font-mono text-xs">10 registrations:</strong>{" "}
+                      <span className="text-[#EDE6D3]/90">Flat 30% discount on your registration fee.</span>
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="inline-block mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                    <span>
+                      <strong className="text-[#EDE6D3] font-medium font-mono text-xs">15 registrations:</strong>{" "}
+                      <span className="text-[#EDE6D3]/90">Flat 50% discount on your registration fee.</span>
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="inline-block mt-1.5 h-1.5 w-1.5 rounded-full bg-[#8BA06F] shrink-0" />
+                    <span>
+                      <strong className="text-[#EDE6D3] font-medium font-mono text-xs">20 registrations:</strong>{" "}
+                      <span className="text-[#EDE6D3]/90">Flat 100% discount on your registration fee.</span>
+                    </span>
+                  </li>
+                </ul>
               </div>
             </div>
 
-            {/* Section 2: Verification Credentials & ID */}
-            <div className="border border-[#8BA06F]/40 bg-[#1A1F1A]/90 p-6 sm:p-8 space-y-6">
-              <div className="flex items-center gap-2.5 pb-4 border-b border-[#8BA06F]/20">
-                <ShieldCheck className="h-4 w-4 text-[#8BA06F]" />
-                <h3 className="font-serif text-lg text-[#EDE6D3] font-medium">
-                  2. Institutional Verification &amp; Passport Photo
-                </h3>
-              </div>
+            <form onSubmit={handleSubmitCA} className="space-y-8">
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <FileUploadZone
-                    label="Passport-Style Photograph"
-                    sublabel="Headshot for official CA badge & ambassador dossier (JPG/PNG, max 500KB)."
-                    fileType="image"
-                    accept="image/*"
-                    maxSizeMB={0.5}
-                    valueUrl={caForm.photoUrl}
-                    valueName={caForm.photoName}
-                    onChange={(url, name) => setCaForm({ ...caForm, photoUrl: url, photoName: name })}
-                    onClear={() => setCaForm({ ...caForm, photoUrl: "", photoName: "" })}
-                  />
+              {/* Section 1: Ambassador Credentials */}
+              <div className="border border-[#8BA06F]/40 bg-[#1A1F1A]/90 p-6 sm:p-8 space-y-6">
+                <div className="flex items-center gap-2.5 pb-4 border-b border-[#8BA06F]/20">
+                  <User className="h-4 w-4 text-[#8BA06F]" />
+                  <h3 className="font-serif text-lg text-[#EDE6D3] font-medium">
+                    1. Campus Ambassador Profile
+                  </h3>
                 </div>
 
-                <div>
-                  <FileUploadZone
-                    label="College ID Proof / Bona Fide"
-                    sublabel="Valid College ID card scan or signed institutional bona fide (max 600KB)."
-                    fileType="document"
-                    accept=".pdf,image/*"
-                    maxSizeMB={0.6}
-                    valueUrl={caForm.idProofUrl}
-                    valueName={caForm.idProofName}
-                    onChange={(url, name) => setCaForm({ ...caForm, idProofUrl: url, idProofName: name })}
-                    onClear={() => setCaForm({ ...caForm, idProofUrl: "", idProofName: "" })}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Section 3: Outreach Strategy & Mobilization */}
-            <div className="border border-[#8BA06F]/40 bg-[#1A1F1A]/90 p-6 sm:p-8 space-y-6">
-              <div className="flex items-center gap-2.5 pb-4 border-b border-[#8BA06F]/20">
-                <Users className="h-4 w-4 text-[#8BA06F]" />
-                <h3 className="font-serif text-lg text-[#EDE6D3] font-medium">
-                  3. Outreach Strategy &amp; Mobilization Plan
-                </h3>
-              </div>
-
-              <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
-                      Campus Clubs / Societies Affiliations
+                      Full Name <span className="text-rose-400">*</span>
                     </label>
                     <input
                       type="text"
-                      value={caForm.collegeClubs}
-                      onChange={(e) => setCaForm({ ...caForm, collegeClubs: e.target.value })}
-                      placeholder="e.g. Debating Society, Rotaract, Student Council"
+                      value={caForm.name}
+                      onChange={(e) => setCaForm({ ...caForm, name: e.target.value })}
+                      placeholder="e.g. Ananya Sen"
                       className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
                     />
+                    {errors.name && <span className="text-rose-400 text-[11px]">{errors.name}</span>}
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
-                      LinkedIn / Instagram Handle
+                      Email Address <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={caForm.email}
+                      onChange={(e) => setCaForm({ ...caForm, email: e.target.value })}
+                      placeholder="e.g. ananya@college.edu"
+                      className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
+                    />
+                    {errors.email && <span className="text-rose-400 text-[11px]">{errors.email}</span>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
+                      Phone / WhatsApp Number <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={caForm.phone}
+                      onChange={(e) => setCaForm({ ...caForm, phone: e.target.value })}
+                      placeholder="+91 98765 43210"
+                      className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
+                    />
+                    {errors.phone && <span className="text-rose-400 text-[11px]">{errors.phone}</span>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
+                      College / University <span className="text-rose-400">*</span>
                     </label>
                     <input
                       type="text"
-                      value={caForm.socialHandles}
-                      onChange={(e) => setCaForm({ ...caForm, socialHandles: e.target.value })}
-                      placeholder="@username or linkedin.com/in/..."
+                      value={caForm.institution}
+                      onChange={(e) => setCaForm({ ...caForm, institution: e.target.value })}
+                      placeholder="e.g. St. Xavier's College, Mumbai"
                       className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
+                    />
+                    {errors.institution && <span className="text-rose-400 text-[11px]">{errors.institution}</span>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
+                      Degree / Course <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={caForm.course}
+                      onChange={(e) => setCaForm({ ...caForm, course: e.target.value })}
+                      placeholder="e.g. B.Tech Aerospace / B.A. Political Science"
+                      className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
+                    />
+                    {errors.course && <span className="text-rose-400 text-[11px]">{errors.course}</span>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
+                      Year of Study
+                    </label>
+                    <select
+                      value={caForm.yearOfStudy}
+                      onChange={(e) => setCaForm({ ...caForm, yearOfStudy: e.target.value })}
+                      className="w-full bg-[#1A1F1A] border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
+                    >
+                      <option value="1st Year">1st Year (UG)</option>
+                      <option value="2nd Year">2nd Year (UG)</option>
+                      <option value="3rd Year">3rd Year (UG)</option>
+                      <option value="4th Year">4th Year (UG)</option>
+                      <option value="Postgraduate">Postgraduate (PG)</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
+                      City &amp; State <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={caForm.cityState}
+                      onChange={(e) => setCaForm({ ...caForm, cityState: e.target.value })}
+                      placeholder="e.g. Bengaluru, Karnataka"
+                      className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
+                    />
+                    {errors.cityState && <span className="text-rose-400 text-[11px]">{errors.cityState}</span>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Verification Credentials & ID */}
+              <div className="border border-[#8BA06F]/40 bg-[#1A1F1A]/90 p-6 sm:p-8 space-y-6">
+                <div className="flex items-center gap-2.5 pb-4 border-b border-[#8BA06F]/20">
+                  <ShieldCheck className="h-4 w-4 text-[#8BA06F]" />
+                  <h3 className="font-serif text-lg text-[#EDE6D3] font-medium">
+                    2. Institutional Verification &amp; Passport Photo
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <FileUploadZone
+                      label="Passport-Style Photograph"
+                      sublabel="Headshot for official CA badge & ambassador dossier (JPG/PNG, max 500KB)."
+                      fileType="image"
+                      accept="image/*"
+                      maxSizeMB={0.5}
+                      valueUrl={caForm.photoUrl}
+                      valueName={caForm.photoName}
+                      onChange={(url, name) => setCaForm({ ...caForm, photoUrl: url, photoName: name })}
+                      onClear={() => setCaForm({ ...caForm, photoUrl: "", photoName: "" })}
+                    />
+                  </div>
+
+                  <div>
+                    <FileUploadZone
+                      label="College ID Proof / Bona Fide"
+                      sublabel="Valid College ID card scan or signed institutional bona fide (max 600KB)."
+                      fileType="document"
+                      accept=".pdf,image/*"
+                      maxSizeMB={0.6}
+                      valueUrl={caForm.idProofUrl}
+                      valueName={caForm.idProofName}
+                      onChange={(url, name) => setCaForm({ ...caForm, idProofUrl: url, idProofName: name })}
+                      onClear={() => setCaForm({ ...caForm, idProofUrl: "", idProofName: "" })}
                     />
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-1.5">
-                  <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
-                    Why do you wish to represent IISTMUN 2027? <span className="text-rose-400">*</span>
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={caForm.motivation}
-                    onChange={(e) => setCaForm({ ...caForm, motivation: e.target.value })}
-                    placeholder="Share your interest in space diplomacy and your motivation for joining the ambassador network..."
-                    className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 p-3 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none leading-relaxed"
-                  />
-                  {errors.motivation && <span className="text-rose-400 text-[11px]">{errors.motivation}</span>}
+              {/* Section 3: Outreach Strategy & Mobilization */}
+              <div className="border border-[#8BA06F]/40 bg-[#1A1F1A]/90 p-6 sm:p-8 space-y-6">
+                <div className="flex items-center gap-2.5 pb-4 border-b border-[#8BA06F]/20">
+                  <Users className="h-4 w-4 text-[#8BA06F]" />
+                  <h3 className="font-serif text-lg text-[#EDE6D3] font-medium">
+                    3. Outreach Strategy &amp; Mobilization Plan
+                  </h3>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
-                    Delegation Mobilization &amp; Promotion Strategy <span className="text-rose-400">*</span>
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={caForm.promotionPlan}
-                    onChange={(e) => setCaForm({ ...caForm, promotionPlan: e.target.value })}
-                    placeholder="How do you intend to publicize IISTMUN in your institution? (WhatsApp groups, departmental circulars, MUN society collaborations...)"
-                    className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 p-3 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none leading-relaxed"
-                  />
-                  {errors.promotionPlan && <span className="text-rose-400 text-[11px]">{errors.promotionPlan}</span>}
-                </div>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
+                        Campus Clubs / Societies Affiliations
+                      </label>
+                      <input
+                        type="text"
+                        value={caForm.collegeClubs}
+                        onChange={(e) => setCaForm({ ...caForm, collegeClubs: e.target.value })}
+                        placeholder="e.g. Debating Society, Rotaract, Student Council"
+                        className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
+                      />
+                    </div>
 
-                <div className="space-y-1.5">
-                  <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
-                    Target Delegate Mobilization
-                  </label>
-                  <select
-                    value={caForm.targetMobilization}
-                    onChange={(e) => setCaForm({ ...caForm, targetMobilization: e.target.value })}
-                    className="w-full bg-[#1A1F1A] border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
-                  >
-                    <option value="5-10 Delegates">5 - 10 Delegates (Standard Contingent)</option>
-                    <option value="10-20 Delegates">10 - 20 Delegates (Priority Delegation)</option>
-                    <option value="20-35 Delegates">20 - 35 Delegates (Mega Contingent)</option>
-                    <option value="35+ Delegates">35+ Delegates (Multi-College Delegation)</option>
-                  </select>
+                    <div className="space-y-1.5">
+                      <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
+                        LinkedIn / Instagram Handle
+                      </label>
+                      <input
+                        type="text"
+                        value={caForm.socialHandles}
+                        onChange={(e) => setCaForm({ ...caForm, socialHandles: e.target.value })}
+                        placeholder="@username or linkedin.com/in/..."
+                        className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
+                      Why do you wish to represent IISTMUN 2027? <span className="text-rose-400">*</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={caForm.motivation}
+                      onChange={(e) => setCaForm({ ...caForm, motivation: e.target.value })}
+                      placeholder="Share your interest in space diplomacy and your motivation for joining the ambassador network..."
+                      className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 p-3 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none leading-relaxed"
+                    />
+                    {errors.motivation && <span className="text-rose-400 text-[11px]">{errors.motivation}</span>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
+                      Delegation Mobilization &amp; Promotion Strategy <span className="text-rose-400">*</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={caForm.promotionPlan}
+                      onChange={(e) => setCaForm({ ...caForm, promotionPlan: e.target.value })}
+                      placeholder="How do you intend to publicize IISTMUN in your institution? (WhatsApp groups, departmental circulars, MUN society collaborations...)"
+                      className="w-full bg-[#2E3B2F]/40 border border-[#8BA06F]/30 p-3 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none leading-relaxed"
+                    />
+                    {errors.promotionPlan && <span className="text-rose-400 text-[11px]">{errors.promotionPlan}</span>}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-sans text-xs uppercase tracking-wider text-[#8BA06F] font-medium">
+                      Target Delegate Mobilization
+                    </label>
+                    <select
+                      value={caForm.targetMobilization}
+                      onChange={(e) => setCaForm({ ...caForm, targetMobilization: e.target.value })}
+                      className="w-full bg-[#1A1F1A] border border-[#8BA06F]/30 px-3.5 py-2.5 text-xs text-[#EDE6D3] focus:border-[#8BA06F] focus:outline-none"
+                    >
+                      <option value="5-10 Delegates">5 - 10 Delegates (Standard Contingent)</option>
+                      <option value="10-20 Delegates">10 - 20 Delegates (Priority Delegation)</option>
+                      <option value="20-35 Delegates">20 - 35 Delegates (Mega Contingent)</option>
+                      <option value="35+ Delegates">35+ Delegates (Multi-College Delegation)</option>
+                    </select>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Submit Actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
-              <span className="font-sans text-xs text-[#8A9A7E]">
-                Campus Ambassadors receive official IISTMUN certification, free conference kit, and contingent rewards.
-              </span>
+              {/* Submit Actions */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+                <span className="font-sans text-xs text-[#8A9A7E]">
+                  Campus Ambassadors receive official IISTMUN certification, free conference kit, and contingent rewards.
+                </span>
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full sm:w-auto px-8 py-3.5 border border-[#8BA06F] bg-[#8BA06F] text-[#1A1F1A] font-sans text-xs uppercase tracking-[0.2em] font-semibold hover:bg-[#EDE6D3] hover:border-[#EDE6D3] transition-all duration-200 cursor-pointer disabled:opacity-60 shadow-lg"
-              >
-                {isSubmitting ? "Registering Ambassador..." : "Submit Campus Ambassador Registration"}
-              </button>
-            </div>
-          </form>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-8 py-3.5 border border-[#8BA06F] bg-[#8BA06F] text-[#1A1F1A] font-sans text-xs uppercase tracking-[0.2em] font-semibold hover:bg-[#EDE6D3] hover:border-[#EDE6D3] transition-all duration-200 cursor-pointer disabled:opacity-60 shadow-lg"
+                >
+                  {isSubmitting ? "Registering Ambassador..." : "Submit Campus Ambassador Registration"}
+                </button>
+              </div>
+            </form>
+          </div>
         )
       )}
 
