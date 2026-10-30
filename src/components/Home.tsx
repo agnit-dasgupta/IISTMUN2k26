@@ -621,17 +621,17 @@ export default function Home({ setActiveTab }: HomeProps) {
                 <div className="p-3.5 bg-[#2E3B2F]/40 border border-[#C9A86A]/30 space-y-1.5 group hover:border-[#C9A86A] transition-colors">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] font-semibold">
-                      Secretary-General
+                      USG - Delegate Affairs
                     </span>
-                    <span className="text-[9px] font-mono text-[#8A9A7E]">SG</span>
+                    <span className="text-[9px] font-mono text-[#8A9A7E]">USG (DA)</span>
                   </div>
-                  <div className="font-serif text-sm text-[#EDE6D3] font-medium">Niranjan Patil</div>
+                  <div className="font-serif text-sm text-[#EDE6D3] font-medium">Sonit Nooney</div>
                   <a
-                    href="tel:+919881416709"
+                    href="tel:+91 90827 95092"
                     className="font-mono text-xs text-[#C9A86A] hover:underline flex items-center gap-1.5 pt-1"
                   >
                     <Phone className="h-3 w-3 text-[#8BA06F]" />
-                    <span>+91 9881416709</span>
+                    <span>+91 90827 95092</span>
                   </a>
                 </div>
 
@@ -639,17 +639,17 @@ export default function Home({ setActiveTab }: HomeProps) {
                 <div className="p-3.5 bg-[#2E3B2F]/40 border border-[#8BA06F]/30 space-y-1.5 group hover:border-[#8BA06F] transition-colors">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-[#8BA06F] font-semibold">
-                      Deputy Secretary-General
+                      USG Delegate Affairs
                     </span>
-                    <span className="text-[9px] font-mono text-[#8A9A7E]">DSG</span>
+                    <span className="text-[9px] font-mono text-[#8A9A7E]">USG (DA)</span>
                   </div>
-                  <div className="font-serif text-sm text-[#EDE6D3] font-medium"> Ananya Bhat</div>
+                  <div className="font-serif text-sm text-[#EDE6D3] font-medium">Himanshi Poddar</div>
                   <a
-                    href="tel:+917038290052"
+                    href="tel:+91 89831 25415"
                     className="font-mono text-xs text-[#8BA06F] hover:underline flex items-center gap-1.5 pt-1"
                   >
                     <Phone className="h-3 w-3 text-[#8BA06F]" />
-                    <span>+917038290052</span>
+                    <span>+91 89831 25415</span>
                   </a>
                 </div>
 
