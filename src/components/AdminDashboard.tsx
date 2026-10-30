@@ -1256,6 +1256,7 @@ export default function AdminDashboard() {
       "Emergency Contact Name": r.emergencyContactName || "",
       "Emergency Contact Relation": r.emergencyContactRelation || "",
       "Emergency Contact Phone": r.emergencyContactPhone || "",
+      "Accommodation Requested": (r.accommodationRequired === "yes" || r.accommodationRequired === true) ? "YES" : "NO",
       "Fee Amount (INR)": r.feeAmount !== undefined ? r.feeAmount : 1299,
       "Merchandise Purchased": r.hasMerch ? "YES" : "NO",
       "Merch Size": r.hasMerch ? (r.merchSize || "N/A") : "N/A",
@@ -1306,6 +1307,7 @@ export default function AdminDashboard() {
       { wch: 22 }, // Emergency Name
       { wch: 16 }, // Emergency Rel
       { wch: 18 }, // Emergency Phone
+      { wch: 22 }, // Accommodation Requested
       { wch: 14 }, // Fee
       { wch: 20 }, // Merchandise Purchased
       { wch: 12 }, // Merch Size
@@ -1800,6 +1802,7 @@ export default function AdminDashboard() {
     const matchSearch =
       (q.name?.toLowerCase() || "").includes(queryText) ||
       (q.email?.toLowerCase() || "").includes(queryText) ||
+      (q.phone?.toLowerCase() || "").includes(queryText) ||
       (q.category?.toLowerCase() || "").includes(queryText) ||
       (q.message?.toLowerCase() || "").includes(queryText) ||
       (q.id?.toLowerCase() || "").includes(queryText);
@@ -1824,6 +1827,7 @@ export default function AdminDashboard() {
       "Date & Time": q.timestamp || "",
       "Sender Name": q.name || "",
       "Sender Email": q.email || "",
+      "Sender Phone": q.phone || "N/A",
       "Inquiry Category": q.category || "",
       "Status": q.status || "Pending",
       "Message / Inquiry Dispatch": q.message || "",
@@ -1839,6 +1843,7 @@ export default function AdminDashboard() {
       { wch: 22 },  // Date & Time
       { wch: 26 },  // Sender Name
       { wch: 32 },  // Sender Email
+      { wch: 18 },  // Sender Phone
       { wch: 28 },  // Inquiry Category
       { wch: 12 },  // Status
       { wch: 65 },  // Message / Inquiry Dispatch
@@ -1866,7 +1871,7 @@ export default function AdminDashboard() {
 
     const headers = [
       "Sl No", "Reference ID", "Date & Time", "Sender Name", 
-      "Sender Email", "Inquiry Category", "Status", "Message", "Destination"
+      "Sender Email", "Sender Phone", "Inquiry Category", "Status", "Message", "Destination"
     ];
 
     const rows = filteredQueries.map((q, idx) => [
@@ -1875,6 +1880,7 @@ export default function AdminDashboard() {
       q.timestamp || "",
       q.name || "",
       q.email || "",
+      q.phone || "",
       q.category || "",
       q.status || "Pending",
       q.message || "",
@@ -4890,6 +4896,12 @@ export default function AdminDashboard() {
                               <ExternalLink className="h-3 w-3 inline" />
                             </a>
                           </div>
+                          {query.phone && (
+                            <div className="flex items-center gap-1 text-[11px] text-[#C9A86A]/80 font-mono mt-0.5">
+                              <Phone className="h-2.5 w-2.5 inline" />
+                              <a href={`tel:${query.phone}`} className="hover:underline">{query.phone}</a>
+                            </div>
+                          )}
                         </td>
                         <td className="p-4">
                           <span className={`inline-block px-2.5 py-1 text-[9px] font-mono uppercase tracking-wider border ${
@@ -5558,6 +5570,12 @@ export default function AdminDashboard() {
                     <span className="font-sans text-[8.5px] text-[#8A9A7E] uppercase tracking-wider block font-semibold">Registration Mode</span>
                     <p className="font-sans text-xs text-[#C9A86A] font-bold mt-0.5 uppercase tracking-wider">{selectedReg.regType}</p>
                   </div>
+                  <div className="bg-[#1A1F1A] p-3.5 border border-[#8A9A7E]/20">
+                    <span className="font-sans text-[8.5px] text-[#8A9A7E] uppercase tracking-wider block font-semibold">Accommodation</span>
+                    <p className={`font-sans text-xs font-bold mt-0.5 ${(selectedReg.accommodationRequired === "yes" || selectedReg.accommodationRequired === true) ? "text-[#C9A86A]" : "text-[#8A9A7E]"}`}>
+                      {(selectedReg.accommodationRequired === "yes" || selectedReg.accommodationRequired === true) ? "Requested (Yes)" : "Not Requested (No)"}
+                    </p>
+                  </div>
 
                   {selectedReg.regType === "double" && (
                     <>
@@ -5722,6 +5740,12 @@ export default function AdminDashboard() {
                   </h3>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-xs text-[#8A9A7E] mt-1">
                     <span>Email: <strong className="text-[#EDE6D3] font-mono">{selectedQuery.email}</strong></span>
+                    {selectedQuery.phone && (
+                      <>
+                        <span>•</span>
+                        <span>Phone: <a href={`tel:${selectedQuery.phone}`} className="text-[#C9A86A] font-mono hover:underline">{selectedQuery.phone}</a></span>
+                      </>
+                    )}
                     <span>•</span>
                     <span>Received: <strong className="text-[#EDE6D3] font-mono">{selectedQuery.timestamp || "Recent"}</strong></span>
                   </div>
@@ -6528,6 +6552,7 @@ export default function AdminDashboard() {
                         <div><strong className="text-[#8A9A7E]">Gender:</strong> {selectedPriorityReg.gender || "Not specified"}</div>
                         <div><strong className="text-[#8A9A7E]">DOB:</strong> {selectedPriorityReg.dob || "Not specified"}</div>
                         <div><strong className="text-[#8A9A7E]">Location:</strong> {selectedPriorityReg.cityState || "Not specified"}</div>
+                        <div><strong className="text-[#8A9A7E]">Accommodation:</strong> {(selectedPriorityReg.accommodationRequired === "yes" || selectedPriorityReg.accommodationRequired === true) ? "Requested (Yes)" : "Not Requested (No)"}</div>
                       </div>
                     </div>
 

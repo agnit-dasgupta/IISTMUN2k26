@@ -165,6 +165,7 @@ export interface ContactQuery {
   id?: string;
   name: string;
   email: string;
+  phone?: string;
   category: string;
   message: string;
   timestamp?: string;

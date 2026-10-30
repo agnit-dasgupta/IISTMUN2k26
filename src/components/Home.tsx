@@ -60,6 +60,7 @@ export default function Home({ setActiveTab }: HomeProps) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     category: "EB Application",
     message: ""
   });
@@ -76,6 +77,7 @@ export default function Home({ setActiveTab }: HomeProps) {
 
     const name = formData.name.trim();
     const email = formData.email.trim();
+    const phone = formData.phone.trim();
     const category = formData.category;
     const message = formData.message.trim();
     const timestamp = new Date().toLocaleString();
@@ -86,6 +88,7 @@ export default function Home({ setActiveTab }: HomeProps) {
       const docRef = await addDoc(collection(db, "contact_queries"), {
         name,
         email,
+        phone,
         category,
         message,
         timestamp,
@@ -107,6 +110,7 @@ export default function Home({ setActiveTab }: HomeProps) {
       `• Reference ID: ${docId || "Saved to Firebase"}\n` +
       `• Sender Name: ${name}\n` +
       `• Sender Email: ${email}\n` +
+      (phone ? `• Contact Phone: ${phone}\n` : "") +
       `• Inquiry Category: ${category}\n\n` +
       `• Message / Dispatch:\n${message}\n\n` +
       `----------------------------------------\n` +
@@ -738,7 +742,7 @@ export default function Home({ setActiveTab }: HomeProps) {
                   <button
                     onClick={() => {
                       setFormSubmitted(false);
-                      setFormData({ name: "", email: "", category: "EB Application", message: "" });
+                      setFormData({ name: "", email: "", phone: "", category: "EB Application", message: "" });
                       setSavedQueryId(null);
                     }}
                     className="px-5 py-2.5 border border-[#C9A86A]/40 text-[#EDE6D3] font-sans text-xs uppercase tracking-wider hover:bg-[#2E3B2F] transition-colors cursor-pointer"
@@ -780,23 +784,38 @@ export default function Home({ setActiveTab }: HomeProps) {
                   </div>
                 </div>
 
-                <div className="space-y-1 text-left">
-                  <label htmlFor="contact-category-select" className="block text-[10px] font-mono text-[#8A9A7E] uppercase">
-                    Inquiry Category *
-                  </label>
-                  <select
-                    id="contact-category-select"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full bg-[#2E3B2F] border border-[#C9A86A]/30 px-3.5 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none cursor-pointer"
-                  >
-                    <option value="EB Application">Executive Board (EB) Applications</option>
-                    <option value="Campus Ambassador">Campus Ambassador Program</option>
-                    <option value="Delegation Registrations">Delegation &amp; Institutional Registrations</option>
-                    <option value="Accommodation & Travel">Travel, Transit &amp; Accommodation</option>
-                    <option value="Partnerships">Institutional Partnerships</option>
-                    <option value="General Query">General Inquiry</option>
-                  </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1 text-left">
+                    <label htmlFor="contact-phone-input" className="block text-[10px] font-mono text-[#8A9A7E] uppercase">
+                      Phone Number
+                    </label>
+                    <input
+                      id="contact-phone-input"
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full bg-[#2E3B2F]/60 border border-[#C9A86A]/30 px-3.5 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1 text-left">
+                    <label htmlFor="contact-category-select" className="block text-[10px] font-mono text-[#8A9A7E] uppercase">
+                      Inquiry Category *
+                    </label>
+                    <select
+                      id="contact-category-select"
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="w-full bg-[#2E3B2F] border border-[#C9A86A]/30 px-3.5 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none cursor-pointer"
+                    >
+                      <option value="EB Application">Executive Board (EB) Applications</option>
+                      <option value="Campus Ambassador">Campus Ambassador Program</option>
+                      <option value="Delegation Registrations">Delegation &amp; Institutional Registrations</option>
+                      <option value="Accommodation & Travel">Travel, Transit &amp; Accommodation</option>
+                      <option value="Partnerships">Institutional Partnerships</option>
+                      <option value="General Query">General Inquiry</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="space-y-1 text-left">

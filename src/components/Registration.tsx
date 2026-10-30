@@ -117,7 +117,7 @@ export default function Registration({ initialPreference, clearInitialPreference
     priorityPreference: "committee" as "committee" | "portfolio" | undefined,
     motivation: "",
 
-    // Logistics (Accommodation removed - Day Delegate / Self-Arranged)
+    // Logistics & Accommodation
     accommodationRequired: "no" as "yes" | "no",
     checkInDate: "",
     checkOutDate: "",
@@ -479,7 +479,7 @@ export default function Registration({ initialPreference, clearInitialPreference
           : formData.pref3Portfolios.map(p => p.trim() || (formData.pref3Committee.startsWith("ip") ? "N/A" : "")),
         priorityPreference: formData.priorityPreference,
         motivation: formData.motivation.trim(),
-        accommodationRequired: "no",
+        accommodationRequired: formData.accommodationRequired,
         feeAmount: calculatedFee,
         campusAmbassadorCode: formData.campusAmbassadorCode.trim().toUpperCase(),
         idCardUrl: formData.idCardUrl || "",
@@ -896,6 +896,11 @@ export default function Registration({ initialPreference, clearInitialPreference
                     {submittedPass.idCardUrl && (
                       <div className="mt-0.5 text-[10px] text-emerald-800 font-semibold flex items-center gap-1">
                         <CheckCircle2 className="h-3 w-3 inline" /> Student ID Proof Attached
+                      </div>
+                    )}
+                    {(submittedPass.accommodationRequired === "yes" || submittedPass.accommodationRequired === true) && (
+                      <div className="mt-0.5 text-[10px] text-[#8B5A3C] font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3 inline text-[#8B5A3C]" /> Accommodation Requested
                       </div>
                     )}
                   </div>
@@ -2343,6 +2348,26 @@ export default function Registration({ initialPreference, clearInitialPreference
                         </a>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Accommodation Checkbox */}
+                  <div className="border border-[#C9A86A]/30 bg-[#2E3B2F]/40 p-4">
+                    <label htmlFor="priority-accommodation-checkbox" className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        id="priority-accommodation-checkbox"
+                        name="accommodation"
+                        checked={formData.accommodationRequired === "yes"}
+                        onChange={(e) => setFormData({ ...formData, accommodationRequired: e.target.checked ? "yes" : "no" })}
+                        className="mt-1 h-4 w-4 rounded-none accent-[#C9A86A] cursor-pointer"
+                      />
+                      <span className="text-xs text-[#EDE6D3] leading-relaxed">
+                        I would like accomodation
+                      </span>
+                    </label>
+                    <p className="text-[11px] text-[#8A9A7E] pl-7 mt-1">
+                      Request on-campus or nearby accommodation assistance for the conference at IIST Thiruvananthapuram.
+                    </p>
                   </div>
 
                   {/* Declaration Checkbox */}
