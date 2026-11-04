@@ -384,7 +384,6 @@ export default function Home({ setActiveTab }: HomeProps) {
                 <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold">
                   Pioneering Space Academia
                 </span>
-                <span className="font-mono text-[9px] text-[#8A9A7E]">ESTD. 2007</span>
               </div>
 
               <div className="space-y-4 font-sans text-xs sm:text-sm text-[#EDE6D3]/85 leading-relaxed">
@@ -392,7 +391,7 @@ export default function Home({ setActiveTab }: HomeProps) {
                   Inaugurated on 14 September 2007 with former President of India <strong className="text-[#C9A86A]">Dr. A.P.J. Abdul Kalam</strong> as founding Chancellor, IIST was established to provide world-class education and research for the Indian space programme.
                 </p>
                 <p>
-                  Situated on a 100-acre residential campus adjacent to ISRO&apos;s <strong className="text-[#EDE6D3]">Liquid Propulsion Systems Centre (LPSC)</strong>, IIST enables direct synergy with live space missions, contributing to landmark projects including <strong className="text-[#C9A86A]">Chandrayaan, Gaganyaan, and Aditya-L1</strong>.
+                  Situated on a 100-acre residential campus adjacent to ISRO&apos;s Liquid Propulsion Systems Centre (LPSC), IIST enables direct synergy with live space missions, contributing to landmark projects including <strong className="text-[#C9A86A]">Chandrayaan, Gaganyaan, and Aditya-L1</strong>.
                 </p>
               </div>
 
@@ -459,7 +458,7 @@ export default function Home({ setActiveTab }: HomeProps) {
             IIST Model United Nations 2027
           </h2>
           <p className="font-sans text-xs sm:text-sm text-[#8A9A7E] max-w-2xl mx-auto leading-relaxed mt-3">
-            Save &middot; Sustain &middot; Safeguard &mdash; South India&apos;s premier collegiate space diplomacy symposium.
+            Save &middot; Sustain &middot; Safeguard
           </p>
         </div>
 
@@ -473,7 +472,6 @@ export default function Home({ setActiveTab }: HomeProps) {
                 <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold">
                   Symposium Legacy
                 </span>
-                <span className="font-mono text-[9px] text-[#8A9A7E]">14 CONVOCATIONS</span>
               </div>
 
               <div className="space-y-4 font-sans text-xs sm:text-sm text-[#EDE6D3]/85 leading-relaxed">
@@ -489,10 +487,7 @@ export default function Home({ setActiveTab }: HomeProps) {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#C9A86A]/20 flex items-center justify-between font-mono text-[10px] text-[#C9A86A]">
-              <span>7 Specialized Chambers</span>
-              <span>National Collegiate Representation</span>
-            </div>
+
           </div>
 
           {/* Right Column: Conference Charter Pillars */}
@@ -548,11 +543,7 @@ export default function Home({ setActiveTab }: HomeProps) {
         <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
           <div className="inline-flex items-center justify-center gap-2 mb-3">
             <span className="h-px w-8 bg-[#C9A86A]/40" />
-            <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-[#C9A86A] font-semibold">
-              <Mail className="h-3.5 w-3.5" />
-              Communications &amp; Dispatches
-            </span>
-            <span className="h-px w-8 bg-[#C9A86A]/40" />
+
           </div>
           <h2 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide">
             Contact the Secretariat
@@ -579,9 +570,7 @@ export default function Home({ setActiveTab }: HomeProps) {
                     <span className="font-mono text-[10px] text-[#8A9A7E] uppercase">Official Inquiries</span>
                   </div>
                 </div>
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#C9A86A] bg-[#C9A86A]/10 px-2 py-0.5 border border-[#C9A86A]/30">
-                  Primary
-                </span>
+
               </div>
 
               <div className="space-y-3 font-sans text-xs">
@@ -607,12 +596,9 @@ export default function Home({ setActiveTab }: HomeProps) {
                   </div>
                   <div>
                     <h4 className="font-serif text-lg text-[#EDE6D3]">Secretariat Helplines</h4>
-                    <span className="font-mono text-[10px] text-[#8A9A7E] uppercase">Direct Diplomatic Contacts</span>
                   </div>
                 </div>
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#8BA06F] bg-[#8BA06F]/10 px-2 py-0.5 border border-[#8BA06F]/30">
-                  Helplines
-                </span>
+
               </div>
 
               {/* SG & DSG Contact Numbers */}
@@ -872,14 +858,10 @@ export default function Home({ setActiveTab }: HomeProps) {
         <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-16">
           <div className="inline-flex items-center justify-center gap-2 mb-3">
             <span className="h-px w-8 bg-[#C9A86A]/40" />
-            <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-[#C9A86A] font-semibold">
-              <Plane className="h-3.5 w-3.5" />
-              Transit &amp; Connectivity Guidelines
-            </span>
-            <span className="h-px w-8 bg-[#C9A86A]/40" />
+
           </div>
           <h2 className="font-serif text-3xl sm:text-5xl font-normal text-[#EDE6D3] tracking-wide">
-            How to Reach IIST Valiamala
+            How to Reach IIST
           </h2>
           <p className="font-sans text-xs sm:text-sm text-[#8A9A7E] max-w-2xl mx-auto leading-relaxed mt-3">
             The institute is situated in Valiamala, approximately 26 km from Thiruvananthapuram city center. Plan your journey using the connectivity guidelines below.
@@ -905,7 +887,7 @@ export default function Home({ setActiveTab }: HomeProps) {
             <div>
               <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#C9A86A]/20">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold">
-                  Aerial Transit
+                  Nearest Airport
                 </span>
                 <div className="h-9 w-9 border border-[#C9A86A] bg-[#1A1F1A] flex items-center justify-center text-[#C9A86A]">
                   <Plane className="h-4 w-4" />
@@ -917,9 +899,7 @@ export default function Home({ setActiveTab }: HomeProps) {
                 Thiruvananthapuram International Airport connects with major domestic hubs (Delhi, Mumbai, Bengaluru, Hyderabad, Chennai) and global terminals. Pre-paid airport taxis, Uber, and Ola are available around the clock.
               </p>
             </div>
-            <div className="pt-4 mt-4 border-t border-[#C9A86A]/15 font-mono text-[10px] text-[#C9A86A]">
-              Pre-paid Taxi / App Cabs Available 24/7
-            </div>
+
           </div>
 
           {/* Mode 2: By Train */}
@@ -927,7 +907,7 @@ export default function Home({ setActiveTab }: HomeProps) {
             <div>
               <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#C9A86A]/20">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold">
-                  Rail Connectivity
+                  Nearest Railway Station
                 </span>
                 <div className="h-9 w-9 border border-[#C9A86A] bg-[#1A1F1A] flex items-center justify-center text-[#C9A86A]">
                   <Train className="h-4 w-4" />
@@ -939,9 +919,7 @@ export default function Home({ setActiveTab }: HomeProps) {
                 TVC &amp; Kochuveli (KCVL) connect nationwide via direct superfast and express trains. Pre-paid taxis, auto-rickshaws, and direct state buses operate outside the station concourse.
               </p>
             </div>
-            <div className="pt-4 mt-4 border-t border-[#C9A86A]/15 font-mono text-[10px] text-[#C9A86A]">
-              Major Southern Railway Terminus
-            </div>
+
           </div>
 
           {/* Mode 3: By Bus & Road */}
@@ -961,40 +939,13 @@ export default function Home({ setActiveTab }: HomeProps) {
                 Frequent KSRTC buses operate from Thampanoor Central Bus Station to Nedumangad. Frequent connecting buses drop delegates directly at the IIST Main Gate (adjacent to ISRO LPSC).
               </p>
             </div>
-            <div className="pt-4 mt-4 border-t border-[#C9A86A]/15 font-mono text-[10px] text-[#C9A86A]">
-              Valiamala / ISRO LPSC Bus Stop
-            </div>
+
           </div>
 
         </div>
 
         {/* Transit Advisory Footer Banner */}
-        <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Compass className="h-4 w-4 text-[#C9A86A]" />
-              <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-semibold">
-                Delegate Transit Advisory &bull; Geo Coordinates: 8.6277&deg; N, 77.0373&deg; E
-              </span>
-            </div>
-            <h4 className="font-serif text-xl sm:text-2xl text-[#EDE6D3]">
-              Arrival Coordination &bull; Valiamala Main Gate
-            </h4>
-            <p className="font-sans text-xs text-[#8A9A7E]">
-              Delegates are advised to arrive 45 minutes prior to convocation sessions. Institutional transport coordination details will be communicated to registered delegations.
-            </p>
-          </div>
 
-          <a
-            href="https://www.google.com/maps/search/?api=1&query=Indian+Institute+of+Space+Science+and+Technology+Valiamala"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-6 py-3 border border-[#C9A86A] bg-[#2E3B2F] text-[#EDE6D3] hover:bg-[#C9A86A] hover:text-[#1A1F1A] font-sans text-xs uppercase tracking-[0.18em] transition-all duration-300 flex items-center gap-2 shrink-0 cursor-pointer shadow-md"
-          >
-            <span>Open in Google Maps</span>
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
-        </div>
 
       </section>
 

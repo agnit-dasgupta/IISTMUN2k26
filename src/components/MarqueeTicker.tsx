@@ -46,22 +46,8 @@ export default function MarqueeTicker({ setActiveTab }: MarqueeTickerProps) {
       targetTab: "register-portal-priority",
       highlight: false
     },
-    {
-      badge: "IIST MUN 2027",
-      lead: "UNGA Online & Priority Registrations live • Campus Ambassador open.",
-      cta: "Explore Portal",
-      icon: Orbit,
-      targetTab: "register-portal",
-      highlight: false
-    },
-    {
-      badge: "PRIORITY ROUND",
-      lead: "Priority delegate intake active • Secure your portfolio.",
-      cta: "Register Now",
-      icon: Award,
-      targetTab: "register-portal-priority",
-      highlight: false
-    },
+
+
     {
       badge: "CAMPUS AMBASSADOR",
       lead: "Lead your college delegation • Campus Ambassador network live.",
