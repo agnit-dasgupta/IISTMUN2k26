@@ -15,7 +15,8 @@ import {
   Compass,
   Landmark,
   Sparkles,
-  Plane
+  Plane,
+  Bed
 } from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { motion, AnimatePresence } from "motion/react";
@@ -32,18 +33,17 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const [activeSection, setActiveSection] = useState<string>("home");
 
   const adminEmails = ["agnit.dg@gmail.com", "iist.mun.club@gmail.com"];
-  const isLocalDev = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-  const isAdmin = Boolean(user?.email && adminEmails.includes(user.email.toLowerCase())) || isLocalDev;
+  const isAdmin = Boolean(user?.email && adminEmails.includes(user.email.toLowerCase()));
 
   // Navigation Items matching the required hierarchy
   const navItems = [
-    { id: "home", label: "Home", number: " ", icon: Globe, sectionId: "hero-landing-section" },
-    { id: "about-iist", label: "About IIST", number: " ", icon: Landmark, sectionId: "about-iist-section" },
-    { id: "about-iistmun", label: "About IISTMUN", number: " ", icon: Sparkles, sectionId: "about-iistmun-section" },
-    // { id: "map", label: "Campus Map", number: "04", icon: Compass, sectionId: "map-section" },
-    { id: "contact", label: "Contact Us", number: " ", icon: Mail, sectionId: "contact-section" },
-    { id: "how-to-reach", label: "How to Reach", number: " ", icon: Plane, sectionId: "how-to-reach-section" },
-    ...(isAdmin ? [{ id: "admin", label: "Admin Console", number: " ", icon: ShieldCheck, sectionId: null }] : []),
+    { id: "home", label: "Home", icon: Globe, sectionId: "hero-landing-section" },
+    { id: "about", label: "About", icon: Sparkles, sectionId: "about-iist-section" },
+    { id: "accommodation", label: "Accommodation", icon: Bed, sectionId: null },
+    // { id: "map", label: "Campus Map", icon: Compass, sectionId: "map-section" },
+    { id: "contact", label: "Contact Us", icon: Mail, sectionId: "contact-section" },
+    { id: "how-to-reach", label: "How to Reach", icon: Plane, sectionId: "how-to-reach-section" },
+    ...(isAdmin ? [{ id: "admin", label: "Admin Console", icon: ShieldCheck, sectionId: null }] : []),
   ];
 
   // Observe scroll position to highlight active tab
@@ -55,8 +55,8 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
 
     const sections = [
       { id: "hero-landing-section", tab: "home" },
-      { id: "about-iist-section", tab: "about-iist" },
-      { id: "about-iistmun-section", tab: "about-iistmun" },
+      { id: "about-iist-section", tab: "about" },
+      { id: "about-iistmun-section", tab: "about" },
       { id: "map-section", tab: "map" },
       { id: "contact-section", tab: "contact" },
       { id: "how-to-reach-section", tab: "how-to-reach" },
@@ -82,7 +82,7 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const handleNavClick = (tabId: string, sectionId?: string | null) => {
     setMobileMenuOpen(false);
 
-    if (tabId === "admin" || tabId === "register-portal") {
+    if (tabId === "admin" || tabId === "register-portal" || tabId === "accommodation") {
       setActiveTab(tabId);
       setActiveSection(tabId);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -164,20 +164,22 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
           </div>
 
           {/* Middle: Desktop Centered Navigation Links */}
-          <nav className="hidden lg:flex flex-1 items-center justify-center gap-5 xl:gap-8 mx-4">
+          <nav className="hidden lg:flex flex-1 items-center justify-center gap-3.5 xl:gap-6 mx-2 xl:mx-4">
             {navItems.map((item) => {
-              const isActive = (activeTab === "home" ? activeSection === item.id : activeTab === item.id);
+              const isActive = (activeTab === "home" ? activeSection === item.id : (activeTab === item.id || (item.id === "about" && (activeTab === "about" || activeTab === "about-iist" || activeTab === "about-iistmun"))));
+              const Icon = item.icon;
               return (
                 <button
                   key={item.id}
                   id={`nav-item-${item.id}`}
                   onClick={() => handleNavClick(item.id, item.sectionId)}
-                  className={`group relative py-2 text-xs font-sans uppercase tracking-[0.14em] whitespace-nowrap transition-colors cursor-pointer select-none ${isActive ? "text-[#C9A86A] font-semibold" : "text-[#EDE6D3]/80 hover:text-[#EDE6D3]"
+                  title={item.label}
+                  className={`group relative flex items-center gap-1.5 xl:gap-2 py-2 px-1 text-xs font-sans uppercase tracking-[0.14em] whitespace-nowrap transition-colors cursor-pointer select-none ${isActive ? "text-[#C9A86A] font-semibold" : "text-[#EDE6D3]/80 hover:text-[#EDE6D3]"
                     }`}
                 >
-                  <span className="text-[9px] font-mono text-[#8A9A7E] mr-1 opacity-60 group-hover:opacity-100">
-                    {item.number}
-                  </span>
+                  <Icon className={`h-3.5 w-3.5 transition-colors duration-200 ${
+                    isActive ? "text-[#C9A86A]" : "text-[#8A9A7E] group-hover:text-[#C9A86A]"
+                  }`} />
                   <span>{item.label}</span>
 
                   {/* Underline draw on active or hover */}
@@ -267,19 +269,20 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
         {/* Mobile Horizontal Quick-Scroll Bar */}
         <div className="flex lg:hidden border-t border-[#8A9A7E]/15 bg-[#1A1F1A] px-3 py-2 overflow-x-auto scrollbar-none gap-2">
           {navItems.map((item) => {
-            const isActive = (activeTab === "home" ? activeSection === item.id : activeTab === item.id);
+            const isActive = (activeTab === "home" ? activeSection === item.id : (activeTab === item.id || (item.id === "about" && (activeTab === "about" || activeTab === "about-iist" || activeTab === "about-iistmun"))));
+            const Icon = item.icon;
             return (
               <button
                 key={item.id}
                 id={`nav-mobile-${item.id}`}
                 onClick={() => handleNavClick(item.id, item.sectionId)}
-                className={`px-3 py-1 text-[11px] font-sans uppercase tracking-wider whitespace-nowrap border shrink-0 transition-colors ${isActive
+                className={`flex items-center gap-1.5 px-3 py-1 text-[11px] font-sans uppercase tracking-wider whitespace-nowrap border shrink-0 transition-colors ${isActive
                   ? "border-[#C9A86A] bg-[#2E3B2F] text-[#C9A86A] font-semibold"
                   : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
                   }`}
               >
-                <span className="text-[9px] text-[#C9A86A] mr-1">{item.number}</span>
-                {item.label}
+                <Icon className={`h-3 w-3 shrink-0 ${isActive ? "text-[#C9A86A]" : "text-[#C9A86A]/70"}`} />
+                <span>{item.label}</span>
               </button>
             );
           })}
@@ -327,7 +330,8 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
 
               <div className="space-y-1 pt-2">
                 {navItems.map((item) => {
-                  const isActive = (activeTab === "home" ? activeSection === item.id : activeTab === item.id);
+                  const isActive = (activeTab === "home" ? activeSection === item.id : (activeTab === item.id || (item.id === "about" && (activeTab === "about" || activeTab === "about-iist" || activeTab === "about-iistmun"))));
+                  const Icon = item.icon;
                   return (
                     <button
                       key={item.id}
@@ -337,11 +341,10 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
                         : "border-transparent text-[#EDE6D3]/80 hover:bg-[#2E3B2F]/40 hover:text-[#EDE6D3]"
                         }`}
                     >
-                      <span className="flex items-center gap-2">
-                        <item.icon className="h-3.5 w-3.5 text-[#C9A86A]" />
+                      <span className="flex items-center gap-2.5">
+                        <Icon className="h-3.5 w-3.5 text-[#C9A86A]" />
                         <span>{item.label}</span>
                       </span>
-                      <span className="font-mono text-[9px] text-[#8A9A7E]">{item.number}</span>
                     </button>
                   );
                 })}

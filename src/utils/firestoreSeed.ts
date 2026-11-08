@@ -46,6 +46,8 @@ export interface CollectionCounts {
   campus_ambassador_registrations: number;
   contact_queries: number;
   sent_emails: number;
+  accommodation_bookings: number;
+  accommodation_settings: number;
 }
 
 /**
@@ -66,7 +68,9 @@ export async function fetchCollectionCounts(db: Firestore): Promise<CollectionCo
     "eb_registrations",
     "campus_ambassador_registrations",
     "contact_queries",
-    "sent_emails"
+    "sent_emails",
+    "accommodation_bookings",
+    "accommodation_settings"
   ];
 
   const counts: Record<string, number> = {};

@@ -15,6 +15,7 @@ import Registration from "./components/Registration";
 import AdminDashboard from "./components/AdminDashboard";
 import WorkshopRegistration from "./components/WorkshopRegistration";
 import RegisterPortal from "./components/RegisterPortal";
+import Accommodation from "./components/Accommodation";
 import MarqueeTicker from "./components/MarqueeTicker";
 import CherryBlossomBackground from "./components/CherryBlossomBackground";
 import { motion } from "motion/react";
@@ -29,7 +30,7 @@ const getInitialTab = () => {
       "home", "secretariat", "committees", "matrix", "schedule", "faq",
       "register-portal", "register-portal-priority", "register-portal-unga",
       "register-portal-eb", "register-portal-ca", "register", "register-unga",
-      "workshop-register", "admin"
+      "workshop-register", "admin", "accommodation", "about"
     ];
     if (validTabs.includes(path)) {
       return path;
@@ -69,6 +70,7 @@ export default function App() {
   const renderActiveContent = () => {
     switch (activeTab) {
       case "home":
+      case "about":
       case "contact":
       case "how-to-reach":
       case "map":
@@ -109,6 +111,8 @@ export default function App() {
         />;
       case "workshop-register":
         return <WorkshopRegistration setActiveTab={handleTabChange} />;
+      case "accommodation":
+        return <Accommodation setActiveTab={handleTabChange} />;
       case "admin":
         return <AdminDashboard />;
       default:
@@ -242,6 +246,12 @@ export default function App() {
                   <button onClick={() => { handleTabChange("register-portal-unga"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
                     <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">UNGA (Online Committee)</span>
                     <span className="block text-[10px] text-[#C9A86A]/80">Now Open &bull; Virtual Simulation Chamber</span>
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => { handleTabChange("accommodation"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
+                    <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">Accommodation &amp; Lodging</span>
+                    <span className="block text-[10px] text-[#8BA06F]">Live Vacancy Desk &bull; In-Campus &amp; Out-Campus</span>
                   </button>
                 </li>
                 <li>

@@ -264,3 +264,50 @@ export interface WorkshopRegistrationDetails {
   specialRequirements?: string;
 }
 
+export interface AccommodationBooking {
+  id: string; // e.g. ACC-2027-1042
+  userId?: string;
+  timestamp: string;
+  createdAt?: any;
+  // Personal Identification
+  name: string;
+  gender: "male" | "female";
+  accommodationType: "out-of-campus" | "in-campus";
+  aadharNumber: string;
+  aadharPhotoUrl?: string;
+  aadharPhotoName?: string;
+  phone: string;
+  email: string;
+  institution?: string;
+  specialRequests?: string;
+  // Payment Clearance
+  paymentAmount: number;
+  transactionId: string; // UTR Number / Bank Transaction ID
+  utrNumber?: string;
+  paymentScreenshotUrl: string;
+  paymentScreenshotName?: string;
+  payerName?: string;
+  paymentDate?: string;
+  paymentMode?: string;
+  // Administrative Allotment
+  status: "Pending" | "Verified" | "Allotted" | "Rejected";
+  roomAllotted?: string; // e.g. "LH-204" or "OC-102"
+  adminNotes?: string;
+}
+
+export interface AccommodationSettings {
+  maleFee: number;
+  femaleFee: number;
+  maleRoomsAvailable: number;
+  femaleRoomsAvailable: number;
+  maleLocationName: string;
+  femaleLocationName: string;
+  maleDescription: string;
+  femaleDescription: string;
+  contactPerson?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  updatedAt?: any;
+}
+
+

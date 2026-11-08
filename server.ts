@@ -107,6 +107,125 @@ async function startServer() {
     }
   });
 
+  const ACCOMMODATIONS_FILE = path.join(process.cwd(), "data", "local_accommodations.json");
+  const ACCOMMODATION_SETTINGS_FILE = path.join(process.cwd(), "data", "local_accommodation_settings.json");
+
+  const readLocalAccommodationSettings = (): any => {
+    try {
+      if (fs.existsSync(ACCOMMODATION_SETTINGS_FILE)) {
+        const raw = fs.readFileSync(ACCOMMODATION_SETTINGS_FILE, "utf-8");
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn("Could not read local_accommodation_settings.json:", e);
+    }
+    return {
+      maleFee: 1200,
+      femaleFee: 1000,
+      maleRoomsAvailable: 25,
+      femaleRoomsAvailable: 15,
+      maleLocationName: "SPACE Apartments (Out of Campus)",
+      femaleLocationName: "IIST Hostels / Guest Quarters, Valiamala (In-Campus)",
+      maleDescription: "Comfortable hotel accommodation with dedicated private transport shuttle directly connecting the hotel to IIST Valiamala campus during all conference days.",
+      femaleDescription: "Secure on-campus student hostel accommodation situated inside the IIST Valiamala campus with 24/7 security surveillance and biometric checkpoints."
+    };
+  };
+
+  const writeLocalAccommodationSettings = (data: any) => {
+    try {
+      const dir = path.dirname(ACCOMMODATION_SETTINGS_FILE);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(ACCOMMODATION_SETTINGS_FILE, JSON.stringify(data, null, 2), "utf-8");
+    } catch (e) {
+      console.error("Could not write local_accommodation_settings.json:", e);
+    }
+  };
+  const readLocalAccommodations = (): any[] => {
+    try {
+      if (fs.existsSync(ACCOMMODATIONS_FILE)) {
+        const raw = fs.readFileSync(ACCOMMODATIONS_FILE, "utf-8");
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn("Could not read local_accommodations.json:", e);
+    }
+    return [];
+  };
+
+  const writeLocalAccommodations = (list: any[]) => {
+    try {
+      const dir = path.dirname(ACCOMMODATIONS_FILE);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(ACCOMMODATIONS_FILE, JSON.stringify(list, null, 2), "utf-8");
+    } catch (e) {
+      console.error("Could not write local_accommodations.json:", e);
+    }
+  };
+
+  // GET /api/accommodations
+  app.get("/api/accommodations", (req, res) => {
+    const list = readLocalAccommodations();
+    return res.json({ status: "success", count: list.length, data: list });
+  });
+
+  // POST /api/accommodations
+  app.post("/api/accommodations", (req, res) => {
+    try {
+      const accomData = req.body;
+      if (!accomData || !accomData.id) {
+        return res.status(400).json({ status: "error", message: "Invalid accommodation payload" });
+      }
+      const list = readLocalAccommodations();
+      const existingIdx = list.findIndex(r => r.id === accomData.id);
+      if (existingIdx >= 0) {
+        list[existingIdx] = { ...list[existingIdx], ...accomData, updatedAt: new Date().toISOString() };
+      } else {
+        list.unshift({ ...accomData, createdAt: new Date().toISOString() });
+      }
+      writeLocalAccommodations(list);
+      console.log(`[ACCOMMODATION BACKUP SUCCESS] Stored accommodation ${accomData.id} (${accomData.name || "Candidate"})`);
+      return res.json({ status: "success", data: accomData });
+    } catch (err: any) {
+      return res.status(500).json({ status: "error", message: err.message || "Failed to persist accommodation" });
+    }
+  });
+
+  // DELETE /api/accommodations/:id
+  app.delete("/api/accommodations/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const list = readLocalAccommodations();
+      const updated = list.filter(r => r.id !== id);
+      writeLocalAccommodations(updated);
+      return res.json({ status: "success", message: `Deleted accommodation ${id}` });
+    } catch (err: any) {
+      return res.status(500).json({ status: "error", message: err.message || "Failed to delete" });
+    }
+  });
+
+  // GET /api/accommodation-settings
+  app.get("/api/accommodation-settings", (req, res) => {
+    const settings = readLocalAccommodationSettings();
+    return res.json({ status: "success", data: settings });
+  });
+
+  // POST /api/accommodation-settings
+  app.post("/api/accommodation-settings", (req, res) => {
+    try {
+      const incoming = req.body || {};
+      const current = readLocalAccommodationSettings();
+      const updated = { ...current, ...incoming, updatedAt: new Date().toISOString() };
+      writeLocalAccommodationSettings(updated);
+      return res.json({ status: "success", data: updated });
+    } catch (err: any) {
+      return res.status(500).json({ status: "error", message: err.message || "Failed to update accommodation settings" });
+    }
+  });
+
   // Base64 file upload endpoint for Photo and CV
   app.post("/api/upload", (req, res) => {
     try {

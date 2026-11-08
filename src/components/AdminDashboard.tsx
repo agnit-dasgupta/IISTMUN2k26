@@ -16,6 +16,7 @@ import {
   Trash2, 
   Filter, 
   FileText, 
+  Building,
   Building2, 
   Compass, 
   Calendar, 
@@ -45,7 +46,8 @@ import {
   Copy,
   ChevronDown,
   Shirt,
-  ArrowRight
+  ArrowRight,
+  Bed
 } from "lucide-react";
 
 export const FIRESTORE_RULES_TEXT = `rules_version = '2';
@@ -164,6 +166,18 @@ service cloud.firestore {
       allow create: if true;
       allow update, delete: if isAdmin();
     }
+
+    match /accommodation_bookings/{bookingId} {
+      allow get: if isAdmin() || (isSignedIn() && (bookingId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if true;
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /accommodation_settings/{docId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
   }
 }
 `;
@@ -180,7 +194,7 @@ import {
   syncLocalRegistrationsToFirestore,
   CollectionCounts 
 } from "../utils/firestoreSeed";
-import { RegistrationDetails, PriorityRegistrationDetails, CountryMatrixRow, PortfolioStatus, CommitteeId, ContactQuery, EBRegistration, CampusAmbassadorRegistration, WorkshopRegistrationDetails } from "../types";
+import { RegistrationDetails, PriorityRegistrationDetails, CountryMatrixRow, PortfolioStatus, CommitteeId, ContactQuery, EBRegistration, CampusAmbassadorRegistration, WorkshopRegistrationDetails, AccommodationBooking, AccommodationSettings } from "../types";
 
 
 interface PortfolioStatusSelectorProps {
@@ -347,7 +361,7 @@ export default function AdminDashboard() {
   const [workshopSearch, setWorkshopSearch] = useState("");
 
   // Sub-tabs
-  const [activeSubTab, setActiveSubTab] = useState<"registrations" | "priority" | "unga" | "eb" | "campus-ambassador" | "workshop" | "queries" | "database">("priority");
+  const [activeSubTab, setActiveSubTab] = useState<"registrations" | "priority" | "unga" | "eb" | "campus-ambassador" | "workshop" | "accommodation" | "queries" | "database">("priority");
   const [portfolioSearch, setPortfolioSearch] = useState("");
   const [portfolioOverrides, setPortfolioOverrides] = useState<Record<string, Partial<Record<CommitteeId | "copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>>({});
 
@@ -426,6 +440,28 @@ export default function AdminDashboard() {
   const [isDeletingQuery, setIsDeletingQuery] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Accommodation Management state
+  const [accommodationBookings, setAccommodationBookings] = useState<AccommodationBooking[]>([]);
+  const [accommodationSearch, setAccommodationSearch] = useState("");
+  const [accommodationGenderFilter, setAccommodationGenderFilter] = useState<"all" | "male" | "female">("all");
+  const [accommodationStatusFilter, setAccommodationStatusFilter] = useState("all");
+  const [confirmAccommodationDeleteId, setConfirmAccommodationDeleteId] = useState<string | null>(null);
+  const [allotRoomModalBooking, setAllotRoomModalBooking] = useState<AccommodationBooking | null>(null);
+  const [allotRoomNumber, setAllotRoomNumber] = useState("");
+  const [isUpdatingAccomStatus, setIsUpdatingAccomStatus] = useState(false);
+  const [isSavingAccomSettings, setIsSavingAccomSettings] = useState(false);
+  const [viewAadharModal, setViewAadharModal] = useState<{ url: string; name?: string; aadharNumber?: string; candidateName?: string } | null>(null);
+  const [accomSettingsDraft, setAccomSettingsDraft] = useState<AccommodationSettings>({
+    maleFee: 1500,
+    femaleFee: 1200,
+    maleRoomsAvailable: 25,
+    femaleRoomsAvailable: 15,
+    maleLocationName: "Hotel Grand Palace & Nedumangad Transit Hub (Out of Campus)",
+    femaleLocationName: "IIST Hostels / Guest Quarters, Valiamala (In-Campus)",
+    maleDescription: "Comfortable hotel accommodation with dedicated private transport shuttle directly connecting the hotel to IIST Valiamala campus during all conference days.",
+    femaleDescription: "Secure on-campus student hostel accommodation situated inside the IIST Valiamala campus with 24/7 security surveillance and biometric checkpoints."
+  });
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -609,6 +645,75 @@ export default function AdminDashboard() {
     });
 
     return () => unsubscribe();
+  }, [isAdmin]);
+
+  // Listener for Accommodation Bookings & Room Settings
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    // 1. Bookings stream
+    const qAccom = query(collection(db, "accommodation_bookings"));
+    const unsubAccom = onSnapshot(
+      qAccom,
+      (snapshot) => {
+        const list: AccommodationBooking[] = [];
+        snapshot.forEach((docSnap) => {
+          list.push({
+            id: docSnap.id,
+            ...docSnap.data()
+          } as AccommodationBooking);
+        });
+        list.sort((a, b) => {
+          const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
+          const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
+          return timeB - timeA;
+        });
+        setAccommodationBookings(list);
+      },
+      (error) => {
+        console.warn("Accommodation bookings subscription note:", error.message);
+      }
+    );
+
+    // Fallback local backup fetch
+    fetch("/api/accommodations")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload) => {
+        if (payload?.data && Array.isArray(payload.data)) {
+          setAccommodationBookings((prev) => {
+            const combined = [...prev];
+            for (const item of payload.data) {
+              if (!combined.some((c) => c.id === item.id)) {
+                combined.push(item);
+              }
+            }
+            return combined;
+          });
+        }
+      })
+      .catch(() => {});
+
+    // 2. Settings stream
+    const unsubSettings = onSnapshot(
+      doc(db, "accommodation_settings", "inventory"),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data() as Partial<AccommodationSettings>;
+          setAccomSettingsDraft((prev) => ({
+            ...prev,
+            ...data
+          }));
+        }
+      },
+      (err) => {
+        console.warn("Accommodation settings fetch note:", err.message);
+      }
+    );
+
+    return () => {
+      unsubAccom();
+      unsubSettings();
+    };
   }, [isAdmin]);
 
   // Helper to accurately compare registration identity without incorrectly collapsing different tickets from same user
@@ -1142,6 +1247,125 @@ export default function AdminDashboard() {
     const suffix = customLabel ? `_${customLabel.replace(/[^a-zA-Z0-9_-]/g, "_")}` : "";
     XLSX.writeFile(workbook, `IISTMUN_2026_Campus_Ambassadors${suffix}_${dateStr}.xlsx`);
     showToast(`Exported ${list.length} Campus Ambassador registration(s) to Excel!`);
+  };
+
+  // Accommodation Actions
+  const handleUpdateAccomStatus = async (id: string, newStatus: AccommodationBooking["status"]) => {
+    try {
+      setIsUpdatingAccomStatus(true);
+      await updateDoc(doc(db, "accommodation_bookings", id), { status: newStatus });
+      setAccommodationBookings((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
+      );
+      showToast(`Accommodation booking marked as ${newStatus}`);
+    } catch (err) {
+      console.error("Error updating accommodation status:", err);
+      showToast("Failed to update accommodation status. Check permissions.");
+    } finally {
+      setIsUpdatingAccomStatus(false);
+    }
+  };
+
+  const handleAllotAccommodationRoom = async (id: string, room: string) => {
+    if (!room.trim()) {
+      showToast("Please enter or select a room number.");
+      return;
+    }
+    try {
+      setIsUpdatingAccomStatus(true);
+      await updateDoc(doc(db, "accommodation_bookings", id), {
+        roomAllotted: room.trim(),
+        status: "Allotted"
+      });
+      setAccommodationBookings((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, roomAllotted: room.trim(), status: "Allotted" } : item))
+      );
+      showToast(`Room ${room.trim()} allotted to booking ${id}`);
+      setAllotRoomModalBooking(null);
+      setAllotRoomNumber("");
+    } catch (err) {
+      console.error("Error allotting room:", err);
+      showToast("Failed to allot room. Check permissions.");
+    } finally {
+      setIsUpdatingAccomStatus(false);
+    }
+  };
+
+  const handleDeleteAccommodation = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "accommodation_bookings", id));
+      try {
+        await fetch(`/api/accommodations/${id}`, { method: "DELETE" });
+      } catch {}
+      setAccommodationBookings((prev) => prev.filter((item) => item.id !== id));
+      setConfirmAccommodationDeleteId(null);
+      showToast("Accommodation booking removed.");
+    } catch (err) {
+      console.error("Error deleting accommodation booking:", err);
+      showToast("Failed to remove booking. Check permissions.");
+    }
+  };
+
+  const handleSaveAccomSettings = async () => {
+    try {
+      setIsSavingAccomSettings(true);
+      const settingsRef = doc(db, "accommodation_settings", "inventory");
+      await setDoc(settingsRef, {
+        ...accomSettingsDraft,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
+      try {
+        await fetch("/api/accommodation-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(accomSettingsDraft)
+        });
+      } catch {}
+
+      showToast("Live room availability & settings successfully saved to Firestore!");
+    } catch (err) {
+      console.error("Error saving accommodation settings:", err);
+      showToast("Failed to save room inventory settings. Check permissions.");
+    } finally {
+      setIsSavingAccomSettings(false);
+    }
+  };
+
+  const exportAccommodationToExcel = (itemsToExport?: AccommodationBooking[]) => {
+    const list = itemsToExport ?? accommodationBookings;
+    if (list.length === 0) {
+      showToast("No accommodation bookings to export.");
+      return;
+    }
+
+    const dataToExport = list.map((r, idx) => ({
+      "Sl. No": idx + 1,
+      "Booking Reference ID": r.id,
+      "Full Name": r.name,
+      "Gender": r.gender ? r.gender.toUpperCase() : "N/A",
+      "Accommodation Type": r.accommodationType === "in-campus" ? "In-Campus (Female)" : "Out of Campus (Male)",
+      "Contact Phone": r.phone,
+      "Email Address": r.email,
+      "Aadhar Card Number": r.aadharNumber,
+      "Institution": r.institution || "N/A",
+      "Room Allotted": r.roomAllotted || "Pending Allotment",
+      "Fee Remitted (INR)": r.paymentAmount || 0,
+      "Transaction ID / UTR": r.transactionId || r.utrNumber || "N/A",
+      "Payer Name": r.payerName || "N/A",
+      "Date of Payment": r.paymentDate || "N/A",
+      "Has Aadhar Photo": r.aadharPhotoUrl ? "YES" : "NO",
+      "Has Payment Screenshot": r.paymentScreenshotUrl ? "YES" : "NO",
+      "Special Requests": r.specialRequests || "None",
+      "Status": r.status || "Pending",
+      "Timestamp": r.timestamp || "N/A"
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Accommodation Ledger");
+    XLSX.writeFile(workbook, `IISTMUN_2027_Accommodation_Ledger_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    showToast(`Exported ${list.length} accommodation bookings to Excel!`);
   };
 
   // General Delegate Registrations (strictly exclude priority and UNGA online registrations)
@@ -2529,6 +2753,36 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div 
+            onClick={() => setActiveSubTab("accommodation")}
+            className={`border p-4 text-left shadow-sm cursor-pointer transition-all ${
+              activeSubTab === "accommodation"
+                ? "border-[#C9A86A] bg-[#2E3B2F] ring-1 ring-[#C9A86A]"
+                : "border-[#C9A86A]/40 bg-[#2E3B2F] hover:border-[#C9A86A]"
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#C9A86A] font-bold block">ACCOMMODATION</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  exportAccommodationToExcel();
+                }}
+                disabled={accommodationBookings.length === 0}
+                className="opacity-80 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 bg-[#1A1F1A] border border-[#C9A86A]/40 hover:border-[#C9A86A] text-[#C9A86A] text-[9px] font-sans font-bold flex items-center gap-1 cursor-pointer disabled:opacity-20"
+                title="Quick Download Accommodation Excel (.xlsx)"
+              >
+                <Download className="h-2.5 w-2.5" />
+                <span>XLSX</span>
+              </button>
+            </div>
+            <div className="flex justify-between items-end mt-1.5">
+              <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{accommodationBookings.length}</span>
+              <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                <Bed className="h-3.5 w-3.5" />
+              </div>
+            </div>
+          </div>
+          <div 
             onClick={() => setActiveSubTab("queries")}
             className={`border p-4 text-left shadow-sm cursor-pointer transition-all ${
               activeSubTab === "queries"
@@ -2631,6 +2885,22 @@ export default function AdminDashboard() {
             }`}
           >
             Diplomacy Workshop ({workshopRegistrations.length})
+          </button>
+          <button
+            onClick={() => setActiveSubTab("accommodation")}
+            className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeSubTab === "accommodation"
+                ? "border-[#C9A86A] text-[#C9A86A] font-semibold"
+                : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
+            }`}
+          >
+            <Bed className="h-3.5 w-3.5" />
+            <span>Accommodation Desk ({accommodationBookings.length})</span>
+            {accommodationBookings.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-[#C9A86A] text-[#1A1F1A] text-[9px] font-bold">
+                {accommodationBookings.length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveSubTab("queries")}
@@ -4739,6 +5009,548 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* ========================================================
+            ACCOMMODATION & LODGING DESK
+           ======================================================== */}
+        {activeSubTab === "accommodation" && (
+          <div className="space-y-8 animate-fade-in text-left">
+            {/* Header & Export Actions */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#C9A86A]/20 pb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                    // LOGISTICS &amp; RESIDENTIAL OPERATIONS
+                  </span>
+                </div>
+                <h2 className="font-serif text-2xl text-[#EDE6D3] font-normal">
+                  Accommodation Desk &amp; Lodging Management
+                </h2>
+                <p className="font-sans text-xs text-[#8A9A7E] mt-1 max-w-2xl">
+                  Manage delegate accommodation dossiers, inspect Aadhar credentials &amp; payment receipts, verify transactions, and allocate rooms.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => exportAccommodationToExcel()}
+                  disabled={accommodationBookings.length === 0}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-sans font-semibold uppercase tracking-wider transition-all cursor-pointer shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  <span>Export Lodging Ledger (.xlsx)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Metric Overview Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#2E3B2F] border border-[#C9A86A]/40 p-4">
+                <span className="text-[10px] font-sans uppercase tracking-widest text-[#8A9A7E] block">
+                  Total Lodging Requests
+                </span>
+                <div className="flex items-baseline justify-between mt-1">
+                  <span className="font-serif text-3xl text-[#EDE6D3] font-normal">
+                    {accommodationBookings.length}
+                  </span>
+                  <span className="text-xs font-mono text-[#C9A86A]">
+                    ₹{accommodationBookings.reduce((sum, b) => sum + (b.paymentAmount || 0), 0).toLocaleString()} Remitted
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-[#2E3B2F] border border-emerald-500/30 p-4">
+                <span className="text-[10px] font-sans uppercase tracking-widest text-[#8A9A7E] block">
+                  In-Campus (Female)
+                </span>
+                <div className="flex items-baseline justify-between mt-1">
+                  <span className="font-serif text-3xl text-emerald-400 font-normal">
+                    {accommodationBookings.filter((b) => b.gender === "female").length}
+                  </span>
+                  <span className="text-xs font-mono text-emerald-300">
+                    {accomSettingsDraft.femaleRoomsAvailable ?? 0} Avail.
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-[#2E3B2F] border border-sky-500/30 p-4">
+                <span className="text-[10px] font-sans uppercase tracking-widest text-[#8A9A7E] block">
+                  Out of Campus (Male)
+                </span>
+                <div className="flex items-baseline justify-between mt-1">
+                  <span className="font-serif text-3xl text-sky-400 font-normal">
+                    {accommodationBookings.filter((b) => b.gender === "male").length}
+                  </span>
+                  <span className="text-xs font-mono text-sky-300">
+                    {accomSettingsDraft.maleRoomsAvailable ?? 0} Avail.
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-[#2E3B2F] border border-amber-500/30 p-4">
+                <span className="text-[10px] font-sans uppercase tracking-widest text-[#8A9A7E] block">
+                  Allotment Status
+                </span>
+                <div className="flex items-baseline justify-between mt-1">
+                  <span className="font-serif text-3xl text-[#EDE6D3] font-normal">
+                    {accommodationBookings.filter((b) => b.status === "Allotted").length}
+                  </span>
+                  <span className="text-xs font-mono text-amber-300">
+                    {accommodationBookings.filter((b) => b.status === "Pending").length} Pending
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ACCOMMODATION PRICING & LOGISTICS SETTINGS */}
+            <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] p-6 shadow-2xl relative">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-[#C9A86A]/30 pb-4 mb-5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                      ADMIN SETTINGS CONTROL
+                    </span>
+                  </div>
+                  <h3 className="font-serif text-xl text-[#EDE6D3] font-normal mt-0.5">
+                    Accommodation Pricing &amp; Venue Settings
+                  </h3>
+                  <p className="font-sans text-xs text-[#8A9A7E]">
+                    Adjust package fees and facility descriptions shown to delegates.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSaveAccomSettings}
+                  disabled={isSavingAccomSettings}
+                  className="px-5 py-2.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-sans font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  {isSavingAccomSettings ? (
+                    <>
+                      <div className="h-3.5 w-3.5 border-2 border-[#1A1F1A] border-t-transparent rounded-full animate-spin" />
+                      <span>Saving to Cloud...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="h-4 w-4" />
+                      <span>Save &amp; Publish Settings</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Female / In-Campus Settings */}
+                <div className="bg-[#1A1F1A] border border-emerald-500/40 p-4 space-y-3.5">
+                  <div className="flex items-center justify-between border-b border-[#8A9A7E]/20 pb-2">
+                    <span className="font-mono text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Building className="h-4 w-4 text-emerald-400" />
+                      In-Campus (Female Accommodation)
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/60 px-2 py-0.5 border border-emerald-500/30">
+                      IIST Hostels
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-sans uppercase tracking-wider text-[#8A9A7E] block">
+                      Lodging Fee (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={accomSettingsDraft.femaleFee}
+                      onChange={(e) =>
+                        setAccomSettingsDraft({
+                          ...accomSettingsDraft,
+                          femaleFee: Number(e.target.value) || 0
+                        })
+                      }
+                      className="w-full bg-[#2E3B2F] border border-[#8A9A7E]/30 px-3 py-1.5 text-xs font-mono text-[#C9A86A] font-bold focus:border-[#C9A86A] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-sans uppercase tracking-wider text-[#8A9A7E] block">
+                      Location Title
+                    </label>
+                    <input
+                      type="text"
+                      value={accomSettingsDraft.femaleLocationName}
+                      onChange={(e) =>
+                        setAccomSettingsDraft({
+                          ...accomSettingsDraft,
+                          femaleLocationName: e.target.value
+                        })
+                      }
+                      className="w-full bg-[#2E3B2F] border border-[#8A9A7E]/30 px-3 py-1.5 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-sans uppercase tracking-wider text-[#8A9A7E] flex items-center justify-between">
+                      <span>Number of Rooms Available</span>
+                      <span className="text-emerald-400 font-mono text-[9px] font-bold">LIVE ON SITE</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={accomSettingsDraft.femaleRoomsAvailable ?? 0}
+                      onChange={(e) =>
+                        setAccomSettingsDraft({
+                          ...accomSettingsDraft,
+                          femaleRoomsAvailable: Math.max(0, parseInt(e.target.value) || 0)
+                        })
+                      }
+                      className="w-full bg-[#2E3B2F] border border-emerald-500/50 px-3 py-1.5 text-xs font-mono text-emerald-400 font-bold focus:border-[#C9A86A] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Male / Out of Campus Settings */}
+                <div className="bg-[#1A1F1A] border border-sky-500/40 p-4 space-y-3.5">
+                  <div className="flex items-center justify-between border-b border-[#8A9A7E]/20 pb-2">
+                    <span className="font-mono text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Building2 className="h-4 w-4 text-sky-400" />
+                      Out of Campus (Male Accommodation)
+                    </span>
+                    <span className="text-[10px] font-mono text-sky-300 bg-sky-950/60 px-2 py-0.5 border border-sky-500/30">
+                      Partner Hotels
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-sans uppercase tracking-wider text-[#8A9A7E] block">
+                      Lodging Fee (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={accomSettingsDraft.maleFee}
+                      onChange={(e) =>
+                        setAccomSettingsDraft({
+                          ...accomSettingsDraft,
+                          maleFee: Number(e.target.value) || 0
+                        })
+                      }
+                      className="w-full bg-[#2E3B2F] border border-[#8A9A7E]/30 px-3 py-1.5 text-xs font-mono text-[#C9A86A] font-bold focus:border-[#C9A86A] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-sans uppercase tracking-wider text-[#8A9A7E] block">
+                      Location Title
+                    </label>
+                    <input
+                      type="text"
+                      value={accomSettingsDraft.maleLocationName}
+                      onChange={(e) =>
+                        setAccomSettingsDraft({
+                          ...accomSettingsDraft,
+                          maleLocationName: e.target.value
+                        })
+                      }
+                      className="w-full bg-[#2E3B2F] border border-[#8A9A7E]/30 px-3 py-1.5 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-sans uppercase tracking-wider text-[#8A9A7E] flex items-center justify-between">
+                      <span>Number of Rooms Available</span>
+                      <span className="text-sky-400 font-mono text-[9px] font-bold">LIVE ON SITE</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={accomSettingsDraft.maleRoomsAvailable ?? 0}
+                      onChange={(e) =>
+                        setAccomSettingsDraft({
+                          ...accomSettingsDraft,
+                          maleRoomsAvailable: Math.max(0, parseInt(e.target.value) || 0)
+                        })
+                      }
+                      className="w-full bg-[#2E3B2F] border border-sky-500/50 px-3 py-1.5 text-xs font-mono text-sky-400 font-bold focus:border-[#C9A86A] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="bg-[#2E3B2F] border border-[#C9A86A]/30 p-4 space-y-4">
+              <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8A9A7E]" />
+                  <input
+                    type="text"
+                    value={accommodationSearch}
+                    onChange={(e) => setAccommodationSearch(e.target.value)}
+                    placeholder="Search candidate name, phone, email, Aadhar, UTR, room..."
+                    className="w-full bg-[#1A1F1A] border border-[#8A9A7E]/30 pl-10 pr-4 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none"
+                  />
+                  {accommodationSearch && (
+                    <button
+                      onClick={() => setAccommodationSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A9A7E] hover:text-[#EDE6D3]"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Gender Filter */}
+                  <select
+                    value={accommodationGenderFilter}
+                    onChange={(e) => setAccommodationGenderFilter(e.target.value as any)}
+                    className="bg-[#1A1F1A] border border-[#8A9A7E]/30 px-3 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none cursor-pointer"
+                  >
+                    <option value="all">All Genders / Venues</option>
+                    <option value="female">In-Campus (Female)</option>
+                    <option value="male">Out of Campus (Male)</option>
+                  </select>
+
+                  {/* Status Filter */}
+                  <select
+                    value={accommodationStatusFilter}
+                    onChange={(e) => setAccommodationStatusFilter(e.target.value)}
+                    className="bg-[#1A1F1A] border border-[#8A9A7E]/30 px-3 py-2 text-xs text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none cursor-pointer"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Verified">Verified</option>
+                    <option value="Allotted">Allotted</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+
+                  <span className="text-xs font-mono text-[#8A9A7E]">
+                    Showing {accommodationBookings.filter((b) => {
+                      const q = accommodationSearch.toLowerCase().trim();
+                      const matchesSearch =
+                        !q ||
+                        b.id.toLowerCase().includes(q) ||
+                        b.name.toLowerCase().includes(q) ||
+                        b.email.toLowerCase().includes(q) ||
+                        b.phone.includes(q) ||
+                        b.aadharNumber.includes(q) ||
+                        (b.transactionId || "").toLowerCase().includes(q) ||
+                        (b.institution || "").toLowerCase().includes(q) ||
+                        (b.roomAllotted || "").toLowerCase().includes(q);
+                      const matchesGender =
+                        accommodationGenderFilter === "all" || b.gender === accommodationGenderFilter;
+                      const matchesStatus =
+                        accommodationStatusFilter === "all" || b.status === accommodationStatusFilter;
+                      return matchesSearch && matchesGender && matchesStatus;
+                    }).length} of {accommodationBookings.length}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bookings Ledger Table */}
+            <div className="border border-[#C9A86A]/30 bg-[#1A1F1A] shadow-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[1050px]">
+                  <thead>
+                    <tr className="border-b border-[#C9A86A]/20 bg-[#2E3B2F] text-[10px] font-sans font-bold uppercase tracking-wider text-[#C9A86A]">
+                      <th className="py-3 px-4">Ref ID &amp; Time</th>
+                      <th className="py-3 px-4">Candidate &amp; Contacts</th>
+                      <th className="py-3 px-4">Category &amp; Venue</th>
+                      <th className="py-3 px-4">Aadhar Card</th>
+                      <th className="py-3 px-4">Payment &amp; UTR</th>
+                      <th className="py-3 px-4">Room Allotted</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#8A9A7E]/15 font-sans text-xs">
+                    {accommodationBookings.filter((b) => {
+                      const q = accommodationSearch.toLowerCase().trim();
+                      const matchesSearch =
+                        !q ||
+                        b.id.toLowerCase().includes(q) ||
+                        b.name.toLowerCase().includes(q) ||
+                        b.email.toLowerCase().includes(q) ||
+                        b.phone.includes(q) ||
+                        b.aadharNumber.includes(q) ||
+                        (b.transactionId || "").toLowerCase().includes(q) ||
+                        (b.institution || "").toLowerCase().includes(q) ||
+                        (b.roomAllotted || "").toLowerCase().includes(q);
+                      const matchesGender =
+                        accommodationGenderFilter === "all" || b.gender === accommodationGenderFilter;
+                      const matchesStatus =
+                        accommodationStatusFilter === "all" || b.status === accommodationStatusFilter;
+                      return matchesSearch && matchesGender && matchesStatus;
+                    }).map((b) => (
+                      <tr key={b.id} className="hover:bg-[#2E3B2F]/40 transition-colors">
+                        {/* Ref ID & Time */}
+                        <td className="py-3.5 px-4 font-mono">
+                          <span className="font-bold text-[#C9A86A] block">{b.id}</span>
+                          <span className="text-[10px] text-[#8A9A7E] block">{b.timestamp}</span>
+                        </td>
+
+                        {/* Candidate Details */}
+                        <td className="py-3.5 px-4">
+                          <strong className="text-[#EDE6D3] text-sm block">{b.name}</strong>
+                          <span className="text-[11px] text-[#8A9A7E] block">{b.institution || "Institution N/A"}</span>
+                          <div className="text-[11px] font-mono text-[#8A9A7E] flex items-center gap-2 mt-0.5">
+                            <span>{b.phone}</span>
+                            <span>&bull;</span>
+                            <span>{b.email}</span>
+                          </div>
+                        </td>
+
+                        {/* Category & Venue */}
+                        <td className="py-3.5 px-4">
+                          <span
+                            className={`inline-block px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider border ${
+                              b.gender === "female"
+                                ? "bg-emerald-950/60 text-emerald-300 border-emerald-500/40"
+                                : "bg-sky-950/60 text-sky-300 border-sky-500/40"
+                            }`}
+                          >
+                            {b.gender === "female" ? "In-Campus (Female)" : "Out-Campus (Male)"}
+                          </span>
+                          <span className="text-[10px] text-[#8A9A7E] block mt-1">
+                            {b.institution || "Conference Delegate"}
+                          </span>
+                        </td>
+
+                        {/* Aadhar Card Details & Proof */}
+                        <td className="py-3.5 px-4">
+                          <span className="font-mono text-xs text-[#EDE6D3] font-bold block">
+                            {b.aadharNumber ? `${b.aadharNumber.slice(0, 4)} ${b.aadharNumber.slice(4, 8)} ${b.aadharNumber.slice(8, 12)}` : "Not provided"}
+                          </span>
+                          {b.aadharPhotoUrl ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setViewProofModal({
+                                  url: b.aadharPhotoUrl,
+                                  name: b.aadharPhotoName || "Aadhar_Card.jpg",
+                                  utr: `Aadhar: ${b.aadharNumber}`,
+                                  candidateName: b.name
+                                })
+                              }
+                              className="mt-1 text-[10px] font-sans uppercase font-bold text-[#C9A86A] hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <Eye className="h-3 w-3" />
+                              <span>View Aadhar</span>
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-rose-400">No Photo</span>
+                          )}
+                        </td>
+
+                        {/* Payment & UTR */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-1 font-mono text-xs text-[#C9A86A] font-bold">
+                            <span>{b.transactionId || b.utrNumber || "No UTR"}</span>
+                            {(b.transactionId || b.utrNumber) && (
+                              <button
+                                type="button"
+                                onClick={() => handleCopyUtr(b.transactionId || b.utrNumber || "")}
+                                title="Copy UTR"
+                                className="text-[#8A9A7E] hover:text-[#EDE6D3] p-0.5 cursor-pointer"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-[#8A9A7E] block">
+                            ₹{b.paymentAmount || 0} &bull; {b.payerName || b.name}
+                          </span>
+                          {b.paymentScreenshotUrl ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setViewProofModal({
+                                  url: b.paymentScreenshotUrl,
+                                  name: b.paymentScreenshotName || "Payment_Receipt.jpg",
+                                  utr: b.transactionId,
+                                  candidateName: b.name
+                                })
+                              }
+                              className="mt-1 text-[10px] font-sans uppercase font-bold text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              <Eye className="h-3 w-3" />
+                              <span>View Receipt</span>
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-rose-400">No Receipt</span>
+                          )}
+                        </td>
+
+                        {/* Room Allotted */}
+                        <td className="py-3.5 px-4 font-mono">
+                          {b.roomAllotted ? (
+                            <span className="font-bold text-emerald-400 bg-[#2E3B2F] px-2 py-0.5 border border-emerald-500/40 inline-block">
+                              {b.roomAllotted}
+                            </span>
+                          ) : (
+                            <span className="text-[#8A9A7E] italic block text-[11px]">Unallotted</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAllotRoomModalBooking(b);
+                              setAllotRoomNumber(b.roomAllotted || "");
+                            }}
+                            className="mt-1 text-[10px] font-sans uppercase font-bold text-[#C9A86A] hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <Bed className="h-3 w-3" />
+                            <span>{b.roomAllotted ? "Re-allot" : "Allot Room"}</span>
+                          </button>
+                        </td>
+
+                        {/* Status Dropdown */}
+                        <td className="py-3.5 px-4">
+                          <select
+                            value={b.status || "Pending"}
+                            onChange={(e) => handleUpdateAccomStatus(b.id, e.target.value as any)}
+                            disabled={isUpdatingAccomStatus}
+                            className={`px-2 py-1 text-[10px] font-sans font-bold uppercase tracking-wider border cursor-pointer focus:outline-none ${
+                              b.status === "Allotted"
+                                ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/50"
+                                : b.status === "Verified"
+                                ? "bg-cyan-950/80 text-cyan-300 border-cyan-500/50"
+                                : b.status === "Rejected"
+                                ? "bg-rose-950/80 text-rose-300 border-rose-500/50"
+                                : "bg-amber-950/80 text-amber-300 border-amber-500/50"
+                            }`}
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="Verified">Verified</option>
+                            <option value="Allotted">Allotted</option>
+                            <option value="Rejected">Rejected</option>
+                          </select>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3.5 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setConfirmAccommodationDeleteId(b.id)}
+                            className="p-1.5 text-[#8A9A7E] hover:text-rose-400 transition-colors cursor-pointer"
+                            title="Delete Booking Record"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {accommodationBookings.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="py-12 text-center text-[#8A9A7E] font-sans text-xs">
+                          No accommodation bookings registered in the system yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeSubTab === "queries" && (
           <div className="space-y-8 animate-fade-in text-left">
             {/* Header & Export Actions */}
@@ -5491,6 +6303,33 @@ export default function AdminDashboard() {
                       View Inquiries &rarr;
                     </button>
                     <span className="text-[10px] font-mono text-[#8A9A7E]">Live Submissions</span>
+                  </div>
+                </div>
+
+                {/* Accommodation Bookings & Settings */}
+                <div className="bg-[#2E3B2F]/60 border border-[#C9A86A]/30 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="font-mono text-[10px] text-[#C9A86A] font-bold uppercase tracking-wider">
+                        accommodation_bookings &amp; settings
+                      </span>
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-[#1A1F1A] text-[#EDE6D3] border border-[#C9A86A]/30">
+                        {collectionCounts.accommodation_bookings ?? accommodationBookings.length} bookings
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-base text-[#EDE6D3]">Accommodation Desk</h4>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                      Stores delegate lodging bookings, Aadhar scans, and UPI payment receipts.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#C9A86A]/20">
+                    <button
+                      onClick={() => setActiveSubTab("accommodation")}
+                      className="text-xs font-sans text-[#C9A86A] hover:underline cursor-pointer"
+                    >
+                      View Accommodation Desk &rarr;
+                    </button>
+                    <span className="text-[10px] font-mono text-[#8A9A7E]">Live Lodging</span>
                   </div>
                 </div>
 
@@ -7970,6 +8809,120 @@ export default function AdminDashboard() {
                   className="flex-1 bg-rose-700 hover:bg-rose-600 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-md cursor-pointer"
                 >
                   Purge
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            ACCOMMODATION: ALLOT ROOM MODAL
+           ======================================================== */}
+        {allotRoomModalBooking && (
+          <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in flex items-center justify-center p-4">
+            <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-md w-full p-6 text-left relative shadow-2xl space-y-4">
+              <button
+                onClick={() => {
+                  setAllotRoomModalBooking(null);
+                  setAllotRoomNumber("");
+                }}
+                className="absolute top-4 right-4 p-1 border border-[#C9A86A]/40 bg-[#1A1F1A] text-[#8A9A7E] hover:text-[#EDE6D3] hover:border-[#C9A86A] transition-colors cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              <div className="flex items-center gap-2.5 text-[#C9A86A]">
+                <Bed className="h-6 w-6 text-[#C9A86A]" />
+                <div>
+                  <h3 className="font-serif text-lg text-[#EDE6D3] font-normal">
+                    Allot Room Number
+                  </h3>
+                  <span className="font-sans text-[10px] text-[#8A9A7E] uppercase tracking-wider block">
+                    {allotRoomModalBooking.name} &bull; {allotRoomModalBooking.gender === "female" ? "In-Campus" : "Out of Campus"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-3 space-y-2 text-xs font-sans">
+                <div className="flex justify-between text-[#8A9A7E]">
+                  <span>Delegate Name:</span>
+                  <span className="font-sans text-[#EDE6D3] font-bold">
+                    {allotRoomModalBooking.name}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[#8A9A7E]">
+                  <span>Payment UTR:</span>
+                  <span className="font-mono text-[#C9A86A]">{allotRoomModalBooking.transactionId}</span>
+                </div>
+              </div>
+
+              {/* Custom Input */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-sans uppercase tracking-wider text-[#EDE6D3] font-medium block">
+                  Assign Room Number / Quarters Label
+                </label>
+                <input
+                  type="text"
+                  value={allotRoomNumber}
+                  onChange={(e) => setAllotRoomNumber(e.target.value)}
+                  placeholder="e.g. LH-204 or OC-102"
+                  className="w-full bg-[#1A1F1A] border border-[#8A9A7E]/30 px-3 py-2 text-xs font-mono text-[#EDE6D3] focus:border-[#C9A86A] focus:outline-none"
+                />
+                <span className="text-[10px] text-[#8A9A7E] font-sans block">
+                  Enter the designated room or hostel quarter number for this delegate.
+                </span>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAllotRoomModalBooking(null);
+                    setAllotRoomNumber("");
+                  }}
+                  className="flex-1 py-2 text-xs uppercase font-semibold text-[#8A9A7E] border border-[#8A9A7E]/30 bg-[#1A1F1A] hover:text-[#EDE6D3]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!allotRoomNumber.trim()}
+                  onClick={() => handleAllotAccommodationRoom(allotRoomModalBooking.id, allotRoomNumber)}
+                  className="flex-1 py-2 text-xs uppercase font-bold text-[#1A1F1A] bg-[#C9A86A] hover:bg-[#dfbe7e] transition-colors shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Confirm Room Allotment
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            ACCOMMODATION: DELETE CONFIRMATION MODAL
+           ======================================================== */}
+        {confirmAccommodationDeleteId && (
+          <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in flex items-center justify-center p-4">
+            <div className="bg-[#2E3B2F] border-2 border-rose-500/50 max-w-sm w-full p-6 text-center relative shadow-2xl">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center bg-[#1A1F1A] border border-rose-500/40 text-rose-400 mb-4">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h3 className="font-serif text-xl font-normal text-[#EDE6D3]">Purge Lodging Booking?</h3>
+              <p className="mt-2 font-sans text-[#8A9A7E] text-xs leading-relaxed">
+                Are you sure you want to permanently delete accommodation booking{" "}
+                <strong className="text-[#EDE6D3] font-mono">{confirmAccommodationDeleteId}</strong>?
+              </p>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setConfirmAccommodationDeleteId(null)}
+                  className="flex-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] py-2 text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteAccommodation(confirmAccommodationDeleteId)}
+                  className="flex-1 bg-rose-700 hover:bg-rose-600 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-md cursor-pointer"
+                >
+                  Delete
                 </button>
               </div>
             </div>

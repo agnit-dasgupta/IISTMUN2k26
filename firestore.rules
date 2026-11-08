@@ -128,5 +128,19 @@ service cloud.firestore {
       allow create: if true;
       allow update, delete: if isAdmin();
     }
+
+    // Accommodation bookings (Public creation, Admin manage, User view own)
+    match /accommodation_bookings/{bookingId} {
+      allow get: if isAdmin() || (isSignedIn() && (bookingId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if true;
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    // Accommodation settings (Public read for vacancy status, Admin manage)
+    match /accommodation_settings/{docId} {
+      allow get, list: if true;
+      allow write: if isAdmin();
+    }
   }
 }
