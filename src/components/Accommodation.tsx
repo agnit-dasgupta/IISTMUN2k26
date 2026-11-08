@@ -689,7 +689,7 @@ export default function Accommodation({ setActiveTab }: AccommodationProps) {
                       }`}
                   >
                     <span>
-                      Breakfast, Wifi, Bus service
+                      Breakfast, Bus service
                     </span>
                   </span>
                 </div>
