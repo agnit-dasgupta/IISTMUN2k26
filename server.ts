@@ -69,6 +69,13 @@ async function startServer() {
       if (!regData || (!regData.id && !regData.uid)) {
         return res.status(400).json({ status: "error", message: "Invalid registration payload" });
       }
+      if (
+        regData.round === "priority" ||
+        regData.isPriority === true ||
+        (typeof regData.id === "string" && regData.id.startsWith("PRIO-"))
+      ) {
+        return res.status(403).json({ status: "error", message: "Priority Round registrations are now closed." });
+      }
 
       const list = readLocalRegistrations();
       const identifier = regData.id || regData.uid;

@@ -62,6 +62,16 @@ function viteApiPlugin(): Plugin {
             res.end(JSON.stringify({ status: "error", message: "Invalid registration payload" }));
             return;
           }
+          if (
+            regData.round === "priority" ||
+            regData.isPriority === true ||
+            (typeof regData.id === "string" && regData.id.startsWith("PRIO-"))
+          ) {
+            res.statusCode = 403;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ status: "error", message: "Priority Round registrations are now closed." }));
+            return;
+          }
 
           const list = readLocalRegistrations();
           const identifier = regData.id || regData.uid;

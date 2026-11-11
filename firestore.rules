@@ -86,13 +86,12 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
     }
 
-    // Priority Round Delegate registrations (Public candidate creation, Admin manage, User view own)
+    // Priority Round Delegate registrations (Registrations closed; only Admin manage, User view own)
     match /priority_registrations/{registrationId} {
       allow get: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
       allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if true;
-      allow update: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
-      allow delete: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
     }
 
     // UNGA Online Committee registrations (Public candidate creation, Admin manage, User view own)

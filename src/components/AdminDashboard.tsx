@@ -132,9 +132,8 @@ service cloud.firestore {
     match /priority_registrations/{registrationId} {
       allow get: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
       allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if true;
-      allow update: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
-      allow delete: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
     }
 
     match /unga_registrations/{registrationId} {

@@ -39,12 +39,13 @@ export default function MarqueeTicker({ setActiveTab }: MarqueeTickerProps) {
       highlight: true
     },
     {
-      badge: "NOW OPEN",
-      lead: "Priority Registrations live • Preferential Council Allotments.",
-      cta: "Register Now",
+      badge: "PRIORITY CLOSED",
+      lead: "Priority Round registrations closed • Allotments & reviews underway.",
+      cta: "View Status",
       icon: Sparkles,
       targetTab: "register-portal-priority",
-      highlight: false
+      highlight: false,
+      closed: true
     },
 
 
@@ -70,8 +71,8 @@ export default function MarqueeTicker({ setActiveTab }: MarqueeTickerProps) {
       className="relative z-30 w-full overflow-hidden border-b border-[#C9A86A]/30 bg-[#162117]/95 backdrop-blur-md py-2.5 sm:py-3 select-none font-sans cursor-pointer group hover:bg-[#1A261B] transition-colors"
       id="live-marquee-ticker"
       role="region"
-      aria-label="Announcement: UNGA (Online Committee) registrations, Priority delegate registrations, and Campus Ambassador registrations are now open"
-      title="UNGA (Online Committee) & Priority Registrations Now Open • Click to view registration portal"
+      aria-label="Announcement: UNGA (Online Committee) and Campus Ambassador registrations are now open; Priority Round registrations are closed"
+      title="UNGA (Online Committee) & Campus Ambassador Registrations Open • Click to view registration portal"
     >
       {/* Left/Right Edge Gradient Fades for cinematic entry & exit */}
       <div className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-28 bg-gradient-to-r from-[#162117] to-transparent z-10" />
@@ -87,9 +88,15 @@ export default function MarqueeTicker({ setActiveTab }: MarqueeTickerProps) {
               onClick={(e) => handleItemClick(e, item.targetTab)}
               className="flex items-center gap-3 px-6 sm:px-8 font-sans text-xs tracking-wider uppercase text-[#EDE6D3]/90 whitespace-nowrap transition-colors hover:text-white"
             >
-              {/* Pulsing Status Tag */}
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-none text-[10px] font-mono font-semibold bg-[#C9A86A]/15 border border-[#C9A86A]/40 text-[#C9A86A]">
-                <span className="h-1.5 w-1.5 rounded-full animate-pulse bg-[#C9A86A]" />
+              {/* Pulsing / Static Status Tag */}
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-none text-[10px] font-mono font-semibold border ${
+                (item as any).closed
+                  ? "bg-rose-950/80 border-rose-500/40 text-rose-300"
+                  : "bg-[#C9A86A]/15 border-[#C9A86A]/40 text-[#C9A86A]"
+              }`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${
+                  (item as any).closed ? "bg-rose-500" : "animate-pulse bg-[#C9A86A]"
+                }`} />
                 {item.badge}
               </span>
 

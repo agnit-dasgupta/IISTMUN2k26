@@ -13,7 +13,8 @@ import {
   CreditCard, Sparkles, Building2, MapPin, Phone, Mail,
   Calendar, HelpCircle, ArrowLeft, RefreshCw,
   Clock, ShieldAlert, Award, ExternalLink,
-  Shirt, ShoppingBag, Ruler, X, Tag, FileSpreadsheet
+  Shirt, ShoppingBag, Ruler, X, Tag, FileSpreadsheet,
+  Lock, Globe
 } from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { db, handleFirestoreError, OperationType } from "../firebase";
@@ -23,6 +24,9 @@ import { InstitutionSelect } from "./InstitutionSelect";
 import FileUploadZone from "./FileUploadZone";
 import QRCodeDisplay from "./QRCodeDisplay";
 import { downloadBoardingPassPDF } from "../utils/pdfGenerator";
+
+// Priority Round registration toggle
+export const PRIORITY_REGISTRATIONS_OPEN = false;
 
 // Priority Round Committees (offline/on-campus simulation chambers; excludes UNGA Online Committee)
 export const PRIORITY_COMMITTEES = COMMITTEES.filter(c => c.id !== "unga");
@@ -52,9 +56,18 @@ interface RegistrationProps {
   clearInitialPreference?: () => void;
   setActiveTab?: (tab: string) => void;
   embedded?: boolean;
+  onSelectUnga?: () => void;
+  onSelectCA?: () => void;
 }
 
-export default function Registration({ initialPreference, clearInitialPreference, setActiveTab, embedded = false }: RegistrationProps) {
+export default function Registration({
+  initialPreference,
+  clearInitialPreference,
+  setActiveTab,
+  embedded = false,
+  onSelectUnga,
+  onSelectCA
+}: RegistrationProps) {
   const { user, loading: authLoading, signInWithGoogle, authError, clearAuthError, isSigningIn } = useFirebase();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
@@ -148,6 +161,7 @@ export default function Registration({ initialPreference, clearInitialPreference
   const [merchSizeError, setMerchSizeError] = useState("");
 
   const [submittedPass, setSubmittedPass] = useState<RegistrationDetails | null>(null);
+  const [showExistingPass, setShowExistingPass] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDownloading, setIsDownloading] = useState(false);
   const boardingPassRef = useRef<HTMLDivElement>(null);
@@ -401,6 +415,11 @@ export default function Registration({ initialPreference, clearInitialPreference
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!PRIORITY_REGISTRATIONS_OPEN) {
+      alert("Priority Round registrations are now closed. No new priority delegate applications are being accepted.");
+      return;
+    }
+
     if (!validateStep(4)) {
       return;
     }
@@ -609,6 +628,10 @@ export default function Registration({ initialPreference, clearInitialPreference
   };
 
   const handleResetRegistration = async () => {
+    if (!PRIORITY_REGISTRATIONS_OPEN) {
+      alert("Priority Round registrations are closed; new applications cannot be started.");
+      return;
+    }
     if (confirm("Are you sure you want to start a new priority registration?")) {
       if (user) {
         try {
@@ -667,31 +690,161 @@ export default function Registration({ initialPreference, clearInitialPreference
           </button>
         )}
 
-        {/* Section Header */}
-        <div className="text-center mb-8 sm:mb-12">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 border border-[#C9A86A]/50 bg-[#2E3B2F]/80 text-[10px] font-sans font-medium uppercase tracking-[0.2em] text-[#C9A86A] mb-3 shadow-sm">
-            <Sparkles className="h-3 w-3 text-[#C9A86A] animate-pulse" />
-            <span>Priority Round Registrations &bull; IIST MUN 2027</span>
-          </div>
-          <h1 className="text-3xl sm:text-5xl font-serif font-normal tracking-wide text-[#EDE6D3]">
-            Priority Delegate Dossier
-          </h1>
-          <p className="mt-2.5 text-xs sm:text-sm text-[#8A9A7E] max-w-xl mx-auto leading-relaxed">
-            Early accreditation intake for college delegates. Secure priority council allotment, early study guide access, and subsidized registration privileges.
-          </p>
+        {!PRIORITY_REGISTRATIONS_OPEN && !(showExistingPass && user && submittedPass) ? (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="border-2 border-[#C9A86A]/40 bg-[#1A1F1A] p-6 sm:p-10 lg:p-12 text-center space-y-8 shadow-2xl relative overflow-hidden"
+          >
+            {/* Subtle background seal */}
+            <div className="absolute -right-12 -bottom-12 opacity-5 pointer-events-none">
+              <img src="/logo-emblem-transparent.png" alt="Emblem" className="w-80 h-80 object-contain" />
+            </div>
 
-          {/* Priority Perks Bar */}
-          <div className="mt-4 flex flex-wrap justify-center gap-2 max-w-2xl mx-auto text-[10px] font-mono uppercase tracking-wider text-[#C9A86A]">
-            <span className="px-2.5 py-1 bg-[#2E3B2F]/60 border border-[#C9A86A]/30">
-              College Non-IIST: ₹1299
-            </span>
-            <span className="px-2.5 py-1 bg-[#2E3B2F]/60 border border-[#C9A86A]/30">
-              Portfolio Allotment: Rolling Priority Basis
-            </span>
-          </div>
-        </div>
+            <div className="max-w-2xl mx-auto space-y-4 relative z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-950/60 border border-rose-500/40 text-rose-300 font-mono text-[10px] uppercase tracking-[0.25em]">
+                <span className="h-2 w-2 rounded-full bg-rose-500 inline-block" />
+                REGISTRATION WINDOW CONCLUDED
+              </div>
 
-        {authLoading ? (
+              <div className="flex justify-center my-2">
+                <div className="h-16 w-16 rounded-full bg-[#2A372B] border border-[#C9A86A]/50 flex items-center justify-center text-[#C9A86A] shadow-inner">
+                  <Lock className="h-8 w-8" />
+                </div>
+              </div>
+
+              <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl text-[#EDE6D3] font-normal tracking-tight">
+                Priority Round Registrations <br />
+                <span className="text-[#C9A86A] italic">Are Now Closed</span>
+              </h2>
+
+              <div className="h-px w-24 bg-[#C9A86A]/40 mx-auto my-3" />
+
+              <p className="font-sans text-xs sm:text-sm text-[#EDE6D3]/85 leading-relaxed font-light">
+                The Priority Round accreditation window for on-campus chambers of <strong className="text-[#EDE6D3]">IIST Model United Nations 2027</strong> has officially closed. We express our sincere gratitude to all early applicants who submitted their dossiers.
+              </p>
+
+              <div className="p-4 sm:p-5 bg-[#141814] border border-[#C9A86A]/25 text-left text-xs text-[#8A9A7E] space-y-2.5">
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-[#C9A86A] shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-[#EDE6D3]">Dossier &amp; Payment Verification:</strong> The Secretariat is actively verifying submitted UTR payment proofs and processing priority council &amp; portfolio allotments.
+                  </span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-[#C9A86A] shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-[#EDE6D3]">Allotment Communications:</strong> Confirmed portfolio assignments and background study guides will be dispatched to registered delegates via official email.
+                  </span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-[#C9A86A] shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-[#EDE6D3]">Next Intake &amp; Inquiries:</strong> Subsequent round registration details will be announced soon. For queries regarding an already submitted dossier, contact{" "}
+                    <a href="mailto:support@iistmun.org" className="text-[#C9A86A] hover:underline font-mono">support@iistmun.org</a>.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action CTAs */}
+            <div className="pt-2 flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3 relative z-10">
+              <button
+                type="button"
+                onClick={() => {
+                  if (onSelectUnga) {
+                    onSelectUnga();
+                  } else if (setActiveTab) {
+                    setActiveTab("register-portal-unga");
+                  }
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="w-full sm:w-auto px-6 py-3 border border-[#C9A86A] bg-[#C9A86A] text-[#1A1F1A] font-sans text-xs uppercase tracking-[0.18em] font-semibold hover:bg-[#EDE6D3] hover:border-[#EDE6D3] transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+              >
+                <Globe className="h-4 w-4" />
+                Register for UNGA Online (Open)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onSelectCA) {
+                    onSelectCA();
+                  } else if (setActiveTab) {
+                    setActiveTab("register-portal-ca");
+                  }
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="w-full sm:w-auto px-6 py-3 border border-[#8BA06F] bg-[#8BA06F] text-[#1A1F1A] font-sans text-xs uppercase tracking-[0.18em] font-semibold hover:bg-[#EDE6D3] hover:border-[#EDE6D3] transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+              >
+                <Users className="h-4 w-4" />
+                Apply as Campus Ambassador (Open)
+              </button>
+              {setActiveTab && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("home");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="w-full sm:w-auto px-6 py-3 border border-[#8A9A7E]/30 text-[#8A9A7E] hover:text-[#EDE6D3] hover:border-[#8A9A7E] font-sans text-xs uppercase tracking-[0.18em] transition-all cursor-pointer"
+                >
+                  Return to Homepage
+                </button>
+              )}
+            </div>
+
+            {!authLoading && user && submittedPass && (
+              <div className="pt-3 border-t border-[#C9A86A]/15 relative z-10">
+                <button
+                  type="button"
+                  onClick={() => setShowExistingPass(true)}
+                  className="text-xs font-mono text-[#C9A86A] hover:underline cursor-pointer"
+                >
+                  Already registered in Priority Round? View your submitted Priority Pass &rarr;
+                </button>
+              </div>
+            )}
+          </motion.div>
+        ) : (
+          <>
+            {!PRIORITY_REGISTRATIONS_OPEN && showExistingPass && (
+              <div className="mb-6">
+                <button
+                  type="button"
+                  onClick={() => setShowExistingPass(false)}
+                  className="inline-flex items-center gap-2 text-xs font-mono text-[#C9A86A] hover:underline cursor-pointer"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back to Priority Round Closure Notice
+                </button>
+              </div>
+            )}
+
+            {/* Section Header */}
+            <div className="text-center mb-8 sm:mb-12">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 border border-[#C9A86A]/50 bg-[#2E3B2F]/80 text-[10px] font-sans font-medium uppercase tracking-[0.2em] text-[#C9A86A] mb-3 shadow-sm">
+                <Sparkles className="h-3 w-3 text-[#C9A86A] animate-pulse" />
+                <span>Priority Round Registrations &bull; IIST MUN 2027</span>
+              </div>
+              <h1 className="text-3xl sm:text-5xl font-serif font-normal tracking-wide text-[#EDE6D3]">
+                Priority Delegate Dossier
+              </h1>
+              <p className="mt-2.5 text-xs sm:text-sm text-[#8A9A7E] max-w-xl mx-auto leading-relaxed">
+                Early accreditation intake for college delegates. Secure priority council allotment, early study guide access, and subsidized registration privileges.
+              </p>
+
+              {/* Priority Perks Bar */}
+              <div className="mt-4 flex flex-wrap justify-center gap-2 max-w-2xl mx-auto text-[10px] font-mono uppercase tracking-wider text-[#C9A86A]">
+                <span className="px-2.5 py-1 bg-[#2E3B2F]/60 border border-[#C9A86A]/30">
+                  College Non-IIST: ₹1299
+                </span>
+                <span className="px-2.5 py-1 bg-[#2E3B2F]/60 border border-[#C9A86A]/30">
+                  Portfolio Allotment: Rolling Priority Basis
+                </span>
+              </div>
+            </div>
+
+            {authLoading ? (
           <div className="text-center py-24 border border-[#C9A86A]/20 bg-[#2E3B2F]/40 backdrop-blur-md">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#C9A86A] border-t-transparent mx-auto" />
             <p className="font-sans text-[#C9A86A] text-xs mt-4 font-semibold tracking-widest uppercase">
@@ -975,13 +1128,15 @@ export default function Registration({ initialPreference, clearInitialPreference
                 Copy Accreditation Details
               </button>
 
-              <button
-                onClick={handleResetRegistration}
-                className="flex items-center gap-2 border border-[#8A9A7E]/40 bg-[#1A1F1A] hover:bg-[#2E3B2F] px-6 py-3 font-sans text-xs font-semibold uppercase tracking-wider text-[#8A9A7E] hover:text-[#EDE6D3] transition-all cursor-pointer"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Submit Another Application
-              </button>
+              {PRIORITY_REGISTRATIONS_OPEN && (
+                <button
+                  onClick={handleResetRegistration}
+                  className="flex items-center gap-2 border border-[#8A9A7E]/40 bg-[#1A1F1A] hover:bg-[#2E3B2F] px-6 py-3 font-sans text-xs font-semibold uppercase tracking-wider text-[#8A9A7E] hover:text-[#EDE6D3] transition-all cursor-pointer"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Submit Another Application
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -2432,6 +2587,8 @@ export default function Registration({ initialPreference, clearInitialPreference
 
             </form>
           </div>
+        )}
+          </>
         )}
         {/* ======================================================== */}
         {/* CONDITIONAL INTERMEDIATE STAGE: MERCHANDISE POPUP MODAL  */}

@@ -32,7 +32,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { CampusAmbassadorRegistration } from "../types";
 import FileUploadZone from "./FileUploadZone";
 import { motion, AnimatePresence } from "motion/react";
-import Registration from "./Registration";
+import Registration, { PRIORITY_REGISTRATIONS_OPEN } from "./Registration";
 import UNGARegistration from "./UNGARegistration";
 
 export const EB_REGISTRATIONS_OPEN = false;
@@ -45,7 +45,7 @@ interface RegisterPortalProps {
 }
 
 export default function RegisterPortal({
-  initialPortalTab = "priority",
+  initialPortalTab = PRIORITY_REGISTRATIONS_OPEN ? "priority" : "unga",
   initialPreference,
   clearInitialPreference,
   setActiveTab
@@ -54,9 +54,13 @@ export default function RegisterPortal({
   const [selectedForm, setSelectedForm] = useState<"priority" | "unga" | "campus-ambassador">(
     initialPortalTab === "campus-ambassador"
       ? "campus-ambassador"
-      : initialPortalTab === "unga"
-        ? "unga"
-        : "priority"
+      : initialPortalTab === "priority"
+        ? "priority"
+        : initialPortalTab === "unga"
+          ? "unga"
+          : PRIORITY_REGISTRATIONS_OPEN
+            ? "priority"
+            : "unga"
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
@@ -104,9 +108,13 @@ export default function RegisterPortal({
       setSelectedForm(
         initialPortalTab === "campus-ambassador"
           ? "campus-ambassador"
-          : initialPortalTab === "unga"
-            ? "unga"
-            : "priority"
+          : initialPortalTab === "priority"
+            ? "priority"
+            : initialPortalTab === "unga"
+              ? "unga"
+              : PRIORITY_REGISTRATIONS_OPEN
+                ? "priority"
+                : "unga"
       );
     }
   }, [initialPortalTab]);
@@ -225,7 +233,9 @@ export default function RegisterPortal({
               CONVOCATION DISPATCH • 14TH EDITION
             </span>
             <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] border border-[#C9A86A]/40 bg-[#C9A86A]/10 px-2.5 py-1 font-semibold">
-              PRIORITY OPEN &bull; UNGA (ONLINE) OPEN &bull; CAMPUS AMBASSADOR OPEN
+              {PRIORITY_REGISTRATIONS_OPEN
+                ? "PRIORITY OPEN • UNGA (ONLINE) OPEN • CAMPUS AMBASSADOR OPEN"
+                : "PRIORITY ROUND CLOSED • UNGA (ONLINE) OPEN • CAMPUS AMBASSADOR OPEN"}
             </span>
           </div>
 
@@ -236,7 +246,11 @@ export default function RegisterPortal({
 
           <p className="font-sans text-xs sm:text-sm text-[#EDE6D3]/80 leading-relaxed font-light">
             Welcome to the official registration portal of <strong className="text-[#EDE6D3]">IIST Model United Nations 2027</strong>.
-            Priority delegate applications for on-campus chambers and <span className="text-[#C9A86A] font-medium">UNGA (Online Committee)</span> registrations are now live with rolling portfolio allotments. You can also join the prestigious <span className="text-[#8BA06F] font-medium">Campus Ambassador Network</span> to represent IISTMUN at your academic institution.
+            {PRIORITY_REGISTRATIONS_OPEN ? (
+              <> Priority delegate applications for on-campus chambers and <span className="text-[#C9A86A] font-medium">UNGA (Online Committee)</span> registrations are now live with rolling portfolio allotments. You can also join the prestigious <span className="text-[#8BA06F] font-medium">Campus Ambassador Network</span> to represent IISTMUN at your academic institution.</>
+            ) : (
+              <> Priority Round delegate registrations for on-campus chambers have concluded. <span className="text-[#C9A86A] font-medium">UNGA (Online Committee)</span> registrations remain live with rolling portfolio allotments, and you can also join the prestigious <span className="text-[#8BA06F] font-medium">Campus Ambassador Network</span> to represent IISTMUN at your academic institution.</>
+            )}
           </p>
 
           <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-mono text-[#8A9A7E]">
@@ -276,19 +290,30 @@ export default function RegisterPortal({
             }`}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C9A86A]">
+            <span className={`font-mono text-[9px] uppercase tracking-[0.2em] ${PRIORITY_REGISTRATIONS_OPEN ? "text-[#C9A86A]" : "text-[#8A9A7E]"}`}>
               SECTION A &bull; ON-CAMPUS
             </span>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-2 py-0.5">
-                NOW OPEN
-              </span>
+              {PRIORITY_REGISTRATIONS_OPEN ? (
+                <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-2 py-0.5">
+                  NOW OPEN
+                </span>
+              ) : (
+                <span className="font-mono text-[9px] uppercase tracking-wider text-rose-300 bg-rose-950/70 border border-rose-500/40 px-2 py-0.5">
+                  CLOSED
+                </span>
+              )}
               <Sparkles className={`h-5 w-5 ${selectedForm === "priority" ? "text-[#C9A86A]" : "text-[#8A9A7E]"}`} />
             </div>
           </div>
           <h2 className="font-serif text-lg text-[#EDE6D3] font-medium block">
             Priority Delegate Registration
           </h2>
+          {!PRIORITY_REGISTRATIONS_OPEN && (
+            <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
+              Registrations closed &bull; Priority allotments &amp; dossier reviews underway.
+            </p>
+          )}
 
           {selectedForm === "priority" && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#C9A86A]" />
@@ -364,13 +389,21 @@ export default function RegisterPortal({
         </button>
       </div>
 
-      {/* SECTION A: PRIORITY REGISTRATION FORM */}
+      {/* SECTION A: PRIORITY REGISTRATION FORM / CLOSURE NOTICE */}
       {selectedForm === "priority" && (
         <Registration
           embedded={true}
           initialPreference={initialPreference}
           clearInitialPreference={clearInitialPreference}
           setActiveTab={setActiveTab}
+          onSelectUnga={() => {
+            setSelectedForm("unga");
+            setSubmittedCA(null);
+          }}
+          onSelectCA={() => {
+            setSelectedForm("campus-ambassador");
+            setSubmittedCA(null);
+          }}
         />
       )}
 

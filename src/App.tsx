@@ -94,10 +94,10 @@ export default function App() {
         return <Schedule />;
       case "faq":
         return <FAQs />;
-      case "register-portal":
       case "register-portal-priority":
       case "register-portal-eb":
         return <RegisterPortal initialPortalTab="priority" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={handleTabChange} />;
+      case "register-portal":
       case "register-portal-unga":
       case "register-unga":
         return <RegisterPortal initialPortalTab="unga" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={handleTabChange} />;
@@ -238,8 +238,8 @@ export default function App() {
               <ul className="space-y-2 font-sans text-xs text-[#8A9A7E]">
                 <li>
                   <button onClick={() => { handleTabChange("register-portal-priority"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
-                    <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">Priority Registration</span>
-                    <span className="block text-[10px] text-[#C9A86A]/80">Now Open &bull; Priority Round</span>
+                    <span className="text-[#8A9A7E] group-hover:text-[#EDE6D3] transition-colors font-medium">Priority Registration</span>
+                    <span className="block text-[10px] text-rose-400/80">Closed &bull; Priority Round Concluded</span>
                   </button>
                 </li>
                 <li>

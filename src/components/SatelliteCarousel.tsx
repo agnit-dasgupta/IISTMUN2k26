@@ -8,6 +8,7 @@ import { Compass, Sparkles, HelpCircle, ArrowRight, ShieldAlert, ChevronLeft, Ch
 import { COUNTRY_MATRIX } from "../data";
 import { CountryMatrixRow, PortfolioStatus, CommitteeId } from "../types";
 import { useFirebase } from "../FirebaseContext";
+import { PRIORITY_REGISTRATIONS_OPEN } from "./Registration";
 
 interface SatelliteCarouselProps {
   portfolioOverrides: Record<string, Partial<Record<CommitteeId | "copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>;
@@ -414,27 +415,41 @@ export default function SatelliteCarousel({ portfolioOverrides, getPortfolioStat
               <div className="mt-5 p-4 bg-[#1A1F1A] border border-[#8A9A7E]/20 font-mono text-[10px] leading-relaxed text-[#EDE6D3]/80">
                 <p className="text-[#C9A86A] font-bold mb-1">// DIPLOMATIC ALLOCATION BRIEF:</p>
                 <p>&gt; Secretariat verification status: ACTIVE</p>
-                <p>&gt; Matrix allocation channel: OPEN</p>
-                <p>&gt; Preference priority slot: PREF 1 AUTOMATIC LOCK</p>
+                <p>&gt; Matrix allocation channel: {activeComm.id !== "unga" && !PRIORITY_REGISTRATIONS_OPEN ? "PRIORITY ROUND CLOSED" : "OPEN"}</p>
+                <p>&gt; Preference priority slot: {activeComm.id !== "unga" && !PRIORITY_REGISTRATIONS_OPEN ? "CLOSED FOR PRIORITY INTAKE" : "PREF 1 AUTOMATIC LOCK"}</p>
               </div>
 
               <div className="mt-6 pt-6 border-t border-[#C9A86A]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <p className="font-sans text-xs text-[#8A9A7E] max-w-sm text-left leading-relaxed">
-                  Lock <strong>{selectedCountry.country}</strong> as your primary preference in your IIST MUN 2026 accreditation dossier.
+                  {activeComm.id !== "unga" && !PRIORITY_REGISTRATIONS_OPEN ? (
+                    <>Priority Round registrations for on-campus chambers have closed. <strong className="text-[#EDE6D3]">UNGA (Online)</strong> remains open for delegate registration.</>
+                  ) : (
+                    <>Lock <strong>{selectedCountry.country}</strong> as your primary preference in your IIST MUN 2027 accreditation dossier.</>
+                  )}
                 </p>
 
-                <button
-                  onClick={() => {
-                    if (onSelectPreference) {
-                      onSelectPreference(selectedCountry.country, activeComm.id);
-                    }
-                    setSelectedCountry(null);
-                  }}
-                  className="inline-flex items-center justify-center gap-2 bg-[#C9A86A] hover:bg-[#dfbe7e] px-6 py-3 font-sans text-xs uppercase tracking-[0.16em] font-semibold text-[#1A1F1A] shadow-md transition-all cursor-pointer"
-                >
-                  Select & Apply Portfolio
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </button>
+                {activeComm.id !== "unga" && !PRIORITY_REGISTRATIONS_OPEN ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-flex items-center justify-center gap-2 border border-rose-500/40 bg-rose-950/60 px-6 py-3 font-sans text-xs uppercase tracking-[0.16em] font-semibold text-rose-300 cursor-not-allowed"
+                  >
+                    Priority Round Closed
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (onSelectPreference) {
+                        onSelectPreference(selectedCountry.country, activeComm.id);
+                      }
+                      setSelectedCountry(null);
+                    }}
+                    className="inline-flex items-center justify-center gap-2 bg-[#C9A86A] hover:bg-[#dfbe7e] px-6 py-3 font-sans text-xs uppercase tracking-[0.16em] font-semibold text-[#1A1F1A] shadow-md transition-all cursor-pointer"
+                  >
+                    Select & Apply Portfolio
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
 
             </div>
