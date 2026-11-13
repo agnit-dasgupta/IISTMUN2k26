@@ -106,9 +106,9 @@ export default function App() {
       case "register-portal-ca":
         return <RegisterPortal initialPortalTab="campus-ambassador" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={handleTabChange} />;
       case "register":
-        return <Registration 
-          initialPreference={initialPreference} 
-          clearInitialPreference={() => setInitialPreference(null)} 
+        return <Registration
+          initialPreference={initialPreference}
+          clearInitialPreference={() => setInitialPreference(null)}
           setActiveTab={handleTabChange}
         />;
       case "workshop-register":
@@ -135,7 +135,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-[#1A1F1A] text-[#EDE6D3] selection:bg-[#F8C8DC]/30 selection:text-[#EDE6D3] paper-grain font-sans relative">
-      
+
       {/* Growing Cherry Blossom Background Branches & Cascading Petals */}
       <CherryBlossomBackground />
 
@@ -241,7 +241,7 @@ export default function App() {
                 <li>
                   <button onClick={() => { handleTabChange("register-portal-school"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
                     <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">School Registration</span>
-                    <span className="block text-[10px] text-emerald-400">Now Open &bull; Zero Registration Fee</span>
+                    <span className="block text-[10px] text-emerald-400">Now Open</span>
                   </button>
                 </li>
                 <li>
@@ -280,7 +280,7 @@ export default function App() {
                 Indian Institute of Space Science and Technology · Valiamala, Trivandrum
               </span>
             </div>
-            
+
             <button
               onClick={handleScrollToTop}
               className="group flex items-center gap-1.5 font-sans text-[10px] font-medium uppercase tracking-[0.18em] text-[#8A9A7E] hover:text-[#EDE6D3] transition-all border border-[#C9A86A]/30 hover:border-[#C9A86A] px-4 py-2 bg-[#2E3B2F]/40 cursor-pointer"
