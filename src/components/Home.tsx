@@ -258,29 +258,30 @@ export default function Home({ setActiveTab }: HomeProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
 
-              {/* Notice 1: Priority registrations closed */}
+              {/* Notice 1: School registrations open */}
               <button
                 type="button"
                 onClick={() => {
-                  setActiveTab("register-portal-priority");
+                  setActiveTab("register-portal-school");
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="border border-[#8A9A7E]/40 hover:border-[#8A9A7E]/80 bg-[#1A1F1A]/95 hover:bg-[#2E3B2F]/40 p-4 sm:p-5 text-left flex items-start gap-3 shadow-lg group transition-all duration-300 cursor-pointer"
+                className="border border-[#C9A86A]/60 hover:border-[#C9A86A] bg-[#2E3B2F]/60 hover:bg-[#2E3B2F] p-4 sm:p-5 text-left flex items-start gap-3 shadow-lg group transition-all duration-300 cursor-pointer"
               >
                 <span className="relative flex h-2.5 w-2.5 mt-1 shrink-0">
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500/80"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9A86A] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#C9A86A]"></span>
                 </span>
                 <div className="space-y-0.5 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#8A9A7E] block font-medium">
-                      Priority Round
+                    <span className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#C9A86A] block font-bold">
+                      School Round
                     </span>
-                    <span className="text-[8px] font-mono text-rose-300 bg-rose-950/80 border border-rose-500/40 px-1.5 rounded-none font-semibold">
-                      CLOSED
+                    <span className="text-[8px] font-mono text-[#1A1F1A] bg-[#C9A86A] px-1.5 rounded-none font-bold">
+                      NOW OPEN
                     </span>
                   </div>
-                  <span className="font-sans text-xs text-[#EDE6D3]/80 font-medium tracking-wide block group-hover:text-[#EDE6D3] transition-colors truncate">
-                    Registrations Closed
+                  <span className="font-sans text-xs text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#C9A86A] transition-colors truncate">
+                    Classes 8–12 &bull; ₹999 (₹1,148 with Socials)
                   </span>
                 </div>
               </button>
@@ -522,7 +523,7 @@ export default function Home({ setActiveTab }: HomeProps) {
 
             <div className="pt-4 border-t border-[#C9A86A]/20 text-center">
               <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C9A86A] block">
-                UNGA (Online) &amp; Campus Ambassador Live &bull; Priority Round &amp; EB Closed
+                School Round &bull; UNGA (Online) &bull; Campus Ambassador Live
               </span>
             </div>
           </div>

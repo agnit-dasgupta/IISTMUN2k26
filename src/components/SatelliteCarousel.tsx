@@ -155,6 +155,26 @@ export default function SatelliteCarousel({ portfolioOverrides, getPortfolioStat
     }
   };
 
+  const matchesCountrySearch = (countryName: string, query: string): boolean => {
+    if (!query.trim()) return true;
+    const q = query.toLowerCase().trim();
+    const c = countryName.toLowerCase();
+    if (c.includes(q)) return true;
+    if (q === "usa" && c.includes("united states")) return true;
+    if (q === "uk" && c.includes("united kingdom")) return true;
+    if (q === "uae" && c.includes("united arab emirates")) return true;
+    if (q === "drc" && c.includes("congo")) return true;
+    if (q === "russia" && c.includes("russian federation")) return true;
+    if (q === "south korea" && c.includes("republic of korea")) return true;
+    if (q === "korea" && c.includes("republic of korea")) return true;
+    if (q === "vietnam" && c.includes("viet nam")) return true;
+    if (q === "syria" && c.includes("syrian arab republic")) return true;
+    if (q === "palestine" && c.includes("palestine")) return true;
+    if (q === "bolivia" && c.includes("bolivia")) return true;
+    if (q === "tanzania" && c.includes("tanzania")) return true;
+    return false;
+  };
+
   const currentCommId = activeComm.id;
   const filteredCountries = COUNTRY_MATRIX.map((row) => {
     const status = getPortfolioStatus(row, currentCommId);
@@ -164,7 +184,7 @@ export default function SatelliteCarousel({ portfolioOverrides, getPortfolioStat
       row
     };
   }).filter((item) => {
-    const matchesSearch = item.country.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = matchesCountrySearch(item.country, searchTerm);
     return item.status === "Available" && matchesSearch;
   });
 

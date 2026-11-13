@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import { COMMITTEES } from "../data";
+import { COMMITTEES, COMMITTEE_PORTFOLIOS } from "../data";
 import { RegistrationDetails } from "../types";
 import {
   User, Users, Landmark, ChevronRight, ChevronLeft,
@@ -31,6 +31,16 @@ export const PRIORITY_REGISTRATIONS_OPEN = false;
 // Priority Round Committees (offline/on-campus simulation chambers; excludes UNGA Online Committee)
 export const PRIORITY_COMMITTEES = COMMITTEES.filter(c => c.id !== "unga");
 export const NES75_PORTFOLIO_LINK = "https://docs.google.com/spreadsheets/d/1jXZQ9IHvoSYjUnrJBU5lFZpJFb-iJZy19LqRj7p-dDY/edit?usp=sharing";
+
+export const getCommitteePortfolioOptions = (committeeId: string): string[] => {
+  if (!committeeId || committeeId.startsWith("ip")) return [];
+  if (committeeId === "nes75") return [...COMMITTEE_PORTFOLIOS.nes75.all];
+  if (committeeId in COMMITTEE_PORTFOLIOS) {
+    const list = (COMMITTEE_PORTFOLIOS as any)[committeeId];
+    return Array.isArray(list) ? list : [];
+  }
+  return [];
+};
 
 export const isIISTInstitution = (institution?: string): boolean => {
   if (!institution) return false;
@@ -1749,6 +1759,7 @@ export default function Registration({
                               </span>
                               <input
                                 type="text"
+                                list={`pref1-portfolios-list-${formData.pref1Committee}`}
                                 value={formData.pref1Portfolios[idx] || ""}
                                 onChange={(e) => {
                                   const next = [...formData.pref1Portfolios];
@@ -1770,6 +1781,11 @@ export default function Registration({
                             </div>
                           ))}
                         </div>
+                        <datalist id={`pref1-portfolios-list-${formData.pref1Committee}`}>
+                          {getCommitteePortfolioOptions(formData.pref1Committee).map((opt) => (
+                            <option key={opt} value={opt} />
+                          ))}
+                        </datalist>
                         {errors.pref1Portfolios && (
                           <p className="text-[10px] text-rose-400 mt-1.5 font-semibold">{errors.pref1Portfolios}</p>
                         )}
@@ -1855,6 +1871,7 @@ export default function Registration({
                               </span>
                               <input
                                 type="text"
+                                list={`pref2-portfolios-list-${formData.pref2Committee}`}
                                 value={formData.pref2Portfolios[idx] || ""}
                                 onChange={(e) => {
                                   const next = [...formData.pref2Portfolios];
@@ -1876,6 +1893,11 @@ export default function Registration({
                             </div>
                           ))}
                         </div>
+                        <datalist id={`pref2-portfolios-list-${formData.pref2Committee}`}>
+                          {getCommitteePortfolioOptions(formData.pref2Committee).map((opt) => (
+                            <option key={opt} value={opt} />
+                          ))}
+                        </datalist>
                         {errors.pref2Portfolios && (
                           <p className="text-[10px] text-rose-400 mt-1.5 font-semibold">{errors.pref2Portfolios}</p>
                         )}
@@ -1961,6 +1983,7 @@ export default function Registration({
                               </span>
                               <input
                                 type="text"
+                                list={`pref3-portfolios-list-${formData.pref3Committee}`}
                                 value={formData.pref3Portfolios[idx] || ""}
                                 onChange={(e) => {
                                   const next = [...formData.pref3Portfolios];
@@ -1982,6 +2005,11 @@ export default function Registration({
                             </div>
                           ))}
                         </div>
+                        <datalist id={`pref3-portfolios-list-${formData.pref3Committee}`}>
+                          {getCommitteePortfolioOptions(formData.pref3Committee).map((opt) => (
+                            <option key={opt} value={opt} />
+                          ))}
+                        </datalist>
                         {errors.pref3Portfolios && (
                           <p className="text-[10px] text-rose-400 mt-1.5 font-semibold">{errors.pref3Portfolios}</p>
                         )}

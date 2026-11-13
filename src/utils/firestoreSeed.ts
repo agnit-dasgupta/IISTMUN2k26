@@ -179,15 +179,39 @@ export async function seedSchedule(db: Firestore) {
  * Seed Country Matrix collection
  */
 export async function seedCountryMatrix(db: Firestore) {
-  // Batch write (Firestore limits 500 ops per batch)
-  const batch = writeBatch(db);
-  COUNTRY_MATRIX.forEach((row) => {
-    // Sanitize document ID for Firestore
-    const docId = row.country.replace(/\//g, "-").replace(/\s+/g, "_");
-    const docRef = doc(db, "country_matrix", docId);
-    batch.set(docRef, row, { merge: true });
-  });
-  await batch.commit();
+  // Purge obsolete documents if any exist from legacy seeds
+  try {
+    const existingSnap = await getDocs(collection(db, "country_matrix"));
+    const newDocIds = new Set(
+      COUNTRY_MATRIX.map((r) => r.country.replace(/\//g, "-").replace(/\s+/g, "_"))
+    );
+    const deleteBatch = writeBatch(db);
+    let deleteCount = 0;
+    existingSnap.docs.forEach((d) => {
+      if (!newDocIds.has(d.id)) {
+        deleteBatch.delete(d.ref);
+        deleteCount++;
+      }
+    });
+    if (deleteCount > 0) {
+      await deleteBatch.commit();
+    }
+  } catch (e) {
+    console.warn("Could not check/clean obsolete country_matrix docs:", e);
+  }
+
+  // Batch write (Firestore limits 500 ops per batch; write in chunks of 200)
+  const CHUNK_SIZE = 200;
+  for (let i = 0; i < COUNTRY_MATRIX.length; i += CHUNK_SIZE) {
+    const chunk = COUNTRY_MATRIX.slice(i, i + CHUNK_SIZE);
+    const batch = writeBatch(db);
+    chunk.forEach((row) => {
+      const docId = row.country.replace(/\//g, "-").replace(/\s+/g, "_");
+      const docRef = doc(db, "country_matrix", docId);
+      batch.set(docRef, row, { merge: true });
+    });
+    await batch.commit();
+  }
 }
 
 /**

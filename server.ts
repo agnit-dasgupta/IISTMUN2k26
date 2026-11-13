@@ -114,6 +114,201 @@ async function startServer() {
     }
   });
 
+  const SCHOOL_REGISTRATIONS_FILE = path.join(process.cwd(), "data", "local_school_registrations.json");
+
+  // Helper to read local school registrations
+  const readLocalSchoolRegistrations = (): any[] => {
+    try {
+      if (fs.existsSync(SCHOOL_REGISTRATIONS_FILE)) {
+        const raw = fs.readFileSync(SCHOOL_REGISTRATIONS_FILE, "utf-8");
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn("Could not read local_school_registrations.json:", e);
+    }
+    return [];
+  };
+
+  // Helper to write local school registrations
+  const writeLocalSchoolRegistrations = (list: any[]) => {
+    try {
+      const dir = path.dirname(SCHOOL_REGISTRATIONS_FILE);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(SCHOOL_REGISTRATIONS_FILE, JSON.stringify(list, null, 2), "utf-8");
+    } catch (e) {
+      console.error("Could not write local_school_registrations.json:", e);
+    }
+  };
+
+  // GET /api/school-registrations
+  app.get("/api/school-registrations", (req, res) => {
+    const list = readLocalSchoolRegistrations();
+    return res.json({ status: "success", count: list.length, data: list });
+  });
+
+  // POST /api/school-registrations
+  app.post("/api/school-registrations", (req, res) => {
+    try {
+      const regData = req.body;
+      if (!regData || (!regData.id && !regData.uid)) {
+        return res.status(400).json({ status: "error", message: "Invalid school registration payload" });
+      }
+
+      const list = readLocalSchoolRegistrations();
+      const identifier = regData.id || regData.uid;
+      const existingIdx = list.findIndex(r => {
+        if (regData.id && r.id) return r.id === regData.id;
+        if (regData.id && r.uid) return r.uid === regData.id;
+        if (regData.uid && r.id) return r.id === regData.uid;
+        return Boolean(regData.uid && r.uid && r.uid === regData.uid);
+      });
+
+      if (existingIdx >= 0) {
+        list[existingIdx] = { ...list[existingIdx], ...regData, updatedAt: new Date().toISOString() };
+      } else {
+        list.unshift({ ...regData, createdAt: new Date().toISOString() });
+      }
+
+      writeLocalSchoolRegistrations(list);
+      console.log(`[SCHOOL REGISTRATION BACKUP SUCCESS] Stored ticket ${identifier} (${regData.name || "Candidate"})`);
+      return res.json({ status: "success", data: regData });
+    } catch (err: any) {
+      console.error("Error saving local school registration:", err);
+      return res.status(500).json({ status: "error", message: err.message || "Failed to persist school registration" });
+    }
+  });
+
+  // DELETE /api/school-registrations/:id
+  app.delete("/api/school-registrations/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const list = readLocalSchoolRegistrations();
+      const updated = list.filter(r => r.id !== id && r.uid !== id);
+      writeLocalSchoolRegistrations(updated);
+      return res.json({ status: "success", message: `Deleted school registration ${id}` });
+    } catch (err: any) {
+      return res.status(500).json({ status: "error", message: err.message || "Failed to delete" });
+    }
+  });
+
+  const COUNTRY_MATRIX_FILE = path.join(process.cwd(), "data", "local_country_matrix.json");
+  const COMMITTEES_FILE = path.join(process.cwd(), "data", "local_committees.json");
+
+  // Helper to read local country matrix
+  const readLocalCountryMatrix = (): any[] => {
+    try {
+      if (fs.existsSync(COUNTRY_MATRIX_FILE)) {
+        const raw = fs.readFileSync(COUNTRY_MATRIX_FILE, "utf-8");
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn("Could not read local_country_matrix.json:", e);
+    }
+    return [];
+  };
+
+  // Helper to read local committees portfolio list
+  const readLocalCommittees = (): any => {
+    try {
+      if (fs.existsSync(COMMITTEES_FILE)) {
+        const raw = fs.readFileSync(COMMITTEES_FILE, "utf-8");
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn("Could not read local_committees.json:", e);
+    }
+    return null;
+  };
+
+  // GET /api/country-matrix
+  app.get("/api/country-matrix", (req, res) => {
+    const list = readLocalCountryMatrix();
+    return res.json({ status: "success", count: list.length, data: list });
+  });
+
+  // POST /api/country-matrix (Admin update of matrix row)
+  app.post("/api/country-matrix", (req, res) => {
+    try {
+      const row = req.body;
+      if (!row || !row.country) {
+        return res.status(400).json({ status: "error", message: "Invalid country matrix row" });
+      }
+      const list = readLocalCountryMatrix();
+      const idx = list.findIndex(r => r.country === row.country);
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], ...row };
+      } else {
+        list.push(row);
+      }
+      fs.writeFileSync(COUNTRY_MATRIX_FILE, JSON.stringify(list, null, 2), "utf-8");
+      return res.json({ status: "success", data: row });
+    } catch (err: any) {
+      return res.status(500).json({ status: "error", message: err.message || "Failed to update country matrix" });
+    }
+  });
+
+  const PORTFOLIO_STATES_FILE = path.join(process.cwd(), "data", "local_portfolio_states.json");
+
+  // Helper to read local portfolio states
+  const readLocalPortfolioStates = (): Record<string, any> => {
+    try {
+      if (fs.existsSync(PORTFOLIO_STATES_FILE)) {
+        const raw = fs.readFileSync(PORTFOLIO_STATES_FILE, "utf-8");
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn("Could not read local_portfolio_states.json:", e);
+    }
+    return {};
+  };
+
+  // Helper to write local portfolio states
+  const writeLocalPortfolioStates = (states: Record<string, any>) => {
+    try {
+      const dir = path.dirname(PORTFOLIO_STATES_FILE);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(PORTFOLIO_STATES_FILE, JSON.stringify(states, null, 2), "utf-8");
+    } catch (e) {
+      console.error("Could not write local_portfolio_states.json:", e);
+    }
+  };
+
+  // GET /api/portfolio-states
+  app.get("/api/portfolio-states", (req, res) => {
+    const states = readLocalPortfolioStates();
+    return res.json({ status: "success", count: Object.keys(states).length, data: states });
+  });
+
+  // POST /api/portfolio-states (Admin update of portfolio status)
+  app.post("/api/portfolio-states", (req, res) => {
+    try {
+      const { country, committee, status } = req.body;
+      if (!country || !committee || !status) {
+        return res.status(400).json({ status: "error", message: "Country, committee and status are required" });
+      }
+      const states = readLocalPortfolioStates();
+      if (!states[country]) {
+        states[country] = {};
+      }
+      states[country][committee] = status;
+      writeLocalPortfolioStates(states);
+      console.log(`[PORTFOLIO STATE UPDATED] ${country} -> ${committee} = ${status}`);
+      return res.json({ status: "success", country, committee, portfolioStatus: status });
+    } catch (err: any) {
+      return res.status(500).json({ status: "error", message: err.message || "Failed to update portfolio state" });
+    }
+  });
+
+  // GET /api/committees
+  app.get("/api/committees", (req, res) => {
+    const data = readLocalCommittees();
+    return res.json({ status: "success", data });
+  });
+
   const ACCOMMODATIONS_FILE = path.join(process.cwd(), "data", "local_accommodations.json");
   const ACCOMMODATION_SETTINGS_FILE = path.join(process.cwd(), "data", "local_accommodation_settings.json");
 

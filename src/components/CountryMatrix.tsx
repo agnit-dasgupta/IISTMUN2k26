@@ -29,11 +29,27 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
   useEffect(() => {
     const unsubMatrix = onSnapshot(collection(db, "country_matrix"), (snapshot) => {
       if (!snapshot.empty) {
-        const rows: CountryMatrixRow[] = [];
+        const firestoreMap = new Map<string, CountryMatrixRow>();
         snapshot.forEach((docSnap) => {
-          rows.push(docSnap.data() as CountryMatrixRow);
+          const data = docSnap.data() as CountryMatrixRow;
+          firestoreMap.set(data.country, data);
         });
-        setMatrixRows(rows);
+
+        // If firestore has full seeded dataset (at least 100 rows), use it directly
+        if (snapshot.size >= 100) {
+          const rows: CountryMatrixRow[] = [];
+          snapshot.forEach((docSnap) => {
+            rows.push(docSnap.data() as CountryMatrixRow);
+          });
+          setMatrixRows(rows);
+        } else {
+          // Merge baseline COUNTRY_MATRIX with any live Firestore updates for known countries
+          const merged = COUNTRY_MATRIX.map((row) => {
+            const live = firestoreMap.get(row.country);
+            return live ? { ...row, ...live } : row;
+          });
+          setMatrixRows(merged);
+        }
       }
     }, (err) => {
       console.warn("Firestore country_matrix subscription notice:", err);
@@ -105,8 +121,28 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
     }
   };
 
+  const matchesCountrySearch = (countryName: string, query: string): boolean => {
+    if (!query.trim()) return true;
+    const q = query.toLowerCase().trim();
+    const c = countryName.toLowerCase();
+    if (c.includes(q)) return true;
+    if (q === "usa" && c.includes("united states")) return true;
+    if (q === "uk" && c.includes("united kingdom")) return true;
+    if (q === "uae" && c.includes("united arab emirates")) return true;
+    if (q === "drc" && c.includes("congo")) return true;
+    if (q === "russia" && c.includes("russian federation")) return true;
+    if (q === "south korea" && c.includes("republic of korea")) return true;
+    if (q === "korea" && c.includes("republic of korea")) return true;
+    if (q === "vietnam" && c.includes("viet nam")) return true;
+    if (q === "syria" && c.includes("syrian arab republic")) return true;
+    if (q === "palestine" && c.includes("palestine")) return true;
+    if (q === "bolivia" && c.includes("bolivia")) return true;
+    if (q === "tanzania" && c.includes("tanzania")) return true;
+    return false;
+  };
+
   const filteredMatrix = matrixRows.filter((row) => {
-    const matchesSearch = row.country.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = matchesCountrySearch(row.country, searchTerm);
     
     if (statusFilter === "All") return matchesSearch;
 

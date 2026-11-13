@@ -160,6 +160,75 @@ export interface RegistrationDetails {
 
 export type PriorityRegistrationDetails = RegistrationDetails;
 
+export interface SchoolRegistrationDetails {
+  uid?: string;
+  userId?: string;
+  id: string; // e.g. SCH-2027-1234
+  timestamp: string;
+  round: "school";
+  createdAt?: any;
+  updatedAt?: any;
+  status: "Pending Verification" | "Registration Confirmed" | "Portfolio Allotted" | "Waitlisted" | "Rejected";
+
+  // Personal Information
+  name: string;
+  email: string;
+  phone: string;
+  gender: string;
+  dob: string;
+  cityState: string;
+  fullAddress?: string;
+
+  // Emergency Contact
+  emergencyContactName: string;
+  emergencyContactRelation: string;
+  emergencyContactPhone: string;
+
+  // Identity Clearance (Mandatory)
+  aadharNumber: string; // Aadhaar or Passport Number
+  aadharPhotoUrl: string; // Aadhaar or Passport document/photo upload
+  aadharPhotoName?: string;
+  idCardUrl: string; // School ID card upload
+  idCardName?: string;
+
+  // School Information
+  institution: string; // School Name
+  classGrade: string; // e.g. "Class 8", "Class 9", "Class 10", "Class 11", "Class 12"
+  rollNumber?: string;
+
+  // Model UN Experience
+  munExperience: string; // "None", "1-2", "3-5", "5+"
+  pastMunDetails?: string;
+
+  // Council & Portfolio Preferences: 3 preferences in total
+  pref1Committee: string;
+  pref1Country: string;
+  pref2Committee: string;
+  pref2Country: string;
+  pref3Committee: string;
+  pref3Country: string;
+  motivation?: string;
+
+  // Logistics
+  accommodationRequired?: "yes" | "no";
+
+  // Delegate Socials & Fee Payment
+  attendingSocials?: boolean;
+  feeAmount?: number; // Rs 999 or Rs 1148 (with socials)
+  paymentMode?: string;
+  transactionId?: string;
+  utrNumber?: string;
+  paymentDate?: string;
+  paymentScreenshotUrl?: string;
+  paymentScreenshotName?: string;
+  paymentStatus?: "Pending" | "Verified" | "Rejected";
+
+  // Administrative Allocation
+  allottedCommittee?: string;
+  allottedCountry?: string;
+  adminNotes?: string;
+}
+
 
 export interface ContactQuery {
   id?: string;

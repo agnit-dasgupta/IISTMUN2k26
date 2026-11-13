@@ -4,7 +4,7 @@
  */
 
 import React from "react";
-import { Award, ShieldCheck, ArrowRight, Sparkles, Orbit, Globe } from "lucide-react";
+import { Award, ShieldCheck, ArrowRight, Sparkles, Orbit, Globe, School } from "lucide-react";
 import { motion } from "motion/react";
 
 interface MarqueeTickerProps {
@@ -31,6 +31,14 @@ export default function MarqueeTicker({ setActiveTab }: MarqueeTickerProps) {
 
   const tickerItems = [
     {
+      badge: "SCHOOL ROUND",
+      lead: "School Round Registrations live • Classes 8–12 • ₹999 (₹1,148 with Socials).",
+      cta: "Register for School Round",
+      icon: School,
+      targetTab: "register-portal-school",
+      highlight: true
+    },
+    {
       badge: "UNGA (ONLINE)",
       lead: "UNGA (Online Committee) Registrations live • Global Virtual Deliberation.",
       cta: "Register for UNGA",
@@ -38,17 +46,6 @@ export default function MarqueeTicker({ setActiveTab }: MarqueeTickerProps) {
       targetTab: "register-portal-unga",
       highlight: true
     },
-    {
-      badge: "PRIORITY CLOSED",
-      lead: "Priority Round registrations closed • Allotments & reviews underway.",
-      cta: "View Status",
-      icon: Sparkles,
-      targetTab: "register-portal-priority",
-      highlight: false,
-      closed: true
-    },
-
-
     {
       badge: "CAMPUS AMBASSADOR",
       lead: "Lead your college delegation • Campus Ambassador network live.",

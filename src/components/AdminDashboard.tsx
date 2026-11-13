@@ -47,7 +47,10 @@ import {
   ChevronDown,
   Shirt,
   ArrowRight,
-  Bed
+  Bed,
+  School,
+  Clock,
+  CreditCard
 } from "lucide-react";
 
 export const FIRESTORE_RULES_TEXT = `rules_version = '2';
@@ -144,6 +147,14 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
     }
 
+    match /school_registrations/{registrationId} {
+      allow get: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if true;
+      allow update: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow delete: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+    }
+
     match /workshop_registrations/{registrationId} {
       allow get: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
       allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
@@ -193,8 +204,13 @@ import {
   syncLocalRegistrationsToFirestore,
   CollectionCounts 
 } from "../utils/firestoreSeed";
-import { RegistrationDetails, PriorityRegistrationDetails, CountryMatrixRow, PortfolioStatus, CommitteeId, ContactQuery, EBRegistration, CampusAmbassadorRegistration, WorkshopRegistrationDetails, AccommodationBooking, AccommodationSettings } from "../types";
-
+import { RegistrationDetails, PriorityRegistrationDetails, SchoolRegistrationDetails, CountryMatrixRow, PortfolioStatus, CommitteeId, ContactQuery, EBRegistration, CampusAmbassadorRegistration, WorkshopRegistrationDetails, AccommodationBooking, AccommodationSettings } from "../types";
+import { 
+  calculateMatrixStats, 
+  getEffectivePortfolioStatus, 
+  getAvailablePortfoliosForCommittee, 
+  PortfolioStateMap 
+} from "../utils/portfolioMatrix";
 
 interface PortfolioStatusSelectorProps {
   country: string;
@@ -221,10 +237,10 @@ function PortfolioStatusSelector({ country, committee, currentStatus, onUpdate }
       }`}
     >
       <option value="Available" className="bg-[#1A1F1A] text-[#C9A86A]">Available</option>
-      <option value="Assigned" className="bg-[#1A1F1A] text-rose-300">Assigned</option>
-      <option value="Reserved" className="bg-[#1A1F1A] text-amber-300">Special EB</option>
+      <option value="Assigned" className="bg-[#1A1F1A] text-rose-300">Allotted (Assigned)</option>
+      <option value="Reserved" className="bg-[#1A1F1A] text-amber-300">Reserved (Special EB)</option>
       <option value="Pending" className="bg-[#1A1F1A] text-[#8A9A7E]">Pending</option>
-      <option value="N/A" className="bg-[#1A1F1A] text-[#8A9A7E]/60">N/A</option>
+      <option value="N/A" className="bg-[#1A1F1A] text-[#8A9A7E]/60">N/A (Unavailable)</option>
     </select>
   );
 }
@@ -360,9 +376,22 @@ export default function AdminDashboard() {
   const [workshopSearch, setWorkshopSearch] = useState("");
 
   // Sub-tabs
-  const [activeSubTab, setActiveSubTab] = useState<"registrations" | "priority" | "unga" | "eb" | "campus-ambassador" | "workshop" | "accommodation" | "queries" | "database">("priority");
+  const [activeSubTab, setActiveSubTab] = useState<"school" | "priority" | "unga" | "registrations" | "matrix" | "eb" | "campus-ambassador" | "workshop" | "accommodation" | "queries" | "database">("school");
   const [portfolioSearch, setPortfolioSearch] = useState("");
+  const [matrixCommitteeFilter, setMatrixCommitteeFilter] = useState("all");
+  const [matrixStatusFilter, setMatrixStatusFilter] = useState("all");
   const [portfolioOverrides, setPortfolioOverrides] = useState<Record<string, Partial<Record<CommitteeId | "copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>>({});
+
+  // School Round registrations state
+  const [schoolRegistrations, setSchoolRegistrations] = useState<SchoolRegistrationDetails[]>([]);
+  const [schoolSearch, setSchoolSearch] = useState("");
+  const [schoolCommitteeFilter, setSchoolCommitteeFilter] = useState("all");
+  const [schoolStatusFilter, setSchoolStatusFilter] = useState("all");
+  const [selectedSchoolReg, setSelectedSchoolReg] = useState<SchoolRegistrationDetails | null>(null);
+  const [confirmSchoolDeleteId, setConfirmSchoolDeleteId] = useState<string | null>(null);
+  const [isUpdatingSchoolStatus, setIsUpdatingSchoolStatus] = useState(false);
+  const [allotSchoolModalReg, setAllotSchoolModalReg] = useState<SchoolRegistrationDetails | null>(null);
+  const [allotSchoolForm, setAllotSchoolForm] = useState({ committee: "uncopuos", country: "", adminNotes: "" });
 
   // Priority Round registrations state
   const [priorityRegistrations, setPriorityRegistrations] = useState<PriorityRegistrationDetails[]>([]);
@@ -919,6 +948,65 @@ export default function AdminDashboard() {
 
     return () => unsubscribe();
   }, [isAdmin, registrations]);
+
+  // Sync School Round Registrations from Firestore 'school_registrations' and '/api/school-registrations'
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const mergeSchoolRecords = (baseList: SchoolRegistrationDetails[], backupList: any[] = []) => {
+      const combined = [...baseList];
+
+      backupList.forEach((b) => {
+        if (!combined.some((c) => (c.id && c.id === b.id) || (c.uid && c.uid === b.id) || (c.userId && c.userId === b.userId))) {
+          combined.push(b as SchoolRegistrationDetails);
+        }
+      });
+
+      combined.sort((a, b) => {
+        const timeA = new Date(a.timestamp || 0).getTime();
+        const timeB = new Date(b.timestamp || 0).getTime();
+        return timeB - timeA;
+      });
+
+      return combined;
+    };
+
+    const q = query(collection(db, "school_registrations"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: SchoolRegistrationDetails[] = [];
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        list.push({
+          uid: docSnap.id,
+          id: d.id || docSnap.id,
+          ...d
+        } as SchoolRegistrationDetails);
+      });
+
+      fetch("/api/school-registrations")
+        .then((res) => res.json())
+        .then((res) => {
+          const backup = (res.data && Array.isArray(res.data)) ? res.data : [];
+          setSchoolRegistrations(mergeSchoolRecords(list, backup));
+        })
+        .catch(() => {
+          setSchoolRegistrations(mergeSchoolRecords(list));
+        });
+    }, (error) => {
+      console.warn("school_registrations subscription status:", error instanceof Error ? error.message : "Access error");
+      fetch("/api/school-registrations")
+        .then((res) => res.json())
+        .then((res) => {
+          const backup = (res.data && Array.isArray(res.data)) ? res.data : [];
+          setSchoolRegistrations(mergeSchoolRecords([], backup));
+        })
+        .catch(() => {
+          setSchoolRegistrations(mergeSchoolRecords([]));
+        });
+    });
+
+    return () => unsubscribe();
+  }, [isAdmin]);
 
   // Sync UNGA Online Registrations from Firestore 'unga_registrations', 'registrations' and '/api/registrations'
   useEffect(() => {
@@ -1710,6 +1798,9 @@ export default function AdminDashboard() {
       };
       await updateDoc(doc(db, "priority_registrations", id), updates).catch(() => {});
       await updateDoc(doc(db, "registrations", id), updates).catch(() => {});
+      if (allotForm.country && allotForm.committee) {
+        await updatePortfolioStatus(allotForm.country, allotForm.committee, "Assigned");
+      }
       showToast(`Allotted ${allotForm.country || "Portfolio"} in ${allotForm.committee.toUpperCase()} to ${allotModalReg.name}!`);
       if (selectedPriorityReg && (selectedPriorityReg.id === id || selectedPriorityReg.uid === id)) {
         setSelectedPriorityReg((prev) => (prev ? { ...prev, ...updates } : null));
@@ -1862,6 +1953,170 @@ export default function AdminDashboard() {
     }
   };
 
+  const exportSchoolToExcel = (itemsToExport?: SchoolRegistrationDetails[], customLabel?: string) => {
+    const list = itemsToExport ?? schoolRegistrations;
+    if (list.length === 0) {
+      showToast("No school round registrations available to export.");
+      return;
+    }
+
+    const dataToExport = list.map((r, idx) => ({
+      "Sl. No": idx + 1,
+      "Ticket ID": r.id || r.uid || "",
+      "Student Name": r.name || "",
+      "Email Address": r.email || "",
+      "Phone / WhatsApp": r.phone || "",
+      "Aadhaar / Passport": r.aadharNumber || "",
+      "Gender": r.gender || "",
+      "Date of Birth": r.dob || "",
+      "City & State": r.cityState || "",
+      "School / Institution": r.institution || "",
+      "Class / Grade": r.classGrade || "",
+      "Roll / Student No": r.rollNumber || "",
+      "Parent / Guardian Name": r.emergencyContactName || "",
+      "Guardian Relation": r.emergencyContactRelation || "",
+      "Guardian Phone": r.emergencyContactPhone || "",
+      "MUN Experience": r.munExperience || "",
+      "Past MUN Details": r.pastMunDetails || "",
+      "Pref 1 Committee": (r.pref1Committee || "").toUpperCase(),
+      "Pref 1 Portfolio": r.pref1Country || "",
+      "Pref 2 Committee": (r.pref2Committee || "").toUpperCase(),
+      "Pref 2 Portfolio": r.pref2Country || "",
+      "Pref 3 Committee": (r.pref3Committee || "").toUpperCase(),
+      "Pref 3 Portfolio": r.pref3Country || "",
+      "Motivation Statement": r.motivation || "",
+      "Accommodation Requested": r.accommodationRequired === "yes" ? "YES" : "NO",
+      "Has Aadhaar/Passport File": r.aadharPhotoUrl ? "YES" : "NO",
+      "Has School ID File": r.idCardUrl ? "YES" : "NO",
+      "Attending Socials": r.attendingSocials ? "YES (+₹149)" : "NO",
+      "Fee Amount (₹)": r.feeAmount || (r.attendingSocials ? 1148 : 999),
+      "Payment Mode": r.paymentMode || "UPI",
+      "UTR / Transaction ID": r.utrNumber || r.transactionId || "",
+      "Payment Date": r.paymentDate || "",
+      "Payment Screenshot URL": r.paymentScreenshotUrl || "",
+      "Payment Status": r.paymentStatus || (r.utrNumber ? "Pending Verification" : "Pending"),
+      "Status": r.status || "Pending Verification",
+      "Allotted Committee": (r.allottedCommittee || "").toUpperCase(),
+      "Allotted Portfolio": r.allottedCountry || "",
+      "Admin Notes": r.adminNotes || "",
+      "Submission Date": r.timestamp || ""
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "School Round Registrations");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const suffix = customLabel ? `_${customLabel.replace(/[^a-zA-Z0-9_-]/g, "_")}` : "";
+    XLSX.writeFile(workbook, `IISTMUN_2027_School_Registrations${suffix}_${dateStr}.xlsx`);
+    showToast(`Exported ${list.length} school registration(s) to Excel!`);
+  };
+
+  const exportMatrixToExcel = () => {
+    const dataToExport = COUNTRY_MATRIX.map((row) => ({
+      "Country / Portfolio": row.country,
+      "UNCOPOUS": getPortfolioStatus(row.country, "uncopuos", row.uncopuos || "Available"),
+      "UNGA (Online)": getPortfolioStatus(row.country, "unga", row.unga || "Available"),
+      "UNHRC": getPortfolioStatus(row.country, "unhrc", row.unhrc || "Available"),
+      "UNODC": getPortfolioStatus(row.country, "unodc", row.unodc || "Available"),
+      "NES'75": getPortfolioStatus(row.country, "nes75", row.nes75 || "Reserved"),
+      "UNDP": getPortfolioStatus(row.country, "undp", row.undp || "Available"),
+      "IP (Journalism)": getPortfolioStatus(row.country, "ip_journalism", row.ip_journalism || "N/A"),
+      "IP (Photojournalism)": getPortfolioStatus(row.country, "ip_photojournalism", row.ip_photojournalism || "N/A"),
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Country Matrix");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(workbook, `IISTMUN_2026_Country_Matrix_${dateStr}.xlsx`);
+    showToast(`Exported Country Matrix (${dataToExport.length} rows) to Excel!`);
+  };
+
+  const handleUpdateSchoolStatus = async (
+    id: string,
+    newStatus: string
+  ) => {
+    setIsUpdatingSchoolStatus(true);
+    try {
+      const updates: any = { status: newStatus, updatedAt: new Date().toISOString() };
+      await updateDoc(doc(db, "school_registrations", id), updates).catch(() => {});
+      await fetch("/api/school-registrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...updates })
+      }).catch(() => {});
+
+      showToast(`Updated status to ${newStatus}`);
+      if (selectedSchoolReg && (selectedSchoolReg.id === id || selectedSchoolReg.uid === id)) {
+        setSelectedSchoolReg((prev) => (prev ? { ...prev, ...updates } : null));
+      }
+      setSchoolRegistrations((prev) =>
+        prev.map((r) => ((r.id === id || r.uid === id) ? { ...r, ...updates } : r))
+      );
+    } catch (err) {
+      console.error("School status update error:", err);
+      showToast("Failed to update status. Check permissions.");
+    } finally {
+      setIsUpdatingSchoolStatus(false);
+    }
+  };
+
+  const handleSaveSchoolAllotment = async () => {
+    if (!allotSchoolModalReg) return;
+    const id = allotSchoolModalReg.uid || allotSchoolModalReg.id || "";
+    if (!id) return;
+    try {
+      const updates: any = {
+        allottedCommittee: allotSchoolForm.committee,
+        allottedCountry: allotSchoolForm.country,
+        adminNotes: allotSchoolForm.adminNotes,
+        status: "Portfolio Allotted",
+        updatedAt: new Date().toISOString()
+      };
+      await updateDoc(doc(db, "school_registrations", id), updates).catch(() => {});
+      await fetch("/api/school-registrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...updates })
+      }).catch(() => {});
+
+      if (allotSchoolForm.country && allotSchoolForm.committee) {
+        await updatePortfolioStatus(allotSchoolForm.country, allotSchoolForm.committee, "Assigned");
+      }
+
+      showToast(`Allotted ${allotSchoolForm.country || "Portfolio"} in ${allotSchoolForm.committee.toUpperCase()} to ${allotSchoolModalReg.name}!`);
+      if (selectedSchoolReg && (selectedSchoolReg.id === id || selectedSchoolReg.uid === id)) {
+        setSelectedSchoolReg((prev) => (prev ? { ...prev, ...updates } : null));
+      }
+      setSchoolRegistrations((prev) =>
+        prev.map((r) => ((r.id === id || r.uid === id) ? { ...r, ...updates } : r))
+      );
+      setAllotSchoolModalReg(null);
+    } catch (err) {
+      console.error("School allotment error:", err);
+      showToast("Error updating school portfolio allotment.");
+    }
+  };
+
+  const handleSchoolDelete = async (id: string, name: string) => {
+    setActionLoading(true);
+    try {
+      await deleteDoc(doc(db, "school_registrations", id)).catch(() => {});
+      await fetch(`/api/school-registrations/${id}`, { method: "DELETE" }).catch(() => {});
+      setSchoolRegistrations((prev) => prev.filter((p) => p.id !== id && p.uid !== id));
+      showToast(`Deleted school registration for ${name}.`);
+      setConfirmSchoolDeleteId(null);
+      if (selectedSchoolReg?.id === id || selectedSchoolReg?.uid === id) {
+        setSelectedSchoolReg(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete school registration:", err);
+      showToast("Error deleting school registration.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const updatePortfolioStatus = async (
     country: string,
     committee: CommitteeId | string,
@@ -1870,10 +2125,20 @@ export default function AdminDashboard() {
     try {
       const docRef = doc(db, "portfolio_states", country);
       await setDoc(docRef, { [committee]: newStatus }, { merge: true });
-      showToast(`Updated ${country}'s ${committee.toUpperCase()} status to ${newStatus === "Reserved" ? "Special EB" : newStatus}.`);
+      await fetch("/api/portfolio-states", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ country, committee, status: newStatus })
+      }).catch(() => {});
+      showToast(`Updated ${country}'s ${committee.toUpperCase()} status to ${newStatus === "Reserved" ? "Reserved (Special EB)" : newStatus}.`);
     } catch (err) {
       console.error("Error setting portfolio status:", err instanceof Error ? err.message : "Update failed");
-      showToast("Error updating portfolio status in database.");
+      await fetch("/api/portfolio-states", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ country, committee, status: newStatus })
+      }).catch(() => {});
+      showToast(`Saved locally: ${country} (${committee.toUpperCase()}) -> ${newStatus}`);
     }
   };
 
@@ -1883,10 +2148,6 @@ export default function AdminDashboard() {
     defaultStatus: PortfolioStatus
   ) => {
     let status = portfolioOverrides[countryName]?.[committee as CommitteeId] ?? defaultStatus;
-    if ((!status || status === "N/A" || status === "Reserved") && (committee === "ip_journalism" || committee === "ip_photojournalism")) {
-      const legacyIp = portfolioOverrides[countryName]?.ip;
-      if (legacyIp) status = legacyIp;
-    }
     return status || "N/A";
   };
 
@@ -2140,6 +2401,39 @@ export default function AdminDashboard() {
       setIsDeletingQuery(false);
     }
   };
+
+  // Filter School Round registrations
+  const filteredSchool = schoolRegistrations.filter((r) => {
+    const q = schoolSearch.toLowerCase().trim();
+    const matchesSearch = !q || (
+      (r.name || "").toLowerCase().includes(q) ||
+      (r.email || "").toLowerCase().includes(q) ||
+      (r.phone || "").toLowerCase().includes(q) ||
+      (r.aadharNumber || "").toLowerCase().includes(q) ||
+      (r.institution || "").toLowerCase().includes(q) ||
+      (r.classGrade || "").toLowerCase().includes(q) ||
+      (r.rollNumber || "").toLowerCase().includes(q) ||
+      (r.emergencyContactName || "").toLowerCase().includes(q) ||
+      (r.id || "").toLowerCase().includes(q) ||
+      (r.uid || "").toLowerCase().includes(q) ||
+      (r.pref1Country || "").toLowerCase().includes(q) ||
+      (r.pref2Country || "").toLowerCase().includes(q) ||
+      (r.pref3Country || "").toLowerCase().includes(q)
+    );
+
+    const matchesCommittee =
+      schoolCommitteeFilter === "all" ||
+      r.pref1Committee === schoolCommitteeFilter ||
+      r.pref2Committee === schoolCommitteeFilter ||
+      r.pref3Committee === schoolCommitteeFilter ||
+      r.allottedCommittee === schoolCommitteeFilter;
+
+    const matchesStatus =
+      schoolStatusFilter === "all" ||
+      r.status === schoolStatusFilter;
+
+    return matchesSearch && matchesCommittee && matchesStatus;
+  });
 
   // Priority Round registrations list (sources from UNGA when UNGA filter is selected)
   const prioritySourceList = priorityCommitteeFilter === "unga"
@@ -2588,6 +2882,40 @@ export default function AdminDashboard() {
         {/* Dashboard Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3.5 mb-10">
           <div 
+            onClick={() => setActiveSubTab("school")}
+            className={`border p-4 text-left shadow-sm cursor-pointer transition-all relative group ${
+              activeSubTab === "school"
+                ? "border-[#C9A86A] bg-[#2E3B2F] ring-1 ring-[#C9A86A]"
+                : "border-[#C9A86A]/40 bg-[#2E3B2F] hover:border-[#C9A86A]"
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#C9A86A] font-bold block flex items-center gap-1">
+                <School className="h-3 w-3 text-[#C9A86A]" />
+                SCHOOL
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  exportSchoolToExcel();
+                }}
+                disabled={schoolRegistrations.length === 0}
+                className="opacity-80 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 bg-[#1A1F1A] border border-[#C9A86A]/40 hover:border-[#C9A86A] text-[#C9A86A] text-[9px] font-sans font-bold flex items-center gap-1 cursor-pointer disabled:opacity-20"
+                title="Quick Download School Round Excel (.xlsx)"
+              >
+                <Download className="h-2.5 w-2.5" />
+                <span>XLSX</span>
+              </button>
+            </div>
+            <div className="flex justify-between items-end mt-1.5">
+              <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{schoolRegistrations.length}</span>
+              <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                <School className="h-3.5 w-3.5" />
+              </div>
+            </div>
+          </div>
+
+          <div 
             onClick={() => setActiveSubTab("priority")}
             className={`border p-4 text-left shadow-sm cursor-pointer transition-all relative group ${
               activeSubTab === "priority"
@@ -2664,6 +2992,38 @@ export default function AdminDashboard() {
               <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{totalCount}</span>
               <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
                 <Users className="h-3.5 w-3.5" />
+              </div>
+            </div>
+          </div>
+          <div 
+            onClick={() => setActiveSubTab("matrix")}
+            className={`border p-4 text-left shadow-sm cursor-pointer transition-all relative group ${
+              activeSubTab === "matrix"
+                ? "border-[#C9A86A] bg-[#2E3B2F] ring-1 ring-[#C9A86A]"
+                : "border-[#C9A86A]/40 bg-[#2E3B2F] hover:border-[#C9A86A]"
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-[#C9A86A] font-bold block flex items-center gap-1">
+                <Compass className="h-3 w-3 text-[#C9A86A]" />
+                MATRIX
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  exportMatrixToExcel();
+                }}
+                className="opacity-80 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 bg-[#1A1F1A] border border-[#C9A86A]/40 hover:border-[#C9A86A] text-[#C9A86A] text-[9px] font-sans font-bold flex items-center gap-1 cursor-pointer"
+                title="Download Full Country Matrix (.xlsx)"
+              >
+                <Download className="h-2.5 w-2.5" />
+                <span>XLSX</span>
+              </button>
+            </div>
+            <div className="flex justify-between items-end mt-1.5">
+              <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{COUNTRY_MATRIX.length}</span>
+              <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                <Compass className="h-3.5 w-3.5" />
               </div>
             </div>
           </div>
@@ -2802,6 +3162,22 @@ export default function AdminDashboard() {
         {/* Admin Navigation Sub-Tabs */}
         <div className="flex border-b border-[#C9A86A]/25 mb-8 overflow-x-auto scrollbar-none gap-1">
           <button
+            onClick={() => setActiveSubTab("school")}
+            className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeSubTab === "school"
+                ? "border-[#C9A86A] text-[#C9A86A] font-semibold bg-[#2E3B2F]/40"
+                : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
+            }`}
+          >
+            <School className="h-3.5 w-3.5 text-[#C9A86A]" />
+            <span>School Round ({schoolRegistrations.length})</span>
+            {schoolRegistrations.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-[#C9A86A] text-[#1A1F1A] text-[9px] font-bold">
+                {schoolRegistrations.length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setActiveSubTab("priority")}
             className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeSubTab === "priority"
@@ -2842,6 +3218,17 @@ export default function AdminDashboard() {
             }`}
           >
             General Delegates ({filtered.length})
+          </button>
+          <button
+            onClick={() => setActiveSubTab("matrix")}
+            className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeSubTab === "matrix"
+                ? "border-[#C9A86A] text-[#C9A86A] font-semibold bg-[#2E3B2F]/40"
+                : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
+            }`}
+          >
+            <Compass className="h-3.5 w-3.5 text-[#C9A86A]" />
+            <span>Country Matrix &amp; Portfolios</span>
           </button>
           <button
             onClick={() => setActiveSubTab("eb")}
@@ -2929,6 +3316,423 @@ export default function AdminDashboard() {
             <span>Firestore Database</span>
           </button>
         </div>
+
+        {/* ========================================================
+            SUB-TAB: SCHOOL ROUND DELEGATE REGISTRATIONS
+           ======================================================== */}
+        {activeSubTab === "school" && (
+          <div className="space-y-8 animate-fade-in text-left">
+            {/* Header & Export Actions */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#C9A86A]/20 pb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                    // SCHOOL ROUND REGISTRY
+                  </span>
+                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E]">
+                    Secretariat Desk &bull; Direct Telemetry
+                  </span>
+                </div>
+                <h2 className="font-serif text-2xl sm:text-3xl font-normal text-[#EDE6D3] tracking-wide">
+                  School Round Delegations Ledger
+                </h2>
+                <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                  Secondary student registrations (Classes 8&ndash;12), school identity clearance, mandatory Aadhaar/Passport proof, fee verification (₹999 / ₹1,148 with socials), and 3-preference dropdown allocations.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => exportSchoolToExcel()}
+                  disabled={schoolRegistrations.length === 0}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  title="Download all School Round registrations as an Excel spreadsheet (.xlsx)"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  <span>Download School Excel ({schoolRegistrations.length})</span>
+                </button>
+                {filteredSchool.length !== schoolRegistrations.length && (
+                  <button
+                    onClick={() => exportSchoolToExcel(filteredSchool, "Filtered")}
+                    disabled={filteredSchool.length === 0}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 border border-[#C9A86A] bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#C9A86A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    title="Download currently filtered School registrations as an Excel spreadsheet"
+                  >
+                    <Filter className="h-3.5 w-3.5" />
+                    <span>Download Filtered ({filteredSchool.length})</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E]">TOTAL SCHOOL</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{schoolRegistrations.length}</span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                    <School className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-emerald-400">VERIFIED / CONFIRMED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {schoolRegistrations.filter(r => r.status === "Registration Confirmed" || r.status === "Portfolio Allotted").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-emerald-500/30 text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A]">PORTFOLIO ALLOTTED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {schoolRegistrations.filter(r => r.status === "Portfolio Allotted").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                    <Award className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-amber-300">PENDING REVIEW</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {schoolRegistrations.filter(r => r.status === "Pending Verification").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-amber-500/30 text-amber-300">
+                    <Clock className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm col-span-2 sm:col-span-1">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-teal-400">ACCOMMODATION NEEDED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {schoolRegistrations.filter(r => r.accommodationRequired === "yes").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-teal-500/30 text-teal-400">
+                    <Bed className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filters Bar */}
+            <div className="p-4 bg-[#2E3B2F] border border-[#C9A86A]/30 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 shadow-md">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8A9A7E]" />
+                <input
+                  type="text"
+                  value={schoolSearch}
+                  onChange={(e) => setSchoolSearch(e.target.value)}
+                  placeholder="Search by student name, school, email, phone, ID, aadhaar..."
+                  className="w-full pl-9 pr-4 py-2 bg-[#1A1F1A] border border-[#8A9A7E]/30 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/60 focus:outline-none focus:border-[#C9A86A]"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Committee Filter */}
+                <select
+                  value={schoolCommitteeFilter}
+                  onChange={(e) => setSchoolCommitteeFilter(e.target.value)}
+                  className="bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#EDE6D3] px-3 py-2 text-xs focus:outline-none focus:border-[#C9A86A]"
+                >
+                  <option value="all">All Committees</option>
+                  <option value="uncopuos">UNCOPUOS</option>
+                  <option value="unhrc">UNHRC</option>
+                  <option value="unodc">UNODC</option>
+                  <option value="nes75">NES'75</option>
+                  <option value="undp">UNDP</option>
+                  <option value="ip_journalism">IP (Journalism)</option>
+                  <option value="ip_photojournalism">IP (Photojournalism)</option>
+                  <option value="unga">UNGA (Online)</option>
+                </select>
+
+                {/* Status Filter */}
+                <select
+                  value={schoolStatusFilter}
+                  onChange={(e) => setSchoolStatusFilter(e.target.value)}
+                  className="bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#EDE6D3] px-3 py-2 text-xs focus:outline-none focus:border-[#C9A86A]"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="Pending Verification">Pending Verification</option>
+                  <option value="Registration Confirmed">Registration Confirmed</option>
+                  <option value="Portfolio Allotted">Portfolio Allotted</option>
+                  <option value="Waitlisted">Waitlisted</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+
+                {(schoolSearch || schoolCommitteeFilter !== "all" || schoolStatusFilter !== "all") && (
+                  <button
+                    onClick={() => {
+                      setSchoolSearch("");
+                      setSchoolCommitteeFilter("all");
+                      setSchoolStatusFilter("all");
+                    }}
+                    className="p-2 border border-[#8A9A7E]/30 bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer"
+                    title="Reset filters"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* School Ledger Table */}
+            <div className="border border-[#C9A86A]/30 bg-[#2E3B2F]/40 shadow-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[1100px]">
+                  <thead>
+                    <tr className="border-b border-[#C9A86A]/20 bg-[#1A1F1A]">
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Ticket & Date</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Student Name & Contact</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">School & Grade</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">Mandatory Proofs</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Ranked Preferences</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Guardian & Accomm</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Status</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#8A9A7E]/10">
+                    {filteredSchool.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="p-12 text-center text-[#8A9A7E]">
+                          <School className="h-8 w-8 mx-auto mb-2 text-[#C9A86A]/50" />
+                          <p className="font-serif text-lg text-[#EDE6D3]">No school delegate registrations found</p>
+                          <p className="text-xs text-[#8A9A7E] mt-1">Registrations submitted in the school round will appear here in real time.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredSchool.map((item) => (
+                        <tr key={item.id || item.uid} className="hover:bg-[#2E3B2F]/60 transition-colors">
+                          {/* Ticket & Timestamp */}
+                          <td className="p-3.5 font-mono text-xs">
+                            <span className="text-[#C9A86A] font-bold block">{item.id || item.uid}</span>
+                            <span className="text-[10px] text-[#8A9A7E] block mt-0.5">{item.timestamp || "N/A"}</span>
+                            <div className="flex flex-wrap items-center gap-1 mt-1">
+                              <span className="px-1.5 py-0.5 text-[8px] font-mono font-bold bg-[#C9A86A]/20 border border-[#C9A86A]/50 text-[#C9A86A]">
+                                ₹{item.feeAmount || (item.attendingSocials ? 1148 : 999)}
+                              </span>
+                              {item.attendingSocials && (
+                                <span className="px-1.5 py-0.5 text-[8px] font-sans font-bold uppercase tracking-wider bg-purple-950/60 border border-purple-500/40 text-purple-300">
+                                  + SOCIALS
+                                </span>
+                              )}
+                            </div>
+                            {item.utrNumber && (
+                              <span className="font-mono text-[9px] text-[#8A9A7E] block mt-1">UTR: {item.utrNumber}</span>
+                            )}
+                          </td>
+
+                          {/* Student Details */}
+                          <td className="p-3.5">
+                            <span className="font-serif text-sm font-medium text-[#EDE6D3] block">{item.name}</span>
+                            <span className="font-mono text-xs text-[#8A9A7E] block mt-0.5">{item.email}</span>
+                            <span className="font-mono text-xs text-[#C9A86A] block">{item.phone}</span>
+                            <span className="text-[10px] text-[#8A9A7E] block">{item.cityState}</span>
+                          </td>
+
+                          {/* School Details */}
+                          <td className="p-3.5">
+                            <span className="font-sans text-xs text-[#EDE6D3] font-semibold block">{item.institution}</span>
+                            <span className="font-mono text-xs text-[#C9A86A] block mt-0.5 font-bold">{item.classGrade}</span>
+                            {item.rollNumber && (
+                              <span className="font-mono text-[10px] text-[#8A9A7E] block">Roll: {item.rollNumber}</span>
+                            )}
+                          </td>
+
+                          {/* Proofs: Aadhaar & School ID */}
+                          <td className="p-3.5">
+                            <div className="space-y-1.5">
+                              {/* Aadhaar Number */}
+                              <div className="font-mono text-[11px] text-[#EDE6D3] flex items-center gap-1">
+                                <span className="text-[#8A9A7E] text-[10px]">UID:</span>
+                                <span>{item.aadharNumber || "N/A"}</span>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {/* Aadhaar Photo View */}
+                                {item.aadharPhotoUrl ? (
+                                  <button
+                                    onClick={() => setViewProofModal({
+                                      url: item.aadharPhotoUrl,
+                                      name: item.aadharPhotoName || "Aadhaar Card",
+                                      candidateName: item.name
+                                    })}
+                                    className="px-2 py-1 bg-[#1A1F1A] border border-[#C9A86A]/40 text-[#C9A86A] text-[10px] font-mono hover:bg-[#C9A86A] hover:text-[#1A1F1A] transition-colors cursor-pointer flex items-center gap-1"
+                                    title="View Aadhaar / Passport Document"
+                                  >
+                                    <ShieldCheck className="h-3 w-3" />
+                                    <span>Aadhaar</span>
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-rose-400 italic">No Aadhaar</span>
+                                )}
+
+                                {/* School ID View */}
+                                {item.idCardUrl ? (
+                                  <button
+                                    onClick={() => setViewProofModal({
+                                      url: item.idCardUrl,
+                                      name: item.idCardName || "School ID Card",
+                                      candidateName: item.name
+                                    })}
+                                    className="px-2 py-1 bg-[#1A1F1A] border border-blue-400/40 text-blue-300 text-[10px] font-mono hover:bg-blue-400 hover:text-[#1A1F1A] transition-colors cursor-pointer flex items-center gap-1"
+                                    title="View School ID Card"
+                                  >
+                                    <School className="h-3 w-3" />
+                                    <span>School ID</span>
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-rose-400 italic">No School ID</span>
+                                )}
+
+                                {/* Payment Receipt View */}
+                                {item.paymentScreenshotUrl && (
+                                  <button
+                                    onClick={() => setViewProofModal({
+                                      url: item.paymentScreenshotUrl!,
+                                      name: item.paymentScreenshotName || "Payment Receipt",
+                                      utr: item.utrNumber || item.transactionId,
+                                      candidateName: item.name
+                                    })}
+                                    className="px-2 py-1 bg-[#1A1F1A] border border-emerald-500/40 text-emerald-400 text-[10px] font-mono hover:bg-emerald-500 hover:text-[#1A1F1A] transition-colors cursor-pointer flex items-center gap-1"
+                                    title="View Payment Receipt"
+                                  >
+                                    <CreditCard className="h-3 w-3" />
+                                    <span>Receipt</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Preferences (Dropdown choices) */}
+                          <td className="p-3.5 text-xs">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1">
+                                <span className="font-mono text-[9px] text-[#C9A86A] font-bold">1:</span>
+                                <span className="font-semibold text-[#EDE6D3] uppercase">{item.pref1Committee}</span>
+                                <span className="text-[#8A9A7E]">&rarr;</span>
+                                <span className="text-[#C9A86A] font-medium">{item.pref1Country || "N/A"}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-[11px] text-[#8A9A7E]">
+                                <span className="font-mono text-[9px] text-[#8A9A7E] font-bold">2:</span>
+                                <span className="uppercase">{item.pref2Committee}</span>
+                                <span>&rarr;</span>
+                                <span className="text-[#EDE6D3]">{item.pref2Country || "N/A"}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-[11px] text-[#8A9A7E]">
+                                <span className="font-mono text-[9px] text-[#8A9A7E] font-bold">3:</span>
+                                <span className="uppercase">{item.pref3Committee}</span>
+                                <span>&rarr;</span>
+                                <span className="text-[#EDE6D3]">{item.pref3Country || "N/A"}</span>
+                              </div>
+                              {item.allottedCommittee && (
+                                <div className="mt-1 pt-1 border-t border-[#C9A86A]/20">
+                                  <span className="text-[9px] font-mono text-emerald-400 font-bold block">
+                                    ALLOTTED: {item.allottedCommittee.toUpperCase()} &bull; {item.allottedCountry}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Guardian & Accommodation */}
+                          <td className="p-3.5 text-xs">
+                            <span className="text-[#EDE6D3] block font-medium">{item.emergencyContactName} ({item.emergencyContactRelation})</span>
+                            <span className="font-mono text-[#8A9A7E] block text-[11px]">{item.emergencyContactPhone}</span>
+                            <div className="mt-1 flex items-center gap-1">
+                              <span className="text-[10px] text-[#8A9A7E]">Accomm:</span>
+                              <span className={`text-[10px] font-mono font-bold ${item.accommodationRequired === "yes" ? "text-amber-300" : "text-[#8A9A7E]"}`}>
+                                {item.accommodationRequired === "yes" ? "YES (Required)" : "NO"}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Status Dropdown */}
+                          <td className="p-3.5">
+                            <select
+                              value={item.status || "Pending Verification"}
+                              onChange={(e) => handleUpdateSchoolStatus(item.uid || item.id || "", e.target.value)}
+                              className={`px-2 py-1 text-[10px] font-sans font-semibold uppercase tracking-wider border focus:outline-none cursor-pointer ${
+                                item.status === "Registration Confirmed"
+                                  ? "bg-emerald-950/60 text-emerald-400 border-emerald-500/40"
+                                  : item.status === "Portfolio Allotted"
+                                  ? "bg-[#C9A86A]/20 text-[#C9A86A] border-[#C9A86A]/40 font-bold"
+                                  : item.status === "Waitlisted"
+                                  ? "bg-amber-950/60 text-amber-300 border-amber-500/40"
+                                  : item.status === "Rejected"
+                                  ? "bg-rose-950/60 text-rose-400 border-rose-500/40"
+                                  : "bg-[#1A1F1A] text-[#EDE6D3] border-[#8A9A7E]/40"
+                              }`}
+                            >
+                              <option value="Pending Verification" className="bg-[#1A1F1A] text-[#EDE6D3]">Pending Verification</option>
+                              <option value="Registration Confirmed" className="bg-[#1A1F1A] text-emerald-400">Registration Confirmed</option>
+                              <option value="Portfolio Allotted" className="bg-[#1A1F1A] text-[#C9A86A]">Portfolio Allotted</option>
+                              <option value="Waitlisted" className="bg-[#1A1F1A] text-amber-300">Waitlisted</option>
+                              <option value="Rejected" className="bg-[#1A1F1A] text-rose-400">Rejected</option>
+                            </select>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="p-3.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {/* Allot Portfolio */}
+                              <button
+                                onClick={() => {
+                                  setAllotSchoolModalReg(item);
+                                  setAllotSchoolForm({
+                                    committee: item.allottedCommittee || item.pref1Committee || "uncopuos",
+                                    country: item.allottedCountry || item.pref1Country || "",
+                                    adminNotes: item.adminNotes || ""
+                                  });
+                                }}
+                                className="p-1.5 border border-[#C9A86A]/40 bg-[#2E3B2F] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-[#C9A86A] transition-colors cursor-pointer"
+                                title="Allot Council Portfolio"
+                              >
+                                <Compass className="h-3.5 w-3.5" />
+                              </button>
+
+                              {/* View Full Dossier */}
+                              <button
+                                onClick={() => setSelectedSchoolReg(item)}
+                                className="p-1.5 border border-[#8A9A7E]/40 bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#EDE6D3] transition-colors cursor-pointer"
+                                title="Inspect Full School Dossier"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                              </button>
+
+                              {/* Delete */}
+                              <button
+                                onClick={() => setConfirmSchoolDeleteId(item.uid || item.id || "")}
+                                className="p-1.5 border border-rose-500/30 bg-[#1A1F1A] hover:bg-rose-900/30 text-rose-400 transition-colors cursor-pointer"
+                                title="Delete Registration"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ========================================================
             SUB-TAB: PRIORITY ROUND DELEGATE REGISTRATIONS
@@ -4748,130 +5552,322 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {activeSubTab === "workshop" && (
-          <div className="space-y-12 animate-fade-in text-left">
-            {/* Section 1: Portfolio Allocator (Matrix) */}
-            <div className="space-y-6">
+        {/* ========================================================
+            SUB-TAB: MASTER COUNTRY MATRIX & PORTFOLIO MANAGER
+           ======================================================== */}
+        {activeSubTab === "matrix" && (
+          <div className="space-y-6 animate-fade-in text-left">
+            {/* Header & KPI Summary */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#2E3B2F] border border-[#C9A86A]/40 p-6 shadow-md">
               <div>
-                <h2 className="font-sans text-lg font-bold text-white uppercase tracking-tight">Portfolio Allocator (Matrix)</h2>
-                <p className="font-sans text-xs text-slate-400">Set and override portfolio assignments for delegates instantly.</p>
+                <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#C9A86A] block font-bold">
+                  // SIMULATION SEAT ALLOCATION & RESERVATION PROTOCOL
+                </span>
+                <h3 className="font-serif text-2xl text-[#EDE6D3] font-normal flex items-center gap-2">
+                  <Compass className="h-6 w-6 text-[#C9A86A]" />
+                  <span>Master Country Matrix &amp; Portfolio Manager</span>
+                </h3>
+                <p className="font-sans text-xs text-[#8A9A7E] mt-1 max-w-2xl leading-relaxed">
+                  Directly allot and reserve simulation portfolios across all committees. 
+                  <strong className="text-[#EDE6D3] font-normal"> Note:</strong> Only portfolios marked as <span className="text-[#C9A86A] font-bold">Available</span> appear in public candidate registration forms.
+                </p>
               </div>
 
-              {/* Search Bar */}
-              <div className="flex flex-col lg:flex-row gap-4 justify-between items-center bg-slate-950/40 border border-slate-900 rounded-3xl p-4">
-                <div className="relative w-full lg:max-w-md">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                  <input
-                    type="text"
-                    placeholder="Search portfolios or characters..."
-                    value={portfolioSearch}
-                    onChange={(e) => setPortfolioSearch(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-900 hover:border-slate-800 focus:border-cyan-500/50 rounded-full pl-11 pr-4 py-2.5 font-sans text-xs text-white focus:outline-none transition-all placeholder:text-slate-600"
-                  />
-                </div>
-                <div className="text-xs font-mono text-slate-500 uppercase tracking-widest">// SET PORTFOLIO ASSIGNMENTS INSTANTLY</div>
-              </div>
-
-              {/* Matrix Table */}
-              <div className="bg-slate-950/20 border border-slate-900 rounded-3xl overflow-hidden backdrop-blur-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse min-w-[1100px]">
-                    <thead>
-                      <tr className="border-b border-slate-900 bg-slate-950/40 font-mono text-[9px] uppercase tracking-widest text-slate-400 font-bold">
-                        <th className="p-4 pl-6 flex items-center gap-2">
-                          <Globe className="h-4 w-4 text-cyan-400" />
-                          Portfolio / Nation
-                        </th>
-                        <th className="p-3">UNCOPOUS</th>
-                        <th className="p-3">UNGA</th>
-                        <th className="p-3">UNHRC</th>
-                        <th className="p-3">UNODC</th>
-                        <th className="p-3">NES'75</th>
-                        <th className="p-3">UNDP</th>
-                        <th className="p-3">IP (JOUR)</th>
-                        <th className="p-3">IP (PHOTO)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-900/60 font-sans text-xs">
-                      {COUNTRY_MATRIX.filter((row) =>
-                        row.country.toLowerCase().includes(portfolioSearch.toLowerCase())
-                      ).map((row) => (
-                        <tr key={row.country} className="hover:bg-slate-900/10 transition-colors">
-                          <td className="p-4 pl-6 font-bold text-white whitespace-nowrap">{row.country}</td>
-                          <td className="p-3">
-                            <PortfolioStatusSelector
-                              country={row.country}
-                              committee="uncopuos"
-                              currentStatus={getPortfolioStatus(row.country, "uncopuos", row.uncopuos || "Available")}
-                              onUpdate={updatePortfolioStatus}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <PortfolioStatusSelector
-                              country={row.country}
-                              committee="unga"
-                              currentStatus={getPortfolioStatus(row.country, "unga", row.unga || "Available")}
-                              onUpdate={updatePortfolioStatus}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <PortfolioStatusSelector
-                              country={row.country}
-                              committee="unhrc"
-                              currentStatus={getPortfolioStatus(row.country, "unhrc", row.unhrc || "Available")}
-                              onUpdate={updatePortfolioStatus}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <PortfolioStatusSelector
-                              country={row.country}
-                              committee="unodc"
-                              currentStatus={getPortfolioStatus(row.country, "unodc", row.unodc || "Available")}
-                              onUpdate={updatePortfolioStatus}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <PortfolioStatusSelector
-                              country={row.country}
-                              committee="nes75"
-                              currentStatus={getPortfolioStatus(row.country, "nes75", row.nes75 || "Reserved")}
-                              onUpdate={updatePortfolioStatus}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <PortfolioStatusSelector
-                              country={row.country}
-                              committee="undp"
-                              currentStatus={getPortfolioStatus(row.country, "undp", row.undp || "Available")}
-                              onUpdate={updatePortfolioStatus}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <PortfolioStatusSelector
-                              country={row.country}
-                              committee="ip_journalism"
-                              currentStatus={getPortfolioStatus(row.country, "ip_journalism", row.ip_journalism || "Reserved")}
-                              onUpdate={updatePortfolioStatus}
-                            />
-                          </td>
-                          <td className="p-3">
-                            <PortfolioStatusSelector
-                              country={row.country}
-                              committee="ip_photojournalism"
-                              currentStatus={getPortfolioStatus(row.country, "ip_photojournalism", row.ip_photojournalism || "Reserved")}
-                              onUpdate={updatePortfolioStatus}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  onClick={() => handleSeedIndividual("country_matrix")}
+                  className="px-3 py-2 bg-[#1A1F1A] border border-[#C9A86A]/40 hover:border-[#C9A86A] text-[#EDE6D3] text-xs font-sans uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Reseed Baseline Matrix to Database"
+                >
+                  <RefreshCw className="h-3.5 w-3.5 text-[#C9A86A]" />
+                  <span>Seed Matrix</span>
+                </button>
+                <button
+                  onClick={exportMatrixToExcel}
+                  className="px-4 py-2 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-sans font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer shadow"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Export Matrix (.xlsx)</span>
+                </button>
               </div>
             </div>
 
-            {/* Visual Divider line */}
-            <div className="border-t border-slate-900 my-10" />
+            {/* Matrix Metrics */}
+            {(() => {
+              const stats = calculateMatrixStats(portfolioOverrides, COUNTRY_MATRIX);
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 bg-[#1A1F1A] border border-[#C9A86A]/40">
+                    <span className="text-[10px] font-mono uppercase text-[#C9A86A] block">Available Seats</span>
+                    <span className="text-xl font-serif text-[#EDE6D3] font-bold mt-0.5 block">{stats.available}</span>
+                    <span className="text-[9px] font-mono text-[#8A9A7E]">Selectable in registration</span>
+                  </div>
+                  <div className="p-3 bg-[#1A1F1A] border border-rose-500/40">
+                    <span className="text-[10px] font-mono uppercase text-rose-300 block">Allotted / Assigned</span>
+                    <span className="text-xl font-serif text-[#EDE6D3] font-bold mt-0.5 block">{stats.assigned}</span>
+                    <span className="text-[9px] font-mono text-[#8A9A7E]">Allotted to delegates</span>
+                  </div>
+                  <div className="p-3 bg-[#1A1F1A] border border-amber-500/40">
+                    <span className="text-[10px] font-mono uppercase text-amber-300 block">Reserved (Special EB)</span>
+                    <span className="text-xl font-serif text-[#EDE6D3] font-bold mt-0.5 block">{stats.reserved}</span>
+                    <span className="text-[9px] font-mono text-[#8A9A7E]">Held by Secretariat</span>
+                  </div>
+                  <div className="p-3 bg-[#1A1F1A] border border-[#8A9A7E]/30">
+                    <span className="text-[10px] font-mono uppercase text-[#8A9A7E] block">Total Country Matrix</span>
+                    <span className="text-xl font-serif text-[#EDE6D3] font-bold mt-0.5 block">{stats.totalRows}</span>
+                    <span className="text-[9px] font-mono text-[#8A9A7E]">{stats.totalSeats} seats across 8 chambers</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Filters Toolbar */}
+            <div className="p-4 bg-[#2E3B2F] border border-[#C9A86A]/30 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#8A9A7E]" />
+                <input
+                  type="text"
+                  placeholder="Filter country, nation, or character name..."
+                  value={portfolioSearch}
+                  onChange={(e) => setPortfolioSearch(e.target.value)}
+                  className="w-full bg-[#1A1F1A] border border-[#8A9A7E]/30 px-3 py-2 pl-9 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A] placeholder:text-[#8A9A7E]/60 font-sans"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Committee Filter */}
+                <select
+                  value={matrixCommitteeFilter}
+                  onChange={(e) => setMatrixCommitteeFilter(e.target.value)}
+                  className="bg-[#1A1F1A] border border-[#8A9A7E]/30 text-xs text-[#EDE6D3] px-3 py-2 outline-none focus:border-[#C9A86A] font-sans"
+                >
+                  <option value="all">All Simulation Chambers</option>
+                  <option value="uncopuos">UNCOPUOS</option>
+                  <option value="unga">UNGA (Online)</option>
+                  <option value="unhrc">UNHRC</option>
+                  <option value="unodc">UNODC</option>
+                  <option value="nes75">NES'75</option>
+                  <option value="undp">UNDP</option>
+                  <option value="ip_journalism">IP (Journalism)</option>
+                  <option value="ip_photojournalism">IP (Photojournalism)</option>
+                </select>
+
+                {/* Status Filter */}
+                <select
+                  value={matrixStatusFilter}
+                  onChange={(e) => setMatrixStatusFilter(e.target.value)}
+                  className="bg-[#1A1F1A] border border-[#8A9A7E]/30 text-xs text-[#EDE6D3] px-3 py-2 outline-none focus:border-[#C9A86A] font-sans"
+                >
+                  <option value="all">All Seat Statuses</option>
+                  <option value="Available">Available Only</option>
+                  <option value="Assigned">Allotted / Assigned Only</option>
+                  <option value="Reserved">Reserved (Special EB) Only</option>
+                  <option value="Pending">Pending Only</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Matrix Table */}
+            <div className="bg-[#2E3B2F] border border-[#C9A86A]/40 overflow-hidden shadow-lg">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[1200px]">
+                  <thead>
+                    <tr className="border-b border-[#C9A86A]/30 bg-[#1A1F1A] font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                      <th className="p-3.5 pl-5 sticky left-0 bg-[#1A1F1A] z-10">
+                        Country / Portfolio
+                      </th>
+                      {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "uncopuos") && <th className="p-3 text-center">UNCOPUOS</th>}
+                      {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "unga") && <th className="p-3 text-center">UNGA (Online)</th>}
+                      {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "unhrc") && <th className="p-3 text-center">UNHRC</th>}
+                      {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "unodc") && <th className="p-3 text-center">UNODC</th>}
+                      {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "nes75") && <th className="p-3 text-center">NES'75</th>}
+                      {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "undp") && <th className="p-3 text-center">UNDP</th>}
+                      {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "ip_journalism") && <th className="p-3 text-center">IP (Journalism)</th>}
+                      {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "ip_photojournalism") && <th className="p-3 text-center">IP (Photo)</th>}
+                      <th className="p-3 text-right pr-5">Quick Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#C9A86A]/15 font-sans text-xs">
+                    {(() => {
+                      const list = COUNTRY_MATRIX.filter((row) => {
+                        const q = portfolioSearch.toLowerCase().trim();
+                        if (q) {
+                          const c = row.country.toLowerCase();
+                          const matches = c.includes(q) ||
+                            (q === "usa" && c.includes("united states")) ||
+                            (q === "uk" && c.includes("united kingdom")) ||
+                            (q === "uae" && c.includes("united arab emirates")) ||
+                            (q === "russia" && c.includes("russian federation"));
+                          if (!matches) return false;
+                        }
+
+                        if (matrixCommitteeFilter !== "all") {
+                          const status = getPortfolioStatus(row.country, matrixCommitteeFilter, (row as any)[matrixCommitteeFilter] || "N/A");
+                          if (status === "N/A") return false;
+                        }
+
+                        if (matrixStatusFilter !== "all") {
+                          const committeesToCheck = matrixCommitteeFilter !== "all" 
+                            ? [matrixCommitteeFilter] 
+                            : ["uncopuos", "unga", "unhrc", "unodc", "nes75", "undp", "ip_journalism", "ip_photojournalism"];
+                          const hasStatus = committeesToCheck.some(comm => {
+                            const status = getPortfolioStatus(row.country, comm, (row as any)[comm] || "N/A");
+                            return status === matrixStatusFilter;
+                          });
+                          if (!hasStatus) return false;
+                        }
+
+                        return true;
+                      });
+
+                      if (list.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={10} className="p-8 text-center text-[#8A9A7E] font-mono text-xs">
+                              No portfolios match the specified filters. Try adjusting your search query or status filter.
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return list.map((row) => (
+                        <tr key={row.country} className="hover:bg-[#1A1F1A]/50 transition-colors">
+                          <td className="p-3.5 pl-5 font-bold text-[#EDE6D3] whitespace-nowrap sticky left-0 bg-[#2E3B2F] z-10 border-r border-[#C9A86A]/20">
+                            {row.country}
+                          </td>
+                          {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "uncopuos") && (
+                            <td className="p-2.5 text-center">
+                              <PortfolioStatusSelector
+                                country={row.country}
+                                committee="uncopuos"
+                                currentStatus={getPortfolioStatus(row.country, "uncopuos", row.uncopuos || "Available")}
+                                onUpdate={updatePortfolioStatus}
+                              />
+                            </td>
+                          )}
+                          {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "unga") && (
+                            <td className="p-2.5 text-center">
+                              <PortfolioStatusSelector
+                                country={row.country}
+                                committee="unga"
+                                currentStatus={getPortfolioStatus(row.country, "unga", row.unga || "Available")}
+                                onUpdate={updatePortfolioStatus}
+                              />
+                            </td>
+                          )}
+                          {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "unhrc") && (
+                            <td className="p-2.5 text-center">
+                              <PortfolioStatusSelector
+                                country={row.country}
+                                committee="unhrc"
+                                currentStatus={getPortfolioStatus(row.country, "unhrc", row.unhrc || "Available")}
+                                onUpdate={updatePortfolioStatus}
+                              />
+                            </td>
+                          )}
+                          {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "unodc") && (
+                            <td className="p-2.5 text-center">
+                              <PortfolioStatusSelector
+                                country={row.country}
+                                committee="unodc"
+                                currentStatus={getPortfolioStatus(row.country, "unodc", row.unodc || "Available")}
+                                onUpdate={updatePortfolioStatus}
+                              />
+                            </td>
+                          )}
+                          {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "nes75") && (
+                            <td className="p-2.5 text-center">
+                              <PortfolioStatusSelector
+                                country={row.country}
+                                committee="nes75"
+                                currentStatus={getPortfolioStatus(row.country, "nes75", row.nes75 || "Reserved")}
+                                onUpdate={updatePortfolioStatus}
+                              />
+                            </td>
+                          )}
+                          {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "undp") && (
+                            <td className="p-2.5 text-center">
+                              <PortfolioStatusSelector
+                                country={row.country}
+                                committee="undp"
+                                currentStatus={getPortfolioStatus(row.country, "undp", row.undp || "Available")}
+                                onUpdate={updatePortfolioStatus}
+                              />
+                            </td>
+                          )}
+                          {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "ip_journalism") && (
+                            <td className="p-2.5 text-center">
+                              <PortfolioStatusSelector
+                                country={row.country}
+                                committee="ip_journalism"
+                                currentStatus={getPortfolioStatus(row.country, "ip_journalism", row.ip_journalism || "N/A")}
+                                onUpdate={updatePortfolioStatus}
+                              />
+                            </td>
+                          )}
+                          {(matrixCommitteeFilter === "all" || matrixCommitteeFilter === "ip_photojournalism") && (
+                            <td className="p-2.5 text-center">
+                              <PortfolioStatusSelector
+                                country={row.country}
+                                committee="ip_photojournalism"
+                                currentStatus={getPortfolioStatus(row.country, "ip_photojournalism", row.ip_photojournalism || "N/A")}
+                                onUpdate={updatePortfolioStatus}
+                              />
+                            </td>
+                          )}
+                          <td className="p-2.5 text-right pr-5 whitespace-nowrap">
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const targetComm = matrixCommitteeFilter !== "all" ? matrixCommitteeFilter : "uncopuos";
+                                  updatePortfolioStatus(row.country, targetComm, "Reserved");
+                                }}
+                                className="px-2 py-0.5 bg-[#1A1F1A] border border-amber-500/40 hover:bg-amber-950/40 text-amber-300 text-[9px] font-mono uppercase cursor-pointer"
+                                title="Reserve this seat for Special EB"
+                              >
+                                Reserve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const targetComm = matrixCommitteeFilter !== "all" ? matrixCommitteeFilter : "uncopuos";
+                                  updatePortfolioStatus(row.country, targetComm, "Assigned");
+                                }}
+                                className="px-2 py-0.5 bg-[#1A1F1A] border border-rose-500/40 hover:bg-rose-950/40 text-rose-300 text-[9px] font-mono uppercase cursor-pointer"
+                                title="Allot / Assign this seat"
+                              >
+                                Allot
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const targetComm = matrixCommitteeFilter !== "all" ? matrixCommitteeFilter : "uncopuos";
+                                  updatePortfolioStatus(row.country, targetComm, "Available");
+                                }}
+                                className="px-2 py-0.5 bg-[#1A1F1A] border border-[#8A9A7E]/40 hover:border-[#C9A86A] text-[#EDE6D3] text-[9px] font-mono uppercase cursor-pointer"
+                                title="Make this seat Available"
+                              >
+                                Available
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            SUB-TAB: DIPLOMACY WORKSHOP REGISTRATIONS
+           ======================================================== */}
+        {activeSubTab === "workshop" && (
+          <div className="space-y-6 animate-fade-in text-left">
 
             {/* Section 2: Workshop Candidate Registrations */}
             <div className="space-y-6">
@@ -6082,7 +7078,7 @@ export default function AdminDashboard() {
                         {collectionCounts.country_matrix ?? "..."} docs
                       </span>
                     </div>
-                    <h4 className="font-serif text-lg text-[#EDE6D3]">Master Country Matrix (193 Nations)</h4>
+                    <h4 className="font-serif text-lg text-[#EDE6D3]">Master Country Matrix ({COUNTRY_MATRIX.length} Portfolios)</h4>
                     <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
                       Complete baseline portfolio seats across UNCOPUOS, UNHRC, UNODC, NES'75, UNGA, UNDP, and IP. Rendered live in <code className="text-[#C9A86A]">CountryMatrix.tsx</code> and merged with dynamic reservation states in <code className="text-[#C9A86A]">portfolio_states</code>.
                     </p>
@@ -8670,6 +9666,556 @@ export default function AdminDashboard() {
                   className="px-4 py-2 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#EDE6D3] text-xs font-sans uppercase tracking-wider cursor-pointer hover:border-[#C9A86A]"
                 >
                   Close Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            SCHOOL ROUND: CANDIDATE DOSSIER DRAWER
+           ======================================================== */}
+        {selectedSchoolReg && (
+          <div className="fixed inset-0 z-[110] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in text-left">
+            <div className="flex min-h-full items-start sm:items-center justify-center p-3 sm:p-4 text-center">
+              <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-3xl w-full p-6 sm:p-8 text-left relative shadow-2xl my-6">
+                
+                {/* Header */}
+                <div className="flex items-start justify-between border-b border-[#C9A86A]/30 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                        // SCHOOL ROUND DOSSIER
+                      </span>
+                      <span className="font-mono text-xs text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 px-2 py-0.5 font-bold">
+                        {selectedSchoolReg.id || selectedSchoolReg.uid}
+                      </span>
+                      <span className={`px-2 py-0.5 text-[9px] font-sans font-bold uppercase tracking-wider border ${
+                        selectedSchoolReg.status === "Registration Confirmed"
+                          ? "bg-emerald-950/60 text-emerald-400 border-emerald-500/40"
+                          : selectedSchoolReg.status === "Portfolio Allotted"
+                          ? "bg-[#C9A86A]/20 text-[#C9A86A] border-[#C9A86A]/40"
+                          : selectedSchoolReg.status === "Waitlisted"
+                          ? "bg-amber-950/60 text-amber-300 border-amber-500/40"
+                          : selectedSchoolReg.status === "Rejected"
+                          ? "bg-rose-950/60 text-rose-400 border-rose-500/40"
+                          : "bg-[#1A1F1A] text-[#EDE6D3] border-[#8A9A7E]/40"
+                      }`}>
+                        {selectedSchoolReg.status || "Pending Verification"}
+                      </span>
+                      <span className="px-2 py-0.5 text-[8px] font-mono font-bold bg-[#C9A86A]/20 border border-[#C9A86A]/50 text-[#C9A86A]">
+                        ₹{selectedSchoolReg.feeAmount || (selectedSchoolReg.attendingSocials ? 1148 : 999)}
+                      </span>
+                      {selectedSchoolReg.attendingSocials && (
+                        <span className="px-2 py-0.5 text-[8px] font-sans font-bold uppercase tracking-wider bg-purple-950/60 border border-purple-500/40 text-purple-300">
+                          + SOCIALS NIGHT
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                      {selectedSchoolReg.name}
+                    </h3>
+                    <p className="font-sans text-xs text-[#8A9A7E] mt-0.5">
+                      Submitted on: {selectedSchoolReg.timestamp || "N/A"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedSchoolReg(null)}
+                    className="p-1.5 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#8A9A7E] hover:text-[#EDE6D3] hover:border-[#C9A86A] transition-colors cursor-pointer shrink-0"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Dossier Body */}
+                <div className="mt-6 space-y-6 max-h-[68vh] overflow-y-auto pr-2 scrollbar-thin">
+                  
+                  {/* Academic & School Info */}
+                  <div className="bg-[#1A1F1A] border border-[#C9A86A]/30 p-4 space-y-3">
+                    <span className="text-[10px] font-mono text-[#C9A86A] uppercase tracking-wider font-bold block">
+                      School &amp; Academic Verification
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">School Name</span>
+                        <span className="font-semibold text-[#EDE6D3]">{selectedSchoolReg.institution}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Class / Grade</span>
+                        <span className="font-bold text-[#C9A86A]">{selectedSchoolReg.classGrade}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Roll / Admission No.</span>
+                        <span className="font-mono text-[#EDE6D3]">{selectedSchoolReg.rollNumber || "Not Provided"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Personal & Contact Details */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4 space-y-2 text-xs">
+                      <span className="text-[10px] font-mono text-[#C9A86A] uppercase tracking-wider font-bold block mb-2">
+                        Student Contact
+                      </span>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block">Email:</span>
+                        <a href={`mailto:${selectedSchoolReg.email}`} className="text-[#EDE6D3] hover:text-[#C9A86A] underline">
+                          {selectedSchoolReg.email}
+                        </a>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block">Phone / WhatsApp:</span>
+                        <a href={`tel:${selectedSchoolReg.phone}`} className="text-[#C9A86A]">
+                          {selectedSchoolReg.phone}
+                        </a>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block">Gender &amp; DOB:</span>
+                        <span className="text-[#EDE6D3]">{selectedSchoolReg.gender} &bull; {selectedSchoolReg.dob}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block">City &amp; State:</span>
+                        <span className="text-[#EDE6D3]">{selectedSchoolReg.cityState}</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4 space-y-2 text-xs">
+                      <span className="text-[10px] font-mono text-[#C9A86A] uppercase tracking-wider font-bold block mb-2">
+                        Emergency &amp; Guardian Contact
+                      </span>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block">Parent / Guardian:</span>
+                        <span className="text-[#EDE6D3] font-semibold">{selectedSchoolReg.emergencyContactName}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block">Relationship:</span>
+                        <span className="text-[#EDE6D3]">{selectedSchoolReg.emergencyContactRelation}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block">Emergency Phone:</span>
+                        <a href={`tel:${selectedSchoolReg.emergencyContactPhone}`} className="text-[#C9A86A] font-mono">
+                          {selectedSchoolReg.emergencyContactPhone}
+                        </a>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block">Accommodation:</span>
+                        <span className={`font-mono font-bold ${selectedSchoolReg.accommodationRequired === "yes" ? "text-amber-300" : "text-[#8A9A7E]"}`}>
+                          {selectedSchoolReg.accommodationRequired === "yes" ? "YES (Required)" : "NO"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mandatory Identity Clearance Documents */}
+                  <div className="bg-[#1A1F1A] border-2 border-[#C9A86A]/40 p-4 space-y-3">
+                    <span className="text-[10px] font-mono text-[#C9A86A] uppercase tracking-wider font-bold block">
+                      Mandatory Identification Documents (Aadhaar &amp; School ID)
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Aadhaar Document */}
+                      <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]/30 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-[#EDE6D3] flex items-center gap-1.5">
+                            <ShieldCheck className="h-4 w-4 text-[#C9A86A]" />
+                            <span>Aadhaar / Passport</span>
+                          </span>
+                          <span className="font-mono text-[10px] text-[#C9A86A]">{selectedSchoolReg.aadharNumber}</span>
+                        </div>
+                        {selectedSchoolReg.aadharPhotoUrl ? (
+                          <button
+                            onClick={() => setViewProofModal({
+                              url: selectedSchoolReg.aadharPhotoUrl,
+                              name: selectedSchoolReg.aadharPhotoName || "Aadhaar Card",
+                              candidateName: selectedSchoolReg.name
+                            })}
+                            className="w-full py-2 bg-[#1A1F1A] border border-[#C9A86A]/50 hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-[#C9A86A] text-xs font-mono font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>Inspect Aadhaar / Passport Document</span>
+                          </button>
+                        ) : (
+                          <p className="text-xs text-rose-400 italic">No document uploaded</p>
+                        )}
+                      </div>
+
+                      {/* School ID Card Document */}
+                      <div className="p-3 bg-[#2E3B2F] border border-blue-400/30 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-[#EDE6D3] flex items-center gap-1.5">
+                            <School className="h-4 w-4 text-blue-300" />
+                            <span>Official School ID Card</span>
+                          </span>
+                          <span className="font-mono text-[10px] text-blue-300">Mandatory</span>
+                        </div>
+                        {selectedSchoolReg.idCardUrl ? (
+                          <button
+                            onClick={() => setViewProofModal({
+                              url: selectedSchoolReg.idCardUrl,
+                              name: selectedSchoolReg.idCardName || "School ID Card",
+                              candidateName: selectedSchoolReg.name
+                            })}
+                            className="w-full py-2 bg-[#1A1F1A] border border-blue-400/50 hover:bg-blue-400 hover:text-[#1A1F1A] text-blue-300 text-xs font-mono font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>Inspect School ID Document</span>
+                          </button>
+                        ) : (
+                          <p className="text-xs text-rose-400 italic">No school ID uploaded</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fee Payment & Transaction Credentials */}
+                  <div className="bg-[#1A1F1A] border-2 border-[#C9A86A]/40 p-4 space-y-3">
+                    <div className="flex items-center justify-between border-b border-[#C9A86A]/20 pb-2">
+                      <span className="text-[10px] font-mono text-[#C9A86A] uppercase tracking-wider font-bold flex items-center gap-1.5">
+                        <CreditCard className="h-3.5 w-3.5 text-[#C9A86A]" />
+                        Fee Assessment &amp; UPI Payment Credentials
+                      </span>
+                      <span className="font-mono text-sm font-bold text-[#C9A86A]">
+                        ₹{selectedSchoolReg.feeAmount || (selectedSchoolReg.attendingSocials ? 1148 : 999)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Base Registration</span>
+                        <span className="text-[#EDE6D3] font-semibold">₹999</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Socials Night</span>
+                        <span className={`font-semibold ${selectedSchoolReg.attendingSocials ? "text-purple-300 font-bold" : "text-[#8A9A7E]"}`}>
+                          {selectedSchoolReg.attendingSocials ? "Attending (+₹149)" : "Not Opted"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Payment Mode</span>
+                        <span className="text-[#EDE6D3] font-mono">{selectedSchoolReg.paymentMode || "UPI"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Payment Date</span>
+                        <span className="text-[#EDE6D3] font-mono">{selectedSchoolReg.paymentDate || "N/A"}</span>
+                      </div>
+                    </div>
+
+                    {/* UTR / Transaction ID */}
+                    <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] uppercase block font-mono">12-Digit UTR / Transaction Reference</span>
+                        <span className="font-mono text-xs font-bold text-[#C9A86A]">
+                          {selectedSchoolReg.utrNumber || selectedSchoolReg.transactionId || "Not Provided / Pending"}
+                        </span>
+                      </div>
+                      {selectedSchoolReg.paymentScreenshotUrl && (
+                        <button
+                          onClick={() => setViewProofModal({
+                            url: selectedSchoolReg.paymentScreenshotUrl!,
+                            name: selectedSchoolReg.paymentScreenshotName || "Payment Receipt",
+                            utr: selectedSchoolReg.utrNumber || selectedSchoolReg.transactionId,
+                            candidateName: selectedSchoolReg.name
+                          })}
+                          className="px-3 py-1.5 bg-[#1A1F1A] border border-emerald-500/50 hover:bg-emerald-500 hover:text-[#1A1F1A] text-emerald-400 text-xs font-mono font-semibold transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+                        >
+                          <CreditCard className="h-3.5 w-3.5" />
+                          <span>Inspect Payment Receipt</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 3 Ranked Committee & Portfolio Preferences */}
+                  <div className="bg-[#1A1F1A] border border-[#C9A86A]/30 p-4 space-y-3">
+                    <span className="text-[10px] font-mono text-[#C9A86A] uppercase tracking-wider font-bold block">
+                      3 Committee &amp; Portfolio Preferences (Dropdown Selections)
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]">
+                        <span className="text-[9px] font-mono text-[#C9A86A] uppercase font-bold block">1st Preference</span>
+                        <span className="font-bold text-[#EDE6D3] uppercase text-sm block mt-1">
+                          {selectedSchoolReg.pref1Committee}
+                        </span>
+                        <span className="text-[#8A9A7E] text-[11px] block mt-0.5">
+                          Portfolio: <strong className="text-[#EDE6D3]">{selectedSchoolReg.pref1Country || "N/A"}</strong>
+                        </span>
+                      </div>
+
+                      <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]/40">
+                        <span className="text-[9px] font-mono text-[#8A9A7E] uppercase font-bold block">2nd Preference</span>
+                        <span className="font-bold text-[#EDE6D3] uppercase text-sm block mt-1">
+                          {selectedSchoolReg.pref2Committee}
+                        </span>
+                        <span className="text-[#8A9A7E] text-[11px] block mt-0.5">
+                          Portfolio: <strong className="text-[#EDE6D3]">{selectedSchoolReg.pref2Country || "N/A"}</strong>
+                        </span>
+                      </div>
+
+                      <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]/40">
+                        <span className="text-[9px] font-mono text-[#8A9A7E] uppercase font-bold block">3rd Preference</span>
+                        <span className="font-bold text-[#EDE6D3] uppercase text-sm block mt-1">
+                          {selectedSchoolReg.pref3Committee}
+                        </span>
+                        <span className="text-[#8A9A7E] text-[11px] block mt-0.5">
+                          Portfolio: <strong className="text-[#EDE6D3]">{selectedSchoolReg.pref3Country || "N/A"}</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    {selectedSchoolReg.allottedCommittee && (
+                      <div className="mt-3 p-3 bg-emerald-950/40 border border-emerald-500/50 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] font-mono text-emerald-400 uppercase font-bold block">
+                            Allotted Simulation Chamber:
+                          </span>
+                          <span className="font-serif text-base text-[#EDE6D3] font-bold">
+                            {selectedSchoolReg.allottedCommittee.toUpperCase()} &bull; {selectedSchoolReg.allottedCountry}
+                          </span>
+                        </div>
+                        {selectedSchoolReg.adminNotes && (
+                          <span className="text-xs text-[#8A9A7E] font-mono">Note: {selectedSchoolReg.adminNotes}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Motivation / Statement of Purpose */}
+                  {selectedSchoolReg.motivation && (
+                    <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4 space-y-1 text-xs">
+                      <span className="text-[10px] font-mono text-[#8A9A7E] uppercase block">Statement of Purpose / Motivation</span>
+                      <p className="text-[#EDE6D3]/90 leading-relaxed italic">
+                        &ldquo;{selectedSchoolReg.motivation}&rdquo;
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Actions / Allotment in Modal */}
+                  <div className="border-t border-[#C9A86A]/30 pt-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-[#8A9A7E] font-sans">Set Status:</span>
+                      {(["Pending Verification", "Registration Confirmed", "Portfolio Allotted", "Waitlisted", "Rejected"] as const).map(statusOption => (
+                        <button
+                          key={statusOption}
+                          disabled={isUpdatingSchoolStatus}
+                          onClick={() => handleUpdateSchoolStatus(selectedSchoolReg.uid || selectedSchoolReg.id || "", statusOption)}
+                          className={`px-2 py-1 text-[9px] font-sans font-bold uppercase tracking-wider border cursor-pointer ${
+                            selectedSchoolReg.status === statusOption
+                              ? "bg-[#C9A86A] text-[#1A1F1A] border-[#C9A86A]"
+                              : "bg-[#1A1F1A] text-[#8A9A7E] border-[#8A9A7E]/30 hover:border-[#C9A86A] hover:text-[#EDE6D3]"
+                          }`}
+                        >
+                          {statusOption}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setAllotSchoolModalReg(selectedSchoolReg);
+                        setAllotSchoolForm({
+                          committee: selectedSchoolReg.allottedCommittee || selectedSchoolReg.pref1Committee || "uncopuos",
+                          country: selectedSchoolReg.allottedCountry || selectedSchoolReg.pref1Country || "",
+                          adminNotes: selectedSchoolReg.adminNotes || ""
+                        });
+                      }}
+                      className="px-4 py-2 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5 shadow"
+                    >
+                      <Compass className="h-4 w-4" />
+                      <span>Allot Portfolio</span>
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            SCHOOL ROUND: PORTFOLIO ALLOTMENT MODAL
+           ======================================================== */}
+        {allotSchoolModalReg && (
+          <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in flex items-center justify-center p-4">
+            <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-md w-full p-6 text-left relative shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[#C9A86A]/30 pb-3">
+                <div>
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold block">
+                    // SECRETARIAT SCHOOL ALLOTMENT DESK
+                  </span>
+                  <h4 className="font-serif text-xl text-[#EDE6D3]">
+                    Allot Council Portfolio
+                  </h4>
+                  <span className="font-sans text-xs text-[#8A9A7E]">
+                    Student: <strong className="text-[#EDE6D3]">{allotSchoolModalReg.name}</strong> ({allotSchoolModalReg.institution})
+                  </span>
+                </div>
+                <button
+                  onClick={() => setAllotSchoolModalReg(null)}
+                  className="p-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#8A9A7E] hover:text-[#EDE6D3] hover:border-[#C9A86A] cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Preferences Reference with quick-apply buttons */}
+              <div className="mt-4 p-3 bg-[#1A1F1A] border border-[#8A9A7E]/20 text-xs">
+                <span className="text-[10px] font-mono text-[#C9A86A] uppercase block mb-1.5 font-bold">Student 3 Preferences (Click to Quick-Allot):</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[#EDE6D3]">
+                    <span><strong className="text-[#C9A86A]">1st:</strong> {allotSchoolModalReg.pref1Committee?.toUpperCase()} &mdash; {allotSchoolModalReg.pref1Country || "Any"}</span>
+                    {allotSchoolModalReg.pref1Country && (
+                      <button
+                        type="button"
+                        onClick={() => setAllotSchoolForm({
+                          committee: allotSchoolModalReg.pref1Committee || allotSchoolForm.committee,
+                          country: allotSchoolModalReg.pref1Country,
+                          adminNotes: "Allotted 1st Preference"
+                        })}
+                        className="px-2 py-0.5 text-[9px] font-mono uppercase bg-[#2E3B2F] border border-[#C9A86A] text-[#C9A86A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] cursor-pointer"
+                      >
+                        Use 1st
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-[#8A9A7E]">
+                    <span><strong className="text-[#8A9A7E]">2nd:</strong> {allotSchoolModalReg.pref2Committee?.toUpperCase()} &mdash; {allotSchoolModalReg.pref2Country || "Any"}</span>
+                    {allotSchoolModalReg.pref2Country && (
+                      <button
+                        type="button"
+                        onClick={() => setAllotSchoolForm({
+                          committee: allotSchoolModalReg.pref2Committee || allotSchoolForm.committee,
+                          country: allotSchoolModalReg.pref2Country,
+                          adminNotes: "Allotted 2nd Preference"
+                        })}
+                        className="px-2 py-0.5 text-[9px] font-mono uppercase bg-[#2E3B2F] border border-[#8A9A7E]/50 text-[#8A9A7E] hover:border-[#C9A86A] hover:text-[#EDE6D3] cursor-pointer"
+                      >
+                        Use 2nd
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-[#8A9A7E]">
+                    <span><strong className="text-[#8A9A7E]">3rd:</strong> {allotSchoolModalReg.pref3Committee?.toUpperCase()} &mdash; {allotSchoolModalReg.pref3Country || "Any"}</span>
+                    {allotSchoolModalReg.pref3Country && (
+                      <button
+                        type="button"
+                        onClick={() => setAllotSchoolForm({
+                          committee: allotSchoolModalReg.pref3Committee || allotSchoolForm.committee,
+                          country: allotSchoolModalReg.pref3Country,
+                          adminNotes: "Allotted 3rd Preference"
+                        })}
+                        className="px-2 py-0.5 text-[9px] font-mono uppercase bg-[#2E3B2F] border border-[#8A9A7E]/50 text-[#8A9A7E] hover:border-[#C9A86A] hover:text-[#EDE6D3] cursor-pointer"
+                      >
+                        Use 3rd
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Allotment Form */}
+              <div className="mt-4 space-y-3.5">
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                    Select Allotted Committee *
+                  </label>
+                  <select
+                    value={allotSchoolForm.committee}
+                    onChange={(e) => setAllotSchoolForm({ ...allotSchoolForm, committee: e.target.value })}
+                    className="w-full bg-[#1A1F1A] border border-[#C9A86A]/40 text-[#EDE6D3] px-3 py-2 text-xs focus:outline-none uppercase"
+                  >
+                    <option value="uncopuos">UNCOPUOS</option>
+                    <option value="unhrc">UNHRC</option>
+                    <option value="unodc">UNODC</option>
+                    <option value="nes75">NES'75</option>
+                    <option value="undp">UNDP</option>
+                    <option value="ip_journalism">IP (Journalism)</option>
+                    <option value="ip_photojournalism">IP (Photojournalism)</option>
+                    <option value="unga">UNGA (Online)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block">
+                      Allotted Country / Delegation Portfolio *
+                    </label>
+                    <span className="text-[9px] font-mono text-[#C9A86A]">
+                      {getAvailablePortfoliosForCommittee(allotSchoolForm.committee, portfolioOverrides, COUNTRY_MATRIX).length} Available in Matrix
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    list="allot-school-available-portfolios"
+                    value={allotSchoolForm.country}
+                    onChange={(e) => setAllotSchoolForm({ ...allotSchoolForm, country: e.target.value })}
+                    placeholder="Type or pick available portfolio..."
+                    className="w-full bg-[#1A1F1A] border border-[#C9A86A]/40 text-[#EDE6D3] px-3 py-2 text-xs focus:outline-none"
+                  />
+                  <datalist id="allot-school-available-portfolios">
+                    {getAvailablePortfoliosForCommittee(allotSchoolForm.committee, portfolioOverrides, COUNTRY_MATRIX).map(p => (
+                      <option key={p} value={p} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-[#8A9A7E] block mb-1">
+                    Secretariat Administrative Notes
+                  </label>
+                  <input
+                    type="text"
+                    value={allotSchoolForm.adminNotes}
+                    onChange={(e) => setAllotSchoolForm({ ...allotSchoolForm, adminNotes: e.target.value })}
+                    placeholder="e.g. Direct allotment based on 1st preference"
+                    className="w-full bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#EDE6D3] px-3 py-2 text-xs focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-[#C9A86A]/20 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAllotSchoolModalReg(null)}
+                  className="px-4 py-2 border border-[#8A9A7E]/30 text-[#8A9A7E] hover:text-[#EDE6D3] text-xs uppercase"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isUpdatingSchoolStatus || !allotSchoolForm.country.trim()}
+                  onClick={handleSaveSchoolAllotment}
+                  className="px-5 py-2 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-bold text-xs uppercase shadow disabled:opacity-50"
+                >
+                  Confirm Allotment
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            SCHOOL ROUND: DELETE CONFIRMATION MODAL
+           ======================================================== */}
+        {confirmSchoolDeleteId && (
+          <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in flex items-center justify-center p-4">
+            <div className="bg-[#2E3B2F] border-2 border-rose-500/50 max-w-sm w-full p-6 text-center relative shadow-2xl">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center bg-[#1A1F1A] border border-rose-500/40 text-rose-400 mb-4">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h3 className="font-serif text-xl font-normal text-[#EDE6D3]">Purge School Registration?</h3>
+              <p className="mt-2 font-sans text-[#8A9A7E] text-xs leading-relaxed">
+                Are you certain you want to remove school round registration <strong className="text-[#EDE6D3] font-mono">{confirmSchoolDeleteId}</strong>? This action will permanently remove it from Firestore and the server backup.
+              </p>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setConfirmSchoolDeleteId(null)}
+                  className="flex-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] py-2 text-xs font-semibold uppercase tracking-wider text-[#EDE6D3] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleSchoolDelete(confirmSchoolDeleteId, confirmSchoolDeleteId)}
+                  className="flex-1 bg-rose-700 hover:bg-rose-600 py-2 text-xs font-semibold uppercase tracking-wider text-white shadow-md cursor-pointer"
+                >
+                  Purge
                 </button>
               </div>
             </div>

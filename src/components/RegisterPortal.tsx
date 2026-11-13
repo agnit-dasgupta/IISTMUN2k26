@@ -33,34 +33,32 @@ import { CampusAmbassadorRegistration } from "../types";
 import FileUploadZone from "./FileUploadZone";
 import { motion, AnimatePresence } from "motion/react";
 import Registration, { PRIORITY_REGISTRATIONS_OPEN } from "./Registration";
+import SchoolRegistration from "./SchoolRegistration";
 import UNGARegistration from "./UNGARegistration";
+import { School } from "lucide-react";
 
 export const EB_REGISTRATIONS_OPEN = false;
 
 interface RegisterPortalProps {
-  initialPortalTab?: "priority" | "unga" | "campus-ambassador" | "eb";
+  initialPortalTab?: "school" | "priority" | "unga" | "campus-ambassador" | "eb";
   initialPreference?: { country?: string; committee: string } | null;
   clearInitialPreference?: () => void;
   setActiveTab: (tab: string) => void;
 }
 
 export default function RegisterPortal({
-  initialPortalTab = PRIORITY_REGISTRATIONS_OPEN ? "priority" : "unga",
+  initialPortalTab = "school",
   initialPreference,
   clearInitialPreference,
   setActiveTab
 }: RegisterPortalProps) {
   const { user } = useFirebase();
-  const [selectedForm, setSelectedForm] = useState<"priority" | "unga" | "campus-ambassador">(
+  const [selectedForm, setSelectedForm] = useState<"school" | "priority" | "unga" | "campus-ambassador">(
     initialPortalTab === "campus-ambassador"
       ? "campus-ambassador"
-      : initialPortalTab === "priority"
-        ? "priority"
-        : initialPortalTab === "unga"
-          ? "unga"
-          : PRIORITY_REGISTRATIONS_OPEN
-            ? "priority"
-            : "unga"
+      : initialPortalTab === "unga"
+        ? "unga"
+        : "school"
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
@@ -108,13 +106,9 @@ export default function RegisterPortal({
       setSelectedForm(
         initialPortalTab === "campus-ambassador"
           ? "campus-ambassador"
-          : initialPortalTab === "priority"
-            ? "priority"
-            : initialPortalTab === "unga"
-              ? "unga"
-              : PRIORITY_REGISTRATIONS_OPEN
-                ? "priority"
-                : "unga"
+          : initialPortalTab === "unga"
+            ? "unga"
+            : "school"
       );
     }
   }, [initialPortalTab]);
@@ -233,9 +227,7 @@ export default function RegisterPortal({
               CONVOCATION DISPATCH • 14TH EDITION
             </span>
             <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] border border-[#C9A86A]/40 bg-[#C9A86A]/10 px-2.5 py-1 font-semibold">
-              {PRIORITY_REGISTRATIONS_OPEN
-                ? "PRIORITY OPEN • UNGA (ONLINE) OPEN • CAMPUS AMBASSADOR OPEN"
-                : "PRIORITY ROUND CLOSED • UNGA (ONLINE) OPEN • CAMPUS AMBASSADOR OPEN"}
+              SCHOOL ROUND OPEN • UNGA (ONLINE) OPEN • CAMPUS AMBASSADOR OPEN
             </span>
           </div>
 
@@ -246,11 +238,7 @@ export default function RegisterPortal({
 
           <p className="font-sans text-xs sm:text-sm text-[#EDE6D3]/80 leading-relaxed font-light">
             Welcome to the official registration portal of <strong className="text-[#EDE6D3]">IIST Model United Nations 2027</strong>.
-            {PRIORITY_REGISTRATIONS_OPEN ? (
-              <> Priority delegate applications for on-campus chambers and <span className="text-[#C9A86A] font-medium">UNGA (Online Committee)</span> registrations are now live with rolling portfolio allotments. You can also join the prestigious <span className="text-[#8BA06F] font-medium">Campus Ambassador Network</span> to represent IISTMUN at your academic institution.</>
-            ) : (
-              <> Priority Round delegate registrations for on-campus chambers have concluded. <span className="text-[#C9A86A] font-medium">UNGA (Online Committee)</span> registrations remain live with rolling portfolio allotments, and you can also join the prestigious <span className="text-[#8BA06F] font-medium">Campus Ambassador Network</span> to represent IISTMUN at your academic institution.</>
-            )}
+            School delegate applications for secondary students (Classes 8&ndash;12, ₹999 / ₹1,148 with socials) and <span className="text-[#C9A86A] font-medium">UNGA (Online Committee)</span> registrations are now live with rolling portfolio allotments. You can also join the prestigious <span className="text-[#8BA06F] font-medium">Campus Ambassador Network</span> to represent IISTMUN at your academic institution.
           </p>
 
           <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-mono text-[#8A9A7E]">
@@ -277,45 +265,37 @@ export default function RegisterPortal({
 
       {/* Triad Selector Tabs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
-        {/* Section A: Priority Registrations (On-Campus) */}
+        {/* Section A: School Round Registrations (On-Campus) */}
         <button
           type="button"
           onClick={() => {
-            setSelectedForm("priority");
+            setSelectedForm("school");
             setSubmittedCA(null);
           }}
-          className={`p-5 text-left border transition-all duration-200 cursor-pointer relative ${selectedForm === "priority"
+          className={`p-5 text-left border transition-all duration-200 cursor-pointer relative ${selectedForm === "school" || selectedForm === "priority"
             ? "border-[#C9A86A] bg-[#2E3B2F] shadow-lg"
             : "border-[#C9A86A]/20 bg-[#1A1F1A]/70 hover:border-[#C9A86A]/50 hover:bg-[#2E3B2F]/40"
             }`}
         >
           <div className="flex items-center justify-between mb-2">
-            <span className={`font-mono text-[9px] uppercase tracking-[0.2em] ${PRIORITY_REGISTRATIONS_OPEN ? "text-[#C9A86A]" : "text-[#8A9A7E]"}`}>
-              SECTION A &bull; ON-CAMPUS
+            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C9A86A]">
+              SECTION A &bull; SCHOOL ROUND
             </span>
             <div className="flex items-center gap-2">
-              {PRIORITY_REGISTRATIONS_OPEN ? (
-                <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-2 py-0.5">
-                  NOW OPEN
-                </span>
-              ) : (
-                <span className="font-mono text-[9px] uppercase tracking-wider text-rose-300 bg-rose-950/70 border border-rose-500/40 px-2 py-0.5">
-                  CLOSED
-                </span>
-              )}
-              <Sparkles className={`h-5 w-5 ${selectedForm === "priority" ? "text-[#C9A86A]" : "text-[#8A9A7E]"}`} />
+              <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-2 py-0.5">
+                NOW OPEN
+              </span>
+              <School className={`h-5 w-5 ${selectedForm === "school" || selectedForm === "priority" ? "text-[#C9A86A]" : "text-[#8A9A7E]"}`} />
             </div>
           </div>
           <h2 className="font-serif text-lg text-[#EDE6D3] font-medium block">
-            Priority Delegate Registration
+            School Delegate Registration
           </h2>
-          {!PRIORITY_REGISTRATIONS_OPEN && (
-            <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
-              Registrations closed &bull; Priority allotments &amp; dossier reviews underway.
-            </p>
-          )}
+          <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
+            Secondary students (Classes 8&ndash;12) &bull; ₹999 Base Fee &bull; Instant Pass.
+          </p>
 
-          {selectedForm === "priority" && (
+          {(selectedForm === "school" || selectedForm === "priority") && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#C9A86A]" />
           )}
         </button>
@@ -389,21 +369,13 @@ export default function RegisterPortal({
         </button>
       </div>
 
-      {/* SECTION A: PRIORITY REGISTRATION FORM / CLOSURE NOTICE */}
-      {selectedForm === "priority" && (
-        <Registration
+      {/* SECTION A: SCHOOL ROUND REGISTRATION FORM */}
+      {(selectedForm === "school" || selectedForm === "priority") && (
+        <SchoolRegistration
           embedded={true}
           initialPreference={initialPreference}
           clearInitialPreference={clearInitialPreference}
           setActiveTab={setActiveTab}
-          onSelectUnga={() => {
-            setSelectedForm("unga");
-            setSubmittedCA(null);
-          }}
-          onSelectCA={() => {
-            setSelectedForm("campus-ambassador");
-            setSubmittedCA(null);
-          }}
         />
       )}
 

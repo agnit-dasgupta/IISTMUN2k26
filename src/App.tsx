@@ -28,7 +28,7 @@ const getInitialTab = () => {
     const path = window.location.pathname.replace(/^\/+/, "").split("/")[0].toLowerCase();
     const validTabs = [
       "home", "secretariat", "committees", "matrix", "schedule", "faq",
-      "register-portal", "register-portal-priority", "register-portal-unga",
+      "register-portal", "register-portal-school", "register-school", "register-portal-priority", "register-portal-unga",
       "register-portal-eb", "register-portal-ca", "register", "register-unga",
       "workshop-register", "admin", "accommodation", "about"
     ];
@@ -87,16 +87,18 @@ export default function App() {
           if (committee === "unga") {
             handleTabChange("register-portal-unga");
           } else {
-            handleTabChange("register-portal-priority");
+            handleTabChange("register-portal-school");
           }
         }} />;
       case "schedule":
         return <Schedule />;
       case "faq":
         return <FAQs />;
+      case "register-portal-school":
+      case "register-school":
       case "register-portal-priority":
       case "register-portal-eb":
-        return <RegisterPortal initialPortalTab="priority" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={handleTabChange} />;
+        return <RegisterPortal initialPortalTab="school" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={handleTabChange} />;
       case "register-portal":
       case "register-portal-unga":
       case "register-unga":
@@ -237,9 +239,9 @@ export default function App() {
               <h4 className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-semibold">Registrations & Fellowship</h4>
               <ul className="space-y-2 font-sans text-xs text-[#8A9A7E]">
                 <li>
-                  <button onClick={() => { handleTabChange("register-portal-priority"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
-                    <span className="text-[#8A9A7E] group-hover:text-[#EDE6D3] transition-colors font-medium">Priority Registration</span>
-                    <span className="block text-[10px] text-rose-400/80">Closed &bull; Priority Round Concluded</span>
+                  <button onClick={() => { handleTabChange("register-portal-school"); handleScrollToTop(); }} className="text-left group cursor-pointer block">
+                    <span className="text-[#C9A86A] group-hover:text-[#EDE6D3] transition-colors font-medium">School Registration</span>
+                    <span className="block text-[10px] text-emerald-400">Now Open &bull; Zero Registration Fee</span>
                   </button>
                 </li>
                 <li>
