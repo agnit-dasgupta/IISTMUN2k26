@@ -954,7 +954,18 @@ export default function AdminDashboard() {
     if (!isAdmin) return;
 
     const mergeSchoolRecords = (baseList: SchoolRegistrationDetails[], backupList: any[] = []) => {
-      const combined = [...baseList];
+      const deduplicated: SchoolRegistrationDetails[] = [];
+      baseList.forEach((b) => {
+        const alreadyExists = deduplicated.some((c) =>
+          (c.id && b.id && c.id === b.id) ||
+          (c.uid && b.uid && c.uid === b.uid && c.name === b.name)
+        );
+        if (!alreadyExists) {
+          deduplicated.push(b);
+        }
+      });
+
+      const combined = [...deduplicated];
 
       backupList.forEach((b) => {
         if (!combined.some((c) => (c.id && c.id === b.id) || (c.uid && c.uid === b.id) || (c.userId && c.userId === b.userId))) {

@@ -61,6 +61,7 @@ export default function SchoolRegistration({
   const [step, setStep] = useState(1);
   const [copiedTicketId, setCopiedTicketId] = useState(false);
   const [submittedPass, setSubmittedPass] = useState<SchoolRegistrationDetails | null>(null);
+  const [viewingPass, setViewingPass] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDownloading, setIsDownloading] = useState(false);
   const boardingPassRef = useRef<HTMLDivElement>(null);
@@ -218,11 +219,25 @@ export default function SchoolRegistration({
         pref1Committee: initialPreference.committee || prev.pref1Committee,
         pref1Country: initialPreference.country || prev.pref1Country
       }));
+      setViewingPass(false);
       if (clearInitialPreference) {
         clearInitialPreference();
       }
     }
   }, [initialPreference, clearInitialPreference]);
+
+  // Check if existing registration exists in localStorage on initial mount
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem("iistmun_last_school_pass");
+      if (cached && !submittedPass) {
+        const parsed = JSON.parse(cached);
+        if (parsed && (parsed.id || parsed.name)) {
+          setSubmittedPass(parsed);
+        }
+      }
+    } catch { }
+  }, []);
 
   // Check if existing registration exists in Firestore or local API for this user
   useEffect(() => {
@@ -367,16 +382,20 @@ export default function SchoolRegistration({
     setLoading(true);
 
     const ticketId = `SCH-2027-${Math.floor(1000 + Math.random() * 9000)}`;
-    const timestamp = new Date().toLocaleString("en-US", {
+    const now = new Date();
+    const timestamp = now.toLocaleString("en-US", {
       dateStyle: "medium",
       timeStyle: "short"
     });
+    const isoDate = now.toISOString();
 
     const payload: SchoolRegistrationDetails = {
       id: ticketId,
-      uid: user?.uid,
+      uid: user?.uid || ticketId,
       userId: user?.uid || `guest-school-${Date.now()}`,
       timestamp,
+      createdAt: isoDate,
+      updatedAt: isoDate,
       round: "school",
       status: "Pending Verification",
 
@@ -384,30 +403,30 @@ export default function SchoolRegistration({
       name: formData.name.trim(),
       email: formData.email.trim().toLowerCase(),
       phone: formData.phone.trim(),
-      gender: formData.gender,
-      dob: formData.dob,
+      gender: formData.gender || "Prefer not to say",
+      dob: formData.dob || "",
       cityState: formData.cityState.trim(),
       fullAddress: formData.fullAddress.trim(),
 
       // Guardian
       emergencyContactName: formData.emergencyContactName.trim(),
-      emergencyContactRelation: formData.emergencyContactRelation,
+      emergencyContactRelation: formData.emergencyContactRelation || "Parent",
       emergencyContactPhone: formData.emergencyContactPhone.trim(),
 
       // Mandatory Identity & School Documents
       aadharNumber: formData.aadharNumber.trim(),
-      aadharPhotoUrl: formData.aadharPhotoUrl,
+      aadharPhotoUrl: formData.aadharPhotoUrl || "",
       aadharPhotoName: formData.aadharPhotoName || "Aadhaar_Passport.jpg",
-      idCardUrl: formData.idCardUrl,
+      idCardUrl: formData.idCardUrl || "",
       idCardName: formData.idCardName || "School_ID_Card.jpg",
 
       // Academic
       institution: formData.institution.trim(),
-      classGrade: formData.classGrade,
+      classGrade: formData.classGrade || "Class 11",
       rollNumber: formData.rollNumber.trim(),
 
       // MUN Experience
-      munExperience: formData.munExperience,
+      munExperience: formData.munExperience || "None",
       pastMunDetails: formData.pastMunDetails.trim(),
 
       // 3 Preferences (Dropdowns)
@@ -420,22 +439,31 @@ export default function SchoolRegistration({
       motivation: formData.motivation.trim(),
 
       // Logistics
-      accommodationRequired: formData.accommodationRequired,
+      accommodationRequired: formData.accommodationRequired || "no",
 
       // Delegate Socials & Fee Payment
       attendingSocials: Boolean(formData.attendingSocials),
       feeAmount: calculatedFee,
       paymentMode: formData.paymentMode || "UPI",
-      transactionId: formData.utrNumber.trim() || formData.transactionId.trim() || undefined,
-      utrNumber: formData.utrNumber.trim() || undefined,
-      paymentDate: formData.paymentDate || new Date().toISOString().slice(0, 10),
-      paymentScreenshotUrl: formData.paymentScreenshotUrl || undefined,
-      paymentScreenshotName: formData.paymentScreenshotName || undefined,
+      transactionId: (formData.utrNumber || formData.transactionId || "").trim(),
+      utrNumber: (formData.utrNumber || formData.transactionId || "").trim(),
+      payerName: formData.payerName.trim() || formData.name.trim(),
+      paymentDate: formData.paymentDate || isoDate.slice(0, 10),
+      paymentScreenshotUrl: formData.paymentScreenshotUrl || "",
+      paymentScreenshotName: formData.paymentScreenshotName || "",
       paymentStatus: (formData.utrNumber.trim() || formData.paymentScreenshotUrl) ? "Pending" : "Pending"
     };
 
+    // Strip any undefined keys so Firestore SDK never throws Unsupported field value: undefined
+    const cleanPayload: Record<string, any> = {};
+    for (const [key, val] of Object.entries(payload)) {
+      if (val !== undefined) {
+        cleanPayload[key] = val;
+      }
+    }
+
     // Check payload size limit
-    const payloadBytes = new Blob([JSON.stringify(payload)]).size;
+    const payloadBytes = new Blob([JSON.stringify(cleanPayload)]).size;
     if (payloadBytes > 1030000) {
       alert(
         `Application payload (${(payloadBytes / 1024 / 1024).toFixed(2)} MB) exceeds the Firestore document limit (1 MB). ` +
@@ -451,24 +479,43 @@ export default function SchoolRegistration({
         await fetch("/api/school-registrations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(cleanPayload)
         });
       } catch (backupErr) {
         console.warn("Local school registrations API write notice:", backupErr);
       }
 
       // 2. Persist in dedicated Firestore 'school_registrations' collection
+      let firestoreWriteSuccess = false;
       try {
-        await setDoc(doc(db, "school_registrations", ticketId), payload);
-        if (user?.uid) {
-          await setDoc(doc(db, "school_registrations", user.uid), payload);
-        }
-        console.log("[FIREBASE SUCCESS] School registration persisted to school_registrations:", ticketId);
+        await setDoc(doc(db, "school_registrations", ticketId), cleanPayload);
+        firestoreWriteSuccess = true;
+        console.log("[FIREBASE SUCCESS] School registration persisted to school_registrations by ticketId:", ticketId);
       } catch (firestoreErr: any) {
-        console.error("Firestore 'school_registrations' write error:", firestoreErr);
+        console.error("Firestore 'school_registrations' ticketId write error:", firestoreErr);
       }
 
-      setSubmittedPass(payload);
+      if (user?.uid) {
+        try {
+          await setDoc(doc(db, "school_registrations", user.uid), cleanPayload);
+          firestoreWriteSuccess = true;
+          console.log("[FIREBASE SUCCESS] School registration persisted to school_registrations by uid:", user.uid);
+        } catch (uidErr: any) {
+          console.error("Firestore 'school_registrations' uid write error:", uidErr);
+        }
+      }
+
+      if (!firestoreWriteSuccess) {
+        console.warn("[FIREBASE WARNING] Cloud Firestore write did not complete immediately; cached in local backup table.");
+      }
+
+      // 3. Cache locally in localStorage for persistent session
+      try {
+        localStorage.setItem("iistmun_last_school_pass", JSON.stringify(cleanPayload));
+      } catch { }
+
+      setSubmittedPass(cleanPayload as SchoolRegistrationDetails);
+      setViewingPass(true);
       window.scrollTo({ top: 100, behavior: "smooth" });
     } catch (err: any) {
       console.error("Submission failed:", err);
@@ -511,25 +558,39 @@ export default function SchoolRegistration({
     }
   };
 
-  // If already registered and submitted pass exists, show boarding pass view
-  if (submittedPass) {
+  // If user requested to view boarding pass and a submitted pass exists, show boarding pass view
+  if (viewingPass && submittedPass) {
     const p1 = COMMITTEES.find(c => c.id === submittedPass.pref1Committee);
     const p2 = COMMITTEES.find(c => c.id === submittedPass.pref2Committee);
     const p3 = COMMITTEES.find(c => c.id === submittedPass.pref3Committee);
 
     return (
       <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10 text-left">
-        {/* Return Button */}
-        <button
-          onClick={() => {
-            if (setActiveTab) setActiveTab("home");
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-          className="group inline-flex items-center gap-2 text-xs font-sans uppercase tracking-[0.16em] text-[#8A9A7E] hover:text-[#C9A86A] transition-colors mb-6 cursor-pointer"
-        >
-          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-          Return to Convocation Portal
-        </button>
+        {/* Navigation Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <button
+            onClick={() => {
+              if (setActiveTab) setActiveTab("home");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="group inline-flex items-center gap-2 text-xs font-sans uppercase tracking-[0.16em] text-[#8A9A7E] hover:text-[#C9A86A] transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+            Return to Convocation Portal
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setViewingPass(false);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 border border-[#C9A86A]/40 bg-[#1A1F1A] text-xs font-sans text-[#C9A86A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] transition-colors cursor-pointer uppercase tracking-wider font-semibold"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to Registration Form
+          </button>
+        </div>
 
         {/* Success Banner */}
         <div className="bg-[#233124] border border-[#C9A86A] p-6 sm:p-8 mb-8 shadow-2xl relative overflow-hidden">
@@ -702,7 +763,7 @@ export default function SchoolRegistration({
                   Valiamala PO, Thiruvananthapuram, Kerala &bull; 695547
                 </span>
                 <span className="text-[9px] text-[#C9A86A] block mt-0.5">
-                  Aadhaar/Passport: {submittedPass.aadharNumber.replace(/(\d{4})\s*(\d{4})\s*(\d{4})/, "XXXX XXXX $3")}
+                  Aadhaar/Passport: {(submittedPass.aadharNumber || "").replace(/(\d{4})\s*(\d{4})\s*(\d{4})/, "XXXX XXXX $3") || "Cleared for Verification"}
                 </span>
               </div>
             </div>
@@ -710,18 +771,33 @@ export default function SchoolRegistration({
             <div className="text-right">
 
               <span className="text-[9px] text-[#8A9A7E] block">
-                Lodged at: {submittedPass.timestamp}
+                Lodged at: {submittedPass.timestamp || "Official Record"}
               </span>
             </div>
           </div>
         </div>
 
-        {/* New Submission or Retake CTA */}
-        <div className="mt-8 text-center">
+        {/* Boarding Pass Action CTA */}
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
           <button
+            type="button"
+            onClick={() => {
+              setViewingPass(false);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="px-6 py-2.5 bg-[#C9A86A] text-[#1A1F1A] text-xs uppercase tracking-wider font-bold hover:bg-[#bfa060] transition-colors cursor-pointer shadow-lg"
+          >
+            Back to Registration Form
+          </button>
+          <button
+            type="button"
             onClick={() => {
               if (confirm("Would you like to register another student delegation?")) {
+                try {
+                  localStorage.removeItem("iistmun_last_school_pass");
+                } catch { }
                 setSubmittedPass(null);
+                setViewingPass(false);
                 setStep(1);
                 setFormData({
                   name: "",
@@ -775,6 +851,33 @@ export default function SchoolRegistration({
   // Active form view
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-6 text-left">
+      {/* Existing Submission on File Banner */}
+      {submittedPass && !viewingPass && (
+        <div className="bg-[#1A1F1A] border border-[#C9A86A] p-4 sm:p-5 mb-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="h-6 w-6 text-[#C9A86A] shrink-0" />
+            <div>
+              <p className="font-serif text-[#EDE6D3] text-sm font-semibold">
+                Existing Registration on File: <span className="font-mono text-[#C9A86A]">{submittedPass.id || "Accredited"}</span> {submittedPass.name ? `(${submittedPass.name})` : ""}
+              </p>
+              <p className="font-sans text-xs text-[#8A9A7E] mt-0.5">
+                School Round pass confirmed for {submittedPass.institution || "School Delegate"}. You can view/download your official boarding pass anytime or fill in this form to register another delegate.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setViewingPass(true);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="w-full sm:w-auto px-4 py-2 bg-[#C9A86A] text-[#1A1F1A] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#bfa060] transition-colors cursor-pointer shadow-md shrink-0"
+          >
+            View Boarding Pass
+          </button>
+        </div>
+      )}
+
       {/* Return Button if not embedded */}
       {!embedded && (
         <button
@@ -894,6 +997,47 @@ export default function SchoolRegistration({
           </span>
         </div>
       </div>
+
+      {/* Optional Google Authentication Banner */}
+      {!user ? (
+        <div className="border border-[#C9A86A]/40 bg-[#2E3B2F]/40 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 border border-[#C9A86A]/60 bg-[#1A1F1A] flex items-center justify-center text-[#C9A86A] shrink-0">
+              <User className="h-5 w-5" />
+            </div>
+            <div>
+              <h4 className="font-serif text-sm sm:text-base text-[#EDE6D3] font-medium">
+                Express Authentication via Google
+              </h4>
+              <p className="text-xs text-[#8A9A7E] mt-0.5 leading-relaxed">
+                Sign in with Google to auto-fill identity details, link your registration securely to Firebase, and retain your digital pass.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={signInWithGoogle}
+            disabled={isSigningIn}
+            className="px-4 py-2 border border-[#C9A86A] bg-[#C9A86A] hover:bg-[#bfa060] text-[#1A1F1A] text-xs font-sans uppercase tracking-wider font-semibold transition-all shrink-0 cursor-pointer shadow-md flex items-center gap-2"
+          >
+            <User className="h-3.5 w-3.5" />
+            <span>{isSigningIn ? "Connecting..." : "Sign in with Google"}</span>
+          </button>
+        </div>
+      ) : (
+        <div className="border border-[#C9A86A]/30 bg-[#1A1F1A]/70 px-4 py-2.5 mb-6 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-[#8A9A7E]">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            <span>
+              Authenticated as <strong className="text-[#EDE6D3]">{user.displayName || user.email}</strong> &bull; Registration will link directly to your account.
+            </span>
+          </div>
+          <span className="font-mono text-[10px] text-[#C9A86A] uppercase tracking-wider bg-[#2E3B2F] px-2 py-0.5 border border-[#C9A86A]/30">
+            Google Verified
+          </span>
+        </div>
+      )}
 
       {/* Form Content */}
       <form onSubmit={handleSubmit} className="space-y-8">

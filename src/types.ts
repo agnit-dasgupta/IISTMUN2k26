@@ -218,6 +218,7 @@ export interface SchoolRegistrationDetails {
   paymentMode?: string;
   transactionId?: string;
   utrNumber?: string;
+  payerName?: string;
   paymentDate?: string;
   paymentScreenshotUrl?: string;
   paymentScreenshotName?: string;

@@ -94,12 +94,12 @@ export default function App() {
         return <Schedule />;
       case "faq":
         return <FAQs />;
+      case "register-portal":
       case "register-portal-school":
       case "register-school":
       case "register-portal-priority":
       case "register-portal-eb":
         return <RegisterPortal initialPortalTab="school" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={handleTabChange} />;
-      case "register-portal":
       case "register-portal-unga":
       case "register-unga":
         return <RegisterPortal initialPortalTab="unga" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={handleTabChange} />;

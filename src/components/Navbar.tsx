@@ -82,7 +82,13 @@ export default function Navbar({ activeTab, setActiveTab }: NavbarProps) {
   const handleNavClick = (tabId: string, sectionId?: string | null) => {
     setMobileMenuOpen(false);
 
-    if (tabId === "admin" || tabId === "register-portal" || tabId === "accommodation") {
+    if (
+      tabId === "admin" ||
+      tabId === "register-portal" ||
+      tabId === "accommodation" ||
+      tabId.startsWith("register") ||
+      tabId.startsWith("workshop")
+    ) {
       setActiveTab(tabId);
       setActiveSection(tabId);
       window.scrollTo({ top: 0, behavior: "smooth" });
