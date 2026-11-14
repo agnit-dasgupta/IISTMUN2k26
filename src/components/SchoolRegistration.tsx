@@ -11,8 +11,7 @@ import {
   Calendar, ShieldCheck, CheckCircle2, AlertCircle,
   Copy, Check, ArrowLeft, ChevronRight, ChevronLeft,
   Sparkles, Download, School, FileText, Globe, Landmark,
-  X, CheckSquare, HeartHandshake, Compass,
-  QrCode, CreditCard, PartyPopper, ExternalLink
+  X, CheckSquare, HeartHandshake, Compass
 } from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { db } from "../firebase";
@@ -123,12 +122,6 @@ export default function SchoolRegistration({
     paymentScreenshotName: ""
   });
 
-  const [copiedUpi, setCopiedUpi] = useState(false);
-  const handleCopyUpi = () => {
-    navigator.clipboard.writeText("arnav.tpj@oksbi");
-    setCopiedUpi(true);
-    setTimeout(() => setCopiedUpi(false), 2500);
-  };
   const calculatedFee = formData.attendingSocials ? 1148 : 999;
 
   // Live synchronization with Country Matrix & Portfolio States
@@ -347,15 +340,6 @@ export default function SchoolRegistration({
       if (!formData.pref3Country) newErrors.pref3Country = "Third preference portfolio is required.";
     }
 
-    if (currentStep === 4) {
-      if (formData.utrNumber.trim()) {
-        const cleanUtr = formData.utrNumber.replace(/[^a-zA-Z0-9]/g, "");
-        if (cleanUtr.length < 6) {
-          newErrors.utrNumber = "Please enter a valid 12-digit UPI reference or UTR transaction number.";
-        }
-      }
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -374,7 +358,7 @@ export default function SchoolRegistration({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep(1) || !validateStep(2) || !validateStep(3) || !validateStep(4)) {
+    if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
       alert("Please check the form for any missing mandatory fields.");
       return;
     }
@@ -441,17 +425,17 @@ export default function SchoolRegistration({
       // Logistics
       accommodationRequired: formData.accommodationRequired || "no",
 
-      // Delegate Socials & Fee Payment
+      // Delegate Socials & Payable Fee Amount
       attendingSocials: Boolean(formData.attendingSocials),
       feeAmount: calculatedFee,
-      paymentMode: formData.paymentMode || "UPI",
-      transactionId: (formData.utrNumber || formData.transactionId || "").trim(),
-      utrNumber: (formData.utrNumber || formData.transactionId || "").trim(),
-      payerName: formData.payerName.trim() || formData.name.trim(),
-      paymentDate: formData.paymentDate || isoDate.slice(0, 10),
-      paymentScreenshotUrl: formData.paymentScreenshotUrl || "",
-      paymentScreenshotName: formData.paymentScreenshotName || "",
-      paymentStatus: (formData.utrNumber.trim() || formData.paymentScreenshotUrl) ? "Pending" : "Pending"
+      paymentMode: "Pending",
+      transactionId: "",
+      utrNumber: "",
+      payerName: formData.name.trim(),
+      paymentDate: "",
+      paymentScreenshotUrl: "",
+      paymentScreenshotName: "",
+      paymentStatus: "Pending"
     };
 
     // Strip any undefined keys so Firestore SDK never throws Unsupported field value: undefined
@@ -607,7 +591,7 @@ export default function SchoolRegistration({
                   Accreditation Confirmed
                 </h2>
                 <p className="font-sans text-xs text-[#8A9A7E] mt-0.5">
-                  Your school round delegate application has been lodged in the official registry. Registration fee: ₹{submittedPass.feeAmount || (submittedPass.attendingSocials ? 1148 : 999)}.
+                  Your school round delegate application has been lodged in the official registry. Total Payable Amount: <strong className="text-[#C9A86A]">₹{submittedPass.feeAmount || (submittedPass.attendingSocials ? 1148 : 999)}</strong>.
                 </p>
               </div>
             </div>
@@ -622,6 +606,19 @@ export default function SchoolRegistration({
                 <span>{isDownloading ? "Synthesizing PDF..." : "Download Boarding Pass"}</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Payable Amount Clearance Notice */}
+        <div className="bg-[#1A1F1A] border border-[#C9A86A]/40 p-4 mb-6 flex items-start gap-3 text-left">
+          <Sparkles className="h-5 w-5 text-[#C9A86A] shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <span className="font-serif text-sm font-semibold text-[#EDE6D3] block">
+              Payable Registration Fee: ₹{submittedPass.feeAmount || (submittedPass.attendingSocials ? 1148 : 999)}
+            </span>
+            <p className="text-[#8A9A7E] mt-0.5 leading-relaxed">
+              Your application and preferences have been lodged. No payment was collected during registration. Payment instructions for the payable amount will be communicated once your committee and portfolio allotment are confirmed by the secretariat.
+            </p>
           </div>
         </div>
 
@@ -685,7 +682,7 @@ export default function SchoolRegistration({
 
             <div>
               <span className="font-sans text-[10px] uppercase tracking-wider text-[#8A9A7E] block">
-                Fee &amp; Socials Night
+                Total Payable Amount
               </span>
               <span className="font-serif text-lg text-[#C9A86A] font-bold block mt-0.5">
                 ₹{submittedPass.feeAmount || (submittedPass.attendingSocials ? 1148 : 999)}
@@ -694,8 +691,7 @@ export default function SchoolRegistration({
                 Socials: {submittedPass.attendingSocials ? "Included (+₹149)" : "Not Included"}
               </span>
               <span className="font-mono text-[10px] text-[#8A9A7E] block mt-0.5">
-                Status: {submittedPass.status || "Pending Verification"}
-                {submittedPass.utrNumber ? ` &bull; UTR: ${submittedPass.utrNumber}` : ""}
+                Status: {submittedPass.status || "Pending Verification"} &bull; Payable on Allotment
               </span>
             </div>
           </div>
@@ -931,7 +927,7 @@ export default function SchoolRegistration({
       </div>
 
       {/* Multi-Step Stepper Header */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-8">
         <div
           onClick={() => step > 1 && setStep(1)}
           className={`p-3 sm:p-4 border transition-all text-left cursor-pointer ${step === 1
@@ -967,12 +963,9 @@ export default function SchoolRegistration({
         </div>
 
         <div
-          onClick={() => step > 3 && setStep(3)}
-          className={`p-3 sm:p-4 border transition-all text-left cursor-pointer ${step === 3
+          className={`p-3 sm:p-4 border transition-all text-left ${step === 3
             ? "border-[#C9A86A] bg-[#2E3B2F]"
-            : step > 3
-              ? "border-[#8A9A7E]/50 bg-[#1A1F1A] hover:border-[#C9A86A]/50"
-              : "border-[#8A9A7E]/20 bg-[#1A1F1A]/50 opacity-60"
+            : "border-[#8A9A7E]/20 bg-[#1A1F1A]/50 opacity-60"
             }`}
         >
           <span className="font-mono text-[9px] uppercase tracking-wider text-[#C9A86A] block">
@@ -980,20 +973,6 @@ export default function SchoolRegistration({
           </span>
           <span className="font-serif text-xs sm:text-sm text-[#EDE6D3] font-medium block mt-0.5">
             Chambers &amp; Socials
-          </span>
-        </div>
-
-        <div
-          className={`p-3 sm:p-4 border transition-all text-left ${step === 4
-            ? "border-[#C9A86A] bg-[#2E3B2F]"
-            : "border-[#8A9A7E]/20 bg-[#1A1F1A]/50 opacity-60"
-            }`}
-        >
-          <span className="font-mono text-[9px] uppercase tracking-wider text-[#C9A86A] block">
-            STEP 04
-          </span>
-          <span className="font-serif text-xs sm:text-sm text-[#EDE6D3] font-medium block mt-0.5">
-            Fee &amp; Payment
           </span>
         </div>
       </div>
@@ -1680,242 +1659,47 @@ export default function SchoolRegistration({
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-[#C9A86A]/20">
-              <button
-                type="button"
-                onClick={handlePrev}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1A1F1A] border border-[#C9A86A]/40 text-[#EDE6D3] font-sans text-xs uppercase tracking-wider hover:border-[#C9A86A] transition-colors cursor-pointer"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span>Back</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleNext}
-                className="inline-flex items-center gap-2 px-7 py-3 bg-[#C9A86A] text-[#1A1F1A] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#bfa060] transition-colors cursor-pointer shadow-lg"
-              >
-                <span>Continue to Fee Payment &amp; Verification</span>
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ================= STEP 4: FEE PAYMENT & TRANSACTION VERIFICATION ================= */}
-        {step === 4 && (
-          <div className="bg-[#2E3B2F] border border-[#C9A86A]/40 p-6 sm:p-8 space-y-6 shadow-xl">
-            <div className="border-b border-[#C9A86A]/20 pb-4">
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] block">
-                STAGE IV &bull; FEE PAYMENT &amp; TRANSACTION VERIFICATION
-              </span>
-              <h2 className="font-serif text-xl sm:text-2xl text-[#EDE6D3] font-normal">
-                School Round Assessment &amp; UPI Payment
-              </h2>
-              <p className="font-sans text-xs text-[#8A9A7E] mt-1">
-                Complete your School Round registration fee payment using the official QR code or UPI ID. Enter your UTR reference number and attach receipt below.
-              </p>
-            </div>
-
-            {/* Dynamic Assessment Breakdown Card */}
-            <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-5 text-left shadow-lg">
+            {/* End of Form: Assessed Payable Amount Summary */}
+            <div className="border border-[#C9A86A]/50 bg-[#1A1F1A] p-5 sm:p-6 text-left shadow-xl space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#C9A86A]/20 pb-4">
                 <div>
-                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-bold block">
-                    Assessed Registration Fee
+                  <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-bold block">
+                    TOTAL PAYABLE AMOUNT
                   </span>
-                  <h3 className="font-serif text-xl font-normal text-[#EDE6D3] mt-0.5">
-                    School Delegation Pass {formData.attendingSocials ? "+ Delegate Socials Night" : ""}
+                  <h3 className="font-serif text-xl sm:text-2xl font-normal text-[#EDE6D3] mt-0.5">
+                    School Delegation Registration Fee
                   </h3>
+                  <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                    Registration fee payable upon verification &amp; portfolio allocation. No upfront payment required during application submission.
+                  </p>
                 </div>
-                <div className="text-right">
-                  <span className="font-sans text-[9px] uppercase tracking-wider text-[#8A9A7E] block">Total Amount Payable</span>
-                  <span className="font-serif text-3xl font-bold text-[#C9A86A]">
+                <div className="sm:text-right bg-[#2E3B2F] sm:bg-transparent p-3 sm:p-0 border sm:border-0 border-[#C9A86A]/30 w-full sm:w-auto">
+                  <span className="font-sans text-[10px] uppercase tracking-wider text-[#8A9A7E] block">Total Payable</span>
+                  <span className="font-serif text-3xl sm:text-4xl font-bold text-[#C9A86A]">
                     ₹{calculatedFee}
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 text-xs font-sans text-[#8A9A7E]">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1 text-xs font-sans text-[#8A9A7E]">
                 <div>
-                  <span>Base Registration:</span>{" "}
-                  <strong className="text-[#EDE6D3]">₹999</strong>
+                  <span className="block text-[10px] uppercase tracking-wider">Base Registration:</span>
+                  <strong className="text-[#EDE6D3] font-mono">₹999</strong>
                 </div>
                 <div>
-                  <span>Socials Night:</span>{" "}
-                  <strong className={formData.attendingSocials ? "text-emerald-400" : "text-[#8A9A7E]"}>
-                    {formData.attendingSocials ? "+₹149" : "Not Included (₹0)"}
+                  <span className="block text-[10px] uppercase tracking-wider">Socials Night:</span>
+                  <strong className={formData.attendingSocials ? "text-emerald-400 font-mono" : "text-[#8A9A7E] font-mono"}>
+                    {formData.attendingSocials ? "+₹149 (Included)" : "Not Included (₹0)"}
                   </strong>
                 </div>
                 <div>
-                  <span>Academic Grade:</span>{" "}
+                  <span className="block text-[10px] uppercase tracking-wider">Academic Grade:</span>
                   <strong className="text-[#EDE6D3] font-mono">{formData.classGrade}</strong>
                 </div>
                 <div>
-                  <span>Accreditation Round:</span>{" "}
+                  <span className="block text-[10px] uppercase tracking-wider">Accreditation Round:</span>
                   <strong className="text-[#C9A86A]">School Round</strong>
                 </div>
-              </div>
-            </div>
-
-            {/* Official UPI QR Payment Card */}
-            <div className="border-2 border-[#C9A86A] bg-[#141814] p-6 text-center relative overflow-hidden shadow-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#C9A86A]/20 border border-[#C9A86A] text-[#C9A86A] text-[10px] font-mono uppercase tracking-widest font-bold mb-4">
-                <QrCode className="h-3.5 w-3.5 text-[#C9A86A]" />
-                <span>OFFICIAL UPI QR PAYMENT</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                {/* Official UPI QR Graphic */}
-                <div className="flex flex-col items-center">
-                  <div className="relative p-2.5 bg-white border-2 border-[#C9A86A] shadow-2xl inline-block max-w-[240px] sm:max-w-[260px] w-full">
-                    <img
-                      src="/UPI-QR-IIST-MUN-2026.png"
-                      alt="IIST MUN Official UPI QR Code"
-                      className="w-full h-auto object-contain block mx-auto rounded"
-                    />
-                    <div className="mt-2 py-1.5 px-3 bg-[#1A1F1A] text-center border border-[#C9A86A]/40 flex items-center justify-between">
-                      <span className="font-mono text-[9px] text-[#8A9A7E] uppercase tracking-wider">Amount Due:</span>
-                      <span className="font-mono text-xs font-bold text-[#C9A86A]">₹{calculatedFee}</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-[#8A9A7E] font-mono mt-2">
-                    Scan to pay ₹{calculatedFee} with any UPI app
-                  </span>
-                </div>
-
-                {/* Credentials & Copy Helper */}
-                <div className="text-left space-y-3.5">
-                  <div className="space-y-1">
-                    <span className="font-sans text-[10px] uppercase tracking-wider text-[#8A9A7E] block">
-                      Direct UPI ID
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-base font-bold text-[#C9A86A] bg-[#1A1F1A] px-3.5 py-1.5 border border-[#C9A86A]/40 inline-block select-all">
-                        arnav.tpj@oksbi
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleCopyUpi}
-                        className="px-3 py-1.5 bg-[#C9A86A] hover:bg-[#bfa060] text-[#1A1F1A] text-xs font-sans font-semibold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer"
-                      >
-                        {copiedUpi ? <Check className="h-3.5 w-3.5 stroke-[3]" /> : <Copy className="h-3.5 w-3.5" />}
-                        <span>{copiedUpi ? "Copied" : "Copy"}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-[#8A9A7E] space-y-1">
-                    <div>
-                      <span className="text-[#EDE6D3] font-semibold">Account Holder:</span>{" "}
-                      Pankaj Kumar Jain
-                    </div>
-                    <div>
-                      <span className="text-[#EDE6D3] font-semibold">Accepted Applications:</span>{" "}
-                      Google Pay, PhonePe, Paytm, BHIM, Cred, Mobile Banking
-                    </div>
-                  </div>
-
-                  {/* 3 Step Guide */}
-                  <div className="border border-[#8A9A7E]/30 bg-[#1A1F1A] p-3 text-[11px] text-[#EDE6D3] space-y-1.5 leading-relaxed">
-                    <div className="flex items-start gap-1.5">
-                      <span className="text-[#C9A86A] font-bold">1.</span>
-                      <span>Scan the QR code or pay ₹{calculatedFee} to <strong className="text-[#C9A86A]">arnav.tpj@oksbi</strong>.</span>
-                    </div>
-                    <div className="flex items-start gap-1.5">
-                      <span className="text-[#C9A86A] font-bold">2.</span>
-                      <span>Copy the <strong>12-digit UTR / UPI Transaction Reference Number</strong> from your payment receipt.</span>
-                    </div>
-                    <div className="flex items-start gap-1.5">
-                      <span className="text-[#C9A86A] font-bold">3.</span>
-                      <span>Enter the UTR number and attach screenshot receipt below to lodge your registration.</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Details Input Fields */}
-            <div className="border border-[#8A9A7E]/30 bg-[#1A1F1A]/80 p-5 space-y-4">
-              <span className="font-sans text-[10px] uppercase tracking-widest text-[#C9A86A] font-bold block flex items-center gap-1.5">
-                <CreditCard className="h-3.5 w-3.5 text-[#C9A86A]" />
-                Payment Transaction Credentials
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Payment Mode */}
-                <div>
-                  <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">Payment Mode</label>
-                  <select
-                    value={formData.paymentMode}
-                    onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value })}
-                    className="w-full border border-[#8A9A7E]/30 bg-[#2E3B2F] px-3.5 py-2.5 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A]"
-                  >
-                    <option value="UPI" className="bg-[#1A1F1A]">UPI / QR Scan</option>
-                    <option value="Google Pay" className="bg-[#1A1F1A]">Google Pay</option>
-                    <option value="PhonePe" className="bg-[#1A1F1A]">PhonePe</option>
-                    <option value="Paytm" className="bg-[#1A1F1A]">Paytm</option>
-                    <option value="Net Banking / IMPS" className="bg-[#1A1F1A]">Net Banking / IMPS Transfer</option>
-                  </select>
-                </div>
-
-                {/* UTR / Transaction ID */}
-                <div>
-                  <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">
-                    UPI Ref / 12-Digit UTR Number
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.utrNumber}
-                    onChange={(e) => setFormData({ ...formData, utrNumber: e.target.value, transactionId: e.target.value })}
-                    className="w-full border border-[#8A9A7E]/30 bg-[#2E3B2F] px-3.5 py-2.5 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/50 outline-none focus:border-[#C9A86A] font-mono"
-                    placeholder="e.g. 403819284729"
-                  />
-                  {errors.utrNumber && <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.utrNumber}</p>}
-                </div>
-
-                {/* Payer Name */}
-                <div>
-                  <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">
-                    Payer Name (Bank / UPI Account Holder)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.payerName}
-                    onChange={(e) => setFormData({ ...formData, payerName: e.target.value })}
-                    className="w-full border border-[#8A9A7E]/30 bg-[#2E3B2F] px-3.5 py-2.5 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/50 outline-none focus:border-[#C9A86A]"
-                    placeholder="Name on bank / UPI account"
-                  />
-                </div>
-
-                {/* Date of Payment */}
-                <div>
-                  <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">Date of Payment</label>
-                  <input
-                    type="date"
-                    value={formData.paymentDate}
-                    onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                    className="w-full border border-[#8A9A7E]/30 bg-[#2E3B2F] px-3.5 py-2.5 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A]"
-                  />
-                </div>
-              </div>
-
-              {/* Screenshot Upload Zone */}
-              <div>
-                <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1.5 font-semibold">
-                  Payment Confirmation Screenshot (JPEG / PNG / PDF)
-                </label>
-                <FileUploadZone
-                  label="Upload UPI Payment Receipt"
-                  sublabel="Attach payment screenshot or provide cloud drive link"
-                  fileType="image"
-                  maxSizeMB={5}
-                  valueUrl={formData.paymentScreenshotUrl}
-                  valueName={formData.paymentScreenshotName}
-                  onChange={(url, name) => setFormData({ ...formData, paymentScreenshotUrl: url, paymentScreenshotName: name })}
-                  onClear={() => setFormData({ ...formData, paymentScreenshotUrl: "", paymentScreenshotName: "" })}
-                  required={false}
-                />
               </div>
             </div>
 
