@@ -60,6 +60,14 @@ export const MATRIX_COMMITTEES: { id: CommitteeId; label: string; name: string }
   { id: "ip", label: "IP", name: "International Press" }
 ];
 
+export const getCommitteePortfolioMin = (commId?: string): number => {
+  return commId === "ip" ? 1 : 5;
+};
+
+export const getCommitteePortfolioMax = (commId?: string): number => {
+  return commId === "ip" ? 2 : 5;
+};
+
 export const getCommitteePortfolioTarget = (commId?: string): number => {
   return commId === "ip" ? 1 : 5;
 };
@@ -178,11 +186,17 @@ export default function FirstRoundRegistration({
     return selectedCommittees.reduce((sum, commId) => sum + (committeePortfolios[commId]?.length || 0), 0);
   }, [selectedCommittees, committeePortfolios]);
 
-  // Target portfolios count based on chosen committees (5 per regular committee, 2 for IP)
+  // Minimum portfolios required based on chosen committees (5 per regular committee, 1 for IP)
+  const minPortfoliosCount = useMemo(() => {
+    if (selectedCommittees.length === 0) return 15;
+    return selectedCommittees.reduce((sum, commId) => sum + getCommitteePortfolioMin(commId), 0);
+  }, [selectedCommittees]);
+
+  // Target portfolios count based on chosen committees (5 per regular committee, actual chosen or 1 for IP)
   const targetPortfoliosCount = useMemo(() => {
     if (selectedCommittees.length === 0) return 15;
-    return selectedCommittees.reduce((sum, commId) => sum + getCommitteePortfolioTarget(commId), 0);
-  }, [selectedCommittees]);
+    return selectedCommittees.reduce((sum, commId) => sum + (committeePortfolios[commId]?.length || getCommitteePortfolioMin(commId)), 0);
+  }, [selectedCommittees, committeePortfolios]);
 
   // Overall ranked preferences: 15 portfolios across 3 committees
   // Committee 1 (Choice 1 to 5 = Rank 1 to 5 - Highest Priority)
@@ -450,24 +464,8 @@ export default function FirstRoundRegistration({
         setSelectedCommittees(currentCommittees);
       }
 
-      // If IP committee and already selected 1 portfolio, switch to the newly clicked one
-      if (committee === "ip" && currentPorts.length >= 1) {
-        setCommitteePortfolios(prev => ({
-          ...prev,
-          [committee]: [country]
-        }));
-        if (errors.preferences) {
-          setErrors(prev => {
-            const next = { ...prev };
-            delete next.preferences;
-            return next;
-          });
-        }
-        return;
-      }
-
-      // Check limit of portfolios per committee (1 for IP, 5 for other committees)
-      const maxLimit = getCommitteePortfolioTarget(committee);
+      // Check limit of portfolios per committee (up to 2 for IP, exactly 5 for other committees)
+      const maxLimit = getCommitteePortfolioMax(committee);
       if (currentPorts.length >= maxLimit) {
         const commName = MATRIX_COMMITTEES.find(c => c.id === committee)?.label || committee.toUpperCase();
         alert(`You have already selected ${maxLimit} portfolios for ${commName}. Deselect one of your existing choices in this committee to pick a different portfolio.`);
@@ -650,19 +648,19 @@ export default function FirstRoundRegistration({
         const c1 = selectedCommittees[0];
         const c2 = selectedCommittees[1];
         const c3 = selectedCommittees[2];
-        const t1 = getCommitteePortfolioTarget(c1);
-        const t2 = getCommitteePortfolioTarget(c2);
-        const t3 = getCommitteePortfolioTarget(c3);
+        const t1 = getCommitteePortfolioMin(c1);
+        const t2 = getCommitteePortfolioMin(c2);
+        const t3 = getCommitteePortfolioMin(c3);
         const c1Count = committeePortfolios[c1]?.length || 0;
         const c2Count = committeePortfolios[c2]?.length || 0;
         const c3Count = committeePortfolios[c3]?.length || 0;
 
         if (c1Count < t1 || c2Count < t2 || c3Count < t3) {
           const missing: string[] = [];
-          if (c1Count < t1) missing.push(`${c1.toUpperCase()} (${c1Count}/${t1})`);
-          if (c2Count < t2) missing.push(`${c2.toUpperCase()} (${c2Count}/${t2})`);
-          if (c3Count < t3) missing.push(`${c3.toUpperCase()} (${c3Count}/${t3})`);
-          newErrors.preferences = `Please choose all required portfolios for your chosen committees (${targetPortfoliosCount} portfolios total). Still needed in: ${missing.join(", ")}.`;
+          if (c1Count < t1) missing.push(`${c1.toUpperCase()} (${c1Count}/${t1} min)`);
+          if (c2Count < t2) missing.push(`${c2.toUpperCase()} (${c2Count}/${t2} min)`);
+          if (c3Count < t3) missing.push(`${c3.toUpperCase()} (${c3Count}/${t3} min)`);
+          newErrors.preferences = `Please choose all required portfolios for your chosen committees (minimum ${minPortfoliosCount} portfolios). Still needed in: ${missing.join(", ")}.`;
         }
       }
       if (!formData.motivation.trim()) {
@@ -1690,14 +1688,14 @@ export default function FirstRoundRegistration({
           <div className="bg-[#2E3B2F] border border-[#C9A86A]/40 p-6 sm:p-8 space-y-6 shadow-xl">
             <div className="border-b border-[#C9A86A]/20 pb-4">
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] block">
-                STAGE III &bull; COUNCIL &amp; PORTFOLIO ALLOCATION ({targetPortfoliosCount} PORTFOLIOS TOTAL)
+                STAGE III &bull; COUNCIL &amp; PORTFOLIO ALLOCATION
               </span>
               <h2 className="font-serif text-xl sm:text-2xl text-[#EDE6D3] font-normal">
                 Ranked Preferences (Council View)
               </h2>
               <p className="font-sans text-xs text-[#8A9A7E] mt-1">
                 <strong>1.</strong> The order in which you choose committees determines your committee preference order (1st, 2nd, and 3rd).<br />
-                <strong>2.</strong> Per committee, it is mandatory to choose 5 portfolios in order of preference (1 portfolio for International Press).<br />
+                <strong>2.</strong> Per committee, it is mandatory to choose 5 portfolios in order of preference (for International Press, select 1 or both portfolios).<br />
                 <strong>3.</strong> Portfolios in your 1st Committee hold the highest overall preference.
               </p>
             </div>
@@ -1735,13 +1733,13 @@ export default function FirstRoundRegistration({
               </div>
             </div>
 
-            {/* ================= PREFERENCE TRAY: LIVE DIPLOMATIC DOCK ({targetPortfoliosCount} PORTFOLIOS) ================= */}
+            {/* ================= PREFERENCE TRAY: LIVE DIPLOMATIC DOCK ================= */}
             <div className="border-2 border-[#C9A86A] bg-[#1A1F1A] p-5 shadow-2xl space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#C9A86A]/20 pb-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-[#C9A86A]" />
                   <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-bold">
-                    DIPLOMATIC ALLOCATION DOCK ({totalPortfoliosCount}/{targetPortfoliosCount} PORTFOLIOS ACROSS {selectedCommittees.length}/3 COMMITTEES)
+                    DIPLOMATIC ALLOCATION DOCK ({totalPortfoliosCount} PORTFOLIOS ACROSS {selectedCommittees.length}/3 COMMITTEES)
                   </span>
                 </div>
                 {totalPortfoliosCount > 0 && (
@@ -1789,11 +1787,10 @@ export default function FirstRoundRegistration({
                   const commId = selectedCommittees[slotIdx];
                   const commObj = commId ? MATRIX_COMMITTEES.find(c => c.id === commId) : null;
                   const ports = commId ? (committeePortfolios[commId] || []) : [];
-                  const commTarget = getCommitteePortfolioTarget(commId);
+                  const commMax = getCommitteePortfolioMax(commId);
                   const rankLabels = ["1ST", "2ND", "3RD"];
-                  const prevCounts = selectedCommittees.slice(0, slotIdx).reduce((acc, c) => acc + getCommitteePortfolioTarget(c), 0);
+                  const prevCounts = selectedCommittees.slice(0, slotIdx).reduce((acc, c) => acc + (committeePortfolios[c]?.length || 0), 0);
                   const overallStartRank = prevCounts + 1;
-                  const overallEndRank = prevCounts + commTarget;
                   const isTopPriority = slotIdx === 0;
 
                   return (
@@ -1820,7 +1817,11 @@ export default function FirstRoundRegistration({
                               {commObj ? commObj.label : `Select Committee #${slotIdx + 1}`}
                             </h4>
                             <span className="font-mono text-[9px] text-[#8A9A7E] block mt-0.5">
-                              {commId ? `${commTarget === 1 ? `Rank ${overallStartRank}` : `Ranks ${overallStartRank}–${overallEndRank}`} • ${ports.length}/${commTarget} Selected` : "Awaiting committee selection"}
+                              {commId ? (
+                                commId === "ip"
+                                  ? `${ports.length === 0 ? "0 Selected (1 Required, 2 Allowed)" : ports.length === 1 ? `Rank ${overallStartRank} • 1 Selected (2nd Optional)` : `Ranks ${overallStartRank}–${overallStartRank + 1} • 2/2 Selected`}`
+                                  : `Ranks ${overallStartRank}–${overallStartRank + 4} • ${ports.length}/5 Selected`
+                              ) : "Awaiting committee selection"}
                             </span>
                           </div>
 
@@ -1860,16 +1861,19 @@ export default function FirstRoundRegistration({
 
                         {/* Portfolio Slots */}
                         <div className="space-y-1.5 my-2">
-                          {Array.from({ length: commTarget }).map((_, portIdx) => {
+                          {Array.from({ length: commMax }).map((_, portIdx) => {
                             const country = ports[portIdx];
                             const overallRank = overallStartRank + portIdx;
+                            const isOptional = commId === "ip" && portIdx === 1;
 
                             return (
                               <div
                                 key={portIdx}
                                 className={`p-2 text-xs flex items-center justify-between border transition-all ${country
                                   ? "bg-[#1A1F1A] border-[#C9A86A]/40 text-[#EDE6D3]"
-                                  : "bg-[#141814]/40 border-dashed border-[#8A9A7E]/20 text-[#8A9A7E]/60"
+                                  : isOptional
+                                    ? "bg-[#141814]/25 border-dashed border-[#8A9A7E]/30 text-[#8A9A7E]/50"
+                                    : "bg-[#141814]/40 border-dashed border-[#8A9A7E]/20 text-[#8A9A7E]/60"
                                   }`}
                               >
                                 <div className="flex items-center gap-1.5 min-w-0 pr-1">
@@ -1882,7 +1886,11 @@ export default function FirstRoundRegistration({
                                     #{portIdx + 1}
                                   </span>
                                   <span className="font-serif text-xs truncate">
-                                    {country || <span className="font-sans text-[10px] italic">Choice #{portIdx + 1} empty</span>}
+                                    {country || (
+                                      <span className="font-sans text-[10px] italic">
+                                        {isOptional ? "Choice #2 (Optional)" : `Choice #${portIdx + 1} empty`}
+                                      </span>
+                                    )}
                                   </span>
                                 </div>
 
@@ -1990,12 +1998,12 @@ export default function FirstRoundRegistration({
                       {commRankIdx !== -1 ? (
                         <span className={`text-[9px] font-mono px-1.5 py-0.2 font-bold ${isCurrent ? "bg-[#1A1F1A] text-[#C9A86A]" : "bg-emerald-950/90 text-emerald-300 border border-emerald-500/40"
                           }`}>
-                          #{commRankIdx + 1} PREF ({portsCount}/{getCommitteePortfolioTarget(comm.id)})
+                          #{commRankIdx + 1} PREF ({portsCount}/{comm.id === "ip" ? "1-2" : "5"})
                         </span>
                       ) : (
                         <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-xs ${isCurrent ? "bg-[#1A1F1A] text-[#C9A86A]" : "bg-[#1A1F1A]/70 text-emerald-400"
                           }`}>
-                          {comm.id === "ip" ? "Select 1" : `${availCount} Open`}
+                          {comm.id === "ip" ? "Select 1 or 2" : `${availCount} Open`}
                         </span>
                       )}
                     </button>
@@ -2012,7 +2020,7 @@ export default function FirstRoundRegistration({
                     </span>
                     {selectedCommittees.includes(activeCouncilTab) ? (
                       <span className="font-mono text-[9px] bg-[#C9A86A] text-[#1A1F1A] font-bold px-1.5 py-0.2">
-                        COMMITTEE PREFERENCE #{selectedCommittees.indexOf(activeCouncilTab) + 1} ({committeePortfolios[activeCouncilTab]?.length || 0}/{getCommitteePortfolioTarget(activeCouncilTab)} PORTFOLIOS)
+                        COMMITTEE PREFERENCE #{selectedCommittees.indexOf(activeCouncilTab) + 1} ({committeePortfolios[activeCouncilTab]?.length || 0}/{activeCouncilTab === "ip" ? "1-2" : "5"} PORTFOLIOS)
                       </span>
                     ) : (
                       <span className="font-mono text-[9px] bg-[#1A1F1A] text-[#C9A86A] border border-[#C9A86A]/40 px-1.5 py-0.2">
@@ -2075,7 +2083,7 @@ export default function FirstRoundRegistration({
                     const isClickable = item.status === "Available" || item.status === "Reserved";
                     const isSelected = item.isSelected;
                     const commPorts = committeePortfolios[activeCouncilTab] || [];
-                    const isCommFull = commPorts.length >= getCommitteePortfolioTarget(activeCouncilTab);
+                    const isCommFull = commPorts.length >= getCommitteePortfolioMax(activeCouncilTab);
 
                     return (
                       <div
@@ -2128,11 +2136,11 @@ export default function FirstRoundRegistration({
                             </span>
                           ) : isCommFull ? (
                             <span className="text-[#8A9A7E]/70 font-mono text-[9px]">
-                              {commPorts.length}/{getCommitteePortfolioTarget(activeCouncilTab)} Selected in Council
+                              {commPorts.length}/{getCommitteePortfolioMax(activeCouncilTab)} Selected in Council
                             </span>
                           ) : isClickable ? (
                             <span className="text-emerald-400/90 group-hover:text-[#C9A86A]">
-                              + Add as Choice #{commPorts.length + 1}
+                              + Add as Choice #{commPorts.length + 1}{activeCouncilTab === "ip" && commPorts.length === 1 ? " (Optional)" : ""}
                             </span>
                           ) : (
                             <span className="text-[#8A9A7E]/50 flex items-center gap-1">
@@ -2196,10 +2204,13 @@ export default function FirstRoundRegistration({
               <button
                 type="button"
                 onClick={handleNext}
-                disabled={totalPortfoliosCount < targetPortfoliosCount || selectedCommittees.length < 3}
+                disabled={
+                  selectedCommittees.length < 3 ||
+                  selectedCommittees.some(c => (committeePortfolios[c]?.length || 0) < getCommitteePortfolioMin(c))
+                }
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#C9A86A] text-[#1A1F1A] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#bfa060] transition-colors cursor-pointer shadow-lg disabled:opacity-50"
               >
-                <span>Proceed to Payment with QR ({totalPortfoliosCount}/{targetPortfoliosCount} Portfolios)</span>
+                <span>Proceed to Payment with QR ({totalPortfoliosCount} Portfolios Chosen)</span>
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
