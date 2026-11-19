@@ -16,7 +16,7 @@ interface CountryMatrixProps {
   onSelectPreference?: (country: string, committee: CommitteeId) => void;
 }
 
-const COMMITTEES_LIST: CommitteeId[] = ["uncopuos", "unga", "unhrc", "unodc", "nes75", "undp", "ip_journalism", "ip_photojournalism"];
+const COMMITTEES_LIST: CommitteeId[] = ["uncopuos", "unga", "unhrc", "unodc", "nes75", "undp", "ip", "ip_journalism", "ip_photojournalism"];
 
 export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps) {
   const [matrixRows, setMatrixRows] = useState<CountryMatrixRow[]>(COUNTRY_MATRIX);
@@ -268,6 +268,7 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
                     <option value="unodc" className="bg-[#1A1F1A] text-[#EDE6D3]">UNODC</option>
                     <option value="nes75" className="bg-[#1A1F1A] text-[#EDE6D3]">NES'75</option>
                     <option value="undp" className="bg-[#1A1F1A] text-[#EDE6D3]">UNDP</option>
+                    <option value="ip" className="bg-[#1A1F1A] text-[#EDE6D3]">IP (International Press)</option>
                     <option value="ip_journalism" className="bg-[#1A1F1A] text-[#EDE6D3]">IP (Journalism)</option>
                     <option value="ip_photojournalism" className="bg-[#1A1F1A] text-[#EDE6D3]">IP (Photojournalism)</option>
                   </select>
@@ -325,6 +326,9 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
                     <th className={`px-3 py-4 font-semibold ${activeCommitteeCol === "undp" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
                       UNDP
                     </th>
+                    <th className={`px-3 py-4 font-semibold ${activeCommitteeCol === "ip" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
+                      IP
+                    </th>
                     <th className={`px-3 py-4 font-semibold ${activeCommitteeCol === "ip_journalism" ? "bg-[#C9A86A]/10 text-[#EDE6D3]" : ""}`}>
                       IP (Journalism)
                     </th>
@@ -366,6 +370,10 @@ export default function CountryMatrix({ onSelectPreference }: CountryMatrixProps
 
                         <td className={`px-3 py-3.5 ${activeCommitteeCol === "undp" ? "bg-[#C9A86A]/5" : ""}`}>
                           {getStatusBadge(getPortfolioStatus(row, "undp"))}
+                        </td>
+
+                        <td className={`px-3 py-3.5 ${activeCommitteeCol === "ip" ? "bg-[#C9A86A]/5" : ""}`}>
+                          {getStatusBadge(getPortfolioStatus(row, "ip"))}
                         </td>
 
                         <td className={`px-3 py-3.5 ${activeCommitteeCol === "ip_journalism" ? "bg-[#C9A86A]/5" : ""}`}>

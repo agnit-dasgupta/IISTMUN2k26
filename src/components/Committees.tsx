@@ -140,6 +140,21 @@ export default function Committees() {
                     <p className="mt-4 font-sans text-xs text-[#EDE6D3]/80 line-clamp-3 text-left leading-relaxed font-light">
                       {com.description}
                     </p>
+
+                    {com.portfolios && com.portfolios.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-[#C9A86A]/10 text-left">
+                        <span className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#C9A86A] font-semibold block mb-1.5">
+                          Simulation Portfolios
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {com.portfolios.map((p) => (
+                            <span key={p} className="text-[10px] font-mono px-2 py-0.5 bg-[#1A1F1A] border border-[#C9A86A]/40 text-[#EDE6D3] font-medium">
+                              {p}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Footer & Board Preview */}
@@ -215,6 +230,23 @@ export default function Committees() {
                   Delegates will be evaluated on substantive debate, treaty application, working paper clarity, and national policy fidelity.
                 </p>
               </div>
+
+              {/* Simulation Portfolios */}
+              {selectedCommittee.portfolios && selectedCommittee.portfolios.length > 0 && (
+                <div className="mt-6 border border-[#C9A86A]/30 bg-[#1A1F1A] p-5">
+                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-semibold block mb-2">
+                    // SIMULATION PORTFOLIOS
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                    {selectedCommittee.portfolios.map((port) => (
+                      <div key={port} className="flex items-center gap-2 p-2.5 bg-[#2E3B2F] border border-[#C9A86A]/40 text-xs font-serif text-[#EDE6D3]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#C9A86A]" />
+                        <span className="font-medium">{port}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Executive Board */}
               <div className="mt-8 border-t border-[#C9A86A]/20 pt-6">

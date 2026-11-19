@@ -89,6 +89,24 @@ export const COMMITTEES: Committee[] = [
     guideUrl: "#"
   },
   {
+    id: "ip",
+    name: "International Press",
+    abbreviation: "IP",
+    agenda: "Investigative journalism, photojournalism, press conferences, committee oversight, editorial analysis, and daily gazette publications.",
+    description: "The dynamic Fourth Estate and visual chroniclers of IISTMUN 2026. IP journalists hold delegates accountable and pen daily dispatches, while photojournalists document heated debates, crisis negotiations, and the photographic legacy of the summit.",
+    logo: "Newspaper",
+    color: "rose",
+    eb: [
+      { name: "Tara Bhattacharya", role: "Editor-in-Chief", avatar: "TB" },
+      { name: "Farhan Siddiqui", role: "Head of Photography", avatar: "FS" }
+    ],
+    portfolios: [
+      "IP(Journalism)",
+      "IP(Photojournalism)"
+    ],
+    guideUrl: "#"
+  },
+  {
     id: "ip_journalism",
     name: "International Press - Journalism",
     abbreviation: "IP (Journalism)",
@@ -99,6 +117,9 @@ export const COMMITTEES: Committee[] = [
     eb: [
       { name: "Tara Bhattacharya", role: "Editor-in-Chief", avatar: "TB" },
       { name: "Devika Shenoy", role: "Managing Editor", avatar: "DS" }
+    ],
+    portfolios: [
+      "IP(Journalism)"
     ],
     guideUrl: "#"
   },
@@ -113,6 +134,9 @@ export const COMMITTEES: Committee[] = [
     eb: [
       { name: "Farhan Siddiqui", role: "Head of Photography", avatar: "FS" },
       { name: "Naveen R.", role: "Lead Photojournalist", avatar: "NR" }
+    ],
+    portfolios: [
+      "IP(Photojournalism)"
     ],
     guideUrl: "#"
   }
@@ -586,11 +610,15 @@ export const COMMITTEE_PORTFOLIOS = {
     "Viet Nam",
     "Zimbabwe"
   ],
+  "ip": [
+    "IP(Journalism)",
+    "IP(Photojournalism)"
+  ],
   "ip_journalism": [
-    "N/A"
+    "IP(Journalism)"
   ],
   "ip_photojournalism": [
-    "N/A"
+    "IP(Photojournalism)"
   ],
   "unga": [
     "Afghanistan",
@@ -911,6 +939,8 @@ export const COUNTRY_MATRIX: CountryMatrixRow[] = [
   {"country":"Harkishan Singh Surjeet – Senior CPI(M) Leader and Opposition Organiser","uncopuos":"N/A","unga":"N/A","unhrc":"N/A","unodc":"N/A","nes75":"Available","undp":"N/A","ip_journalism":"N/A","ip_photojournalism":"N/A","ip":"N/A","copuos":"N/A","disec":"N/A","aippm":"Available","unsc":"N/A"},
   {"country":"Ramnath Goenka - Owner of Indian Express","uncopuos":"N/A","unga":"N/A","unhrc":"N/A","unodc":"N/A","nes75":"Available","undp":"N/A","ip_journalism":"N/A","ip_photojournalism":"N/A","ip":"N/A","copuos":"N/A","disec":"N/A","aippm":"Available","unsc":"N/A"},
   {"country":"Swaran Singh – Senior Union Cabinet Minister","uncopuos":"N/A","unga":"N/A","unhrc":"N/A","unodc":"N/A","nes75":"Available","undp":"N/A","ip_journalism":"N/A","ip_photojournalism":"N/A","ip":"N/A","copuos":"N/A","disec":"N/A","aippm":"Available","unsc":"N/A"},
-  {"country":"Lalu Prasad Yadav’s Bihar Student Movement Colleague – Student Representative of the JP Movement","uncopuos":"N/A","unga":"N/A","unhrc":"N/A","unodc":"N/A","nes75":"Available","undp":"N/A","ip_journalism":"N/A","ip_photojournalism":"N/A","ip":"N/A","copuos":"N/A","disec":"N/A","aippm":"Available","unsc":"N/A"}
+  {"country":"Lalu Prasad Yadav’s Bihar Student Movement Colleague – Student Representative of the JP Movement","uncopuos":"N/A","unga":"N/A","unhrc":"N/A","unodc":"N/A","nes75":"Available","undp":"N/A","ip_journalism":"N/A","ip_photojournalism":"N/A","ip":"N/A","copuos":"N/A","disec":"N/A","aippm":"Available","unsc":"N/A"},
+  {"country":"IP(Journalism)","uncopuos":"N/A","unga":"N/A","unhrc":"N/A","unodc":"N/A","nes75":"N/A","undp":"N/A","ip_journalism":"Available","ip_photojournalism":"N/A","ip":"Available","copuos":"N/A","disec":"N/A","aippm":"N/A","unsc":"N/A"},
+  {"country":"IP(Photojournalism)","uncopuos":"N/A","unga":"N/A","unhrc":"N/A","unodc":"N/A","nes75":"N/A","undp":"N/A","ip_journalism":"N/A","ip_photojournalism":"Available","ip":"Available","copuos":"N/A","disec":"N/A","aippm":"N/A","unsc":"N/A"}
 ];
 

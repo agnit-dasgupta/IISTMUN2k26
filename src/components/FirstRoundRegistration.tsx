@@ -56,8 +56,13 @@ export const MATRIX_COMMITTEES: { id: CommitteeId; label: string; name: string }
   { id: "unhrc", label: "UNHRC", name: "UN Human Rights Council" },
   { id: "unodc", label: "UNODC", name: "UN Office on Drugs and Crime" },
   { id: "nes75", label: "NES'75", name: "National Emergency Summit 1975" },
-  { id: "undp", label: "UNDP", name: "UN Development Programme" }
+  { id: "undp", label: "UNDP", name: "UN Development Programme" },
+  { id: "ip", label: "IP", name: "International Press" }
 ];
+
+export const getCommitteePortfolioTarget = (commId?: string): number => {
+  return commId === "ip" ? 2 : 5;
+};
 
 export interface RankedPortfolioPreference {
   rank: number; // Overall rank 1 to 15 (Committee 1 choices have highest preference)
@@ -168,10 +173,16 @@ export default function FirstRoundRegistration({
   const [matrixSearch, setMatrixSearch] = useState("");
   const [matrixStatusFilter, setMatrixStatusFilter] = useState<"all" | "Available">("all");
 
-  // Total portfolios count across all selected committees (Target: 15)
+  // Total portfolios count across all selected committees
   const totalPortfoliosCount = useMemo(() => {
     return selectedCommittees.reduce((sum, commId) => sum + (committeePortfolios[commId]?.length || 0), 0);
   }, [selectedCommittees, committeePortfolios]);
+
+  // Target portfolios count based on chosen committees (5 per regular committee, 2 for IP)
+  const targetPortfoliosCount = useMemo(() => {
+    if (selectedCommittees.length === 0) return 15;
+    return selectedCommittees.reduce((sum, commId) => sum + getCommitteePortfolioTarget(commId), 0);
+  }, [selectedCommittees]);
 
   // Overall ranked preferences: 15 portfolios across 3 committees
   // Committee 1 (Choice 1 to 5 = Rank 1 to 5 - Highest Priority)
@@ -439,10 +450,11 @@ export default function FirstRoundRegistration({
         setSelectedCommittees(currentCommittees);
       }
 
-      // Check limit of 5 portfolios per committee
-      if (currentPorts.length >= 5) {
+      // Check limit of portfolios per committee (2 for IP, 5 for other committees)
+      const maxLimit = getCommitteePortfolioTarget(committee);
+      if (currentPorts.length >= maxLimit) {
         const commName = MATRIX_COMMITTEES.find(c => c.id === committee)?.label || committee.toUpperCase();
-        alert(`You have already selected 5 portfolios for ${commName}. Deselect one of your existing choices in this committee to pick a different portfolio.`);
+        alert(`You have already selected ${maxLimit} portfolios for ${commName}. Deselect one of your existing choices in this committee to pick a different portfolio.`);
         return;
       }
 
@@ -619,16 +631,22 @@ export default function FirstRoundRegistration({
       if (selectedCommittees.length < 3) {
         newErrors.preferences = `Please select all 3 committees in your order of preference (${selectedCommittees.length}/3 currently selected).`;
       } else {
-        const c1Count = committeePortfolios[selectedCommittees[0]]?.length || 0;
-        const c2Count = committeePortfolios[selectedCommittees[1]]?.length || 0;
-        const c3Count = committeePortfolios[selectedCommittees[2]]?.length || 0;
+        const c1 = selectedCommittees[0];
+        const c2 = selectedCommittees[1];
+        const c3 = selectedCommittees[2];
+        const t1 = getCommitteePortfolioTarget(c1);
+        const t2 = getCommitteePortfolioTarget(c2);
+        const t3 = getCommitteePortfolioTarget(c3);
+        const c1Count = committeePortfolios[c1]?.length || 0;
+        const c2Count = committeePortfolios[c2]?.length || 0;
+        const c3Count = committeePortfolios[c3]?.length || 0;
 
-        if (c1Count < 5 || c2Count < 5 || c3Count < 5) {
+        if (c1Count < t1 || c2Count < t2 || c3Count < t3) {
           const missing: string[] = [];
-          if (c1Count < 5) missing.push(`${selectedCommittees[0].toUpperCase()} (${c1Count}/5)`);
-          if (c2Count < 5) missing.push(`${selectedCommittees[1].toUpperCase()} (${c2Count}/5)`);
-          if (c3Count < 5) missing.push(`${selectedCommittees[2].toUpperCase()} (${c3Count}/5)`);
-          newErrors.preferences = `Per committee it is mandatory to choose 5 portfolios (15 portfolios total). Still needed in: ${missing.join(", ")}.`;
+          if (c1Count < t1) missing.push(`${c1.toUpperCase()} (${c1Count}/${t1})`);
+          if (c2Count < t2) missing.push(`${c2.toUpperCase()} (${c2Count}/${t2})`);
+          if (c3Count < t3) missing.push(`${c3.toUpperCase()} (${c3Count}/${t3})`);
+          newErrors.preferences = `Please choose all required portfolios for your chosen committees (${targetPortfoliosCount} portfolios total). Still needed in: ${missing.join(", ")}.`;
         }
       }
       if (!formData.motivation.trim()) {
@@ -1708,7 +1726,7 @@ export default function FirstRoundRegistration({
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-[#C9A86A]" />
                   <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-bold">
-                    DIPLOMATIC ALLOCATION DOCK ({totalPortfoliosCount}/15 PORTFOLIOS ACROSS {selectedCommittees.length}/3 COMMITTEES)
+                    DIPLOMATIC ALLOCATION DOCK ({totalPortfoliosCount}/{targetPortfoliosCount} PORTFOLIOS ACROSS {selectedCommittees.length}/3 COMMITTEES)
                   </span>
                 </div>
                 {totalPortfoliosCount > 0 && (
@@ -1729,7 +1747,7 @@ export default function FirstRoundRegistration({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] font-mono">
                   <span className="text-[#EDE6D3]">
-                    Overall Progress: <strong className={totalPortfoliosCount === 15 ? "text-emerald-400" : "text-[#C9A86A]"}>{totalPortfoliosCount} / 15 Portfolios</strong>
+                    Overall Progress: <strong className={totalPortfoliosCount === targetPortfoliosCount ? "text-emerald-400" : "text-[#C9A86A]"}>{totalPortfoliosCount} / {targetPortfoliosCount} Portfolios</strong>
                   </span>
                   <span className="text-[#8A9A7E]">
                     {selectedCommittees.length} of 3 Committees Configured
@@ -1738,7 +1756,7 @@ export default function FirstRoundRegistration({
                 <div className="w-full bg-[#2E3B2F] h-2 rounded-none overflow-hidden border border-[#C9A86A]/30">
                   <div
                     className="h-full bg-gradient-to-r from-[#C9A86A] to-emerald-400 transition-all duration-300"
-                    style={{ width: `${(totalPortfoliosCount / 15) * 100}%` }}
+                    style={{ width: `${Math.min(100, (totalPortfoliosCount / targetPortfoliosCount) * 100)}%` }}
                   />
                 </div>
               </div>
@@ -1756,9 +1774,11 @@ export default function FirstRoundRegistration({
                   const commId = selectedCommittees[slotIdx];
                   const commObj = commId ? MATRIX_COMMITTEES.find(c => c.id === commId) : null;
                   const ports = commId ? (committeePortfolios[commId] || []) : [];
+                  const commTarget = getCommitteePortfolioTarget(commId);
                   const rankLabels = ["1ST", "2ND", "3RD"];
-                  const overallStartRank = slotIdx * 5 + 1;
-                  const overallEndRank = slotIdx * 5 + 5;
+                  const prevCounts = selectedCommittees.slice(0, slotIdx).reduce((acc, c) => acc + getCommitteePortfolioTarget(c), 0);
+                  const overallStartRank = prevCounts + 1;
+                  const overallEndRank = prevCounts + commTarget;
                   const isTopPriority = slotIdx === 0;
 
                   return (
@@ -1785,7 +1805,7 @@ export default function FirstRoundRegistration({
                               {commObj ? commObj.label : `Select Committee #${slotIdx + 1}`}
                             </h4>
                             <span className="font-mono text-[9px] text-[#8A9A7E] block mt-0.5">
-                              {commId ? `Ranks ${overallStartRank}–${overallEndRank} • ${ports.length}/5 Selected` : "Awaiting committee selection"}
+                              {commId ? `Ranks ${overallStartRank}–${overallEndRank} • ${ports.length}/${commTarget} Selected` : "Awaiting committee selection"}
                             </span>
                           </div>
 
@@ -1823,9 +1843,9 @@ export default function FirstRoundRegistration({
                           )}
                         </div>
 
-                        {/* 5 Portfolio Slots */}
+                        {/* Portfolio Slots */}
                         <div className="space-y-1.5 my-2">
-                          {[0, 1, 2, 3, 4].map((portIdx) => {
+                          {Array.from({ length: commTarget }).map((_, portIdx) => {
                             const country = ports[portIdx];
                             const overallRank = overallStartRank + portIdx;
 
@@ -1955,7 +1975,7 @@ export default function FirstRoundRegistration({
                       {commRankIdx !== -1 ? (
                         <span className={`text-[9px] font-mono px-1.5 py-0.2 font-bold ${isCurrent ? "bg-[#1A1F1A] text-[#C9A86A]" : "bg-emerald-950/90 text-emerald-300 border border-emerald-500/40"
                           }`}>
-                          #{commRankIdx + 1} PREF ({portsCount}/5)
+                          #{commRankIdx + 1} PREF ({portsCount}/{getCommitteePortfolioTarget(comm.id)})
                         </span>
                       ) : (
                         <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-xs ${isCurrent ? "bg-[#1A1F1A] text-[#C9A86A]" : "bg-[#1A1F1A]/70 text-emerald-400"
@@ -1977,7 +1997,7 @@ export default function FirstRoundRegistration({
                     </span>
                     {selectedCommittees.includes(activeCouncilTab) ? (
                       <span className="font-mono text-[9px] bg-[#C9A86A] text-[#1A1F1A] font-bold px-1.5 py-0.2">
-                        COMMITTEE PREFERENCE #{selectedCommittees.indexOf(activeCouncilTab) + 1} ({committeePortfolios[activeCouncilTab]?.length || 0}/5 PORTFOLIOS)
+                        COMMITTEE PREFERENCE #{selectedCommittees.indexOf(activeCouncilTab) + 1} ({committeePortfolios[activeCouncilTab]?.length || 0}/{getCommitteePortfolioTarget(activeCouncilTab)} PORTFOLIOS)
                       </span>
                     ) : (
                       <span className="font-mono text-[9px] bg-[#1A1F1A] text-[#C9A86A] border border-[#C9A86A]/40 px-1.5 py-0.2">
@@ -2040,7 +2060,7 @@ export default function FirstRoundRegistration({
                     const isClickable = item.status === "Available" || item.status === "Reserved";
                     const isSelected = item.isSelected;
                     const commPorts = committeePortfolios[activeCouncilTab] || [];
-                    const isCommFull = commPorts.length >= 5;
+                    const isCommFull = commPorts.length >= getCommitteePortfolioTarget(activeCouncilTab);
 
                     return (
                       <div
@@ -2093,7 +2113,7 @@ export default function FirstRoundRegistration({
                             </span>
                           ) : isCommFull ? (
                             <span className="text-[#8A9A7E]/70 font-mono text-[9px]">
-                              5/5 Selected in Council
+                              {commPorts.length}/{getCommitteePortfolioTarget(activeCouncilTab)} Selected in Council
                             </span>
                           ) : isClickable ? (
                             <span className="text-emerald-400/90 group-hover:text-[#C9A86A]">
@@ -2161,10 +2181,10 @@ export default function FirstRoundRegistration({
               <button
                 type="button"
                 onClick={handleNext}
-                disabled={totalPortfoliosCount < 15}
+                disabled={totalPortfoliosCount < targetPortfoliosCount || selectedCommittees.length < 3}
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#C9A86A] text-[#1A1F1A] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#bfa060] transition-colors cursor-pointer shadow-lg disabled:opacity-50"
               >
-                <span>Proceed to Payment with QR ({totalPortfoliosCount}/15 Portfolios)</span>
+                <span>Proceed to Payment with QR ({totalPortfoliosCount}/{targetPortfoliosCount} Portfolios)</span>
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>

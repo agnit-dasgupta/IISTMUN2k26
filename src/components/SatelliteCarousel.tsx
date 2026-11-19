@@ -23,6 +23,7 @@ const COMMITTEES = [
   { id: "unodc" as const, label: "UNODC", fullName: "United Nations Office on Drugs and Crime", color: "#B8860B", glowColor: "rgba(184, 134, 11, 0.4)", secondaryColor: "#586841" },
   { id: "nes75" as const, label: "NES'75", fullName: "National Emergency Summit 1975", color: "#dfbe7e", glowColor: "rgba(223, 190, 126, 0.4)", secondaryColor: "#8B5A3C" },
   { id: "undp" as const, label: "UNDP", fullName: "United Nations Development Programme", color: "#586841", glowColor: "rgba(88, 104, 65, 0.4)", secondaryColor: "#2E3B2F" },
+  { id: "ip" as const, label: "IP", fullName: "International Press", color: "#E11D48", glowColor: "rgba(225, 29, 72, 0.4)", secondaryColor: "#1A1F1A" },
   { id: "ip_journalism" as const, label: "IP (Journalism)", fullName: "International Press - Journalism", color: "#E11D48", glowColor: "rgba(225, 29, 72, 0.4)", secondaryColor: "#1A1F1A" },
   { id: "ip_photojournalism" as const, label: "IP (Photojournalism)", fullName: "International Press - Photojournalism", color: "#EA580C", glowColor: "rgba(234, 88, 12, 0.4)", secondaryColor: "#1A1F1A" }
 ];

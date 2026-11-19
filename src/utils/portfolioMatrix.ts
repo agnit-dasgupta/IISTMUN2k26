@@ -27,13 +27,6 @@ export function getEffectivePortfolioStatus(
 ): PortfolioStatus {
   if (!countryName || !committeeId) return "N/A";
 
-  // IP Journalism and IP Photojournalism are always N/A for country delegations
-  if (committeeId === "ip_journalism" || committeeId === "ip_photojournalism") {
-    const directOverride = portfolioOverrides[countryName]?.[committeeId];
-    if (directOverride) return directOverride;
-    return "N/A";
-  }
-
   // 1. Direct match in portfolio_states overrides
   const directOverride = portfolioOverrides[countryName]?.[committeeId];
   if (directOverride) return directOverride;
@@ -69,11 +62,6 @@ export function getAvailablePortfoliosForCommittee(
 ): string[] {
   if (!committeeId) return [];
 
-  // Special handling for International Press (IP): Portfolios are always N/A
-  if (committeeId === "ip_journalism" || committeeId === "ip_photojournalism") {
-    return ["N/A"];
-  }
-
   // Filter matrix rows where effective status is "Available"
   const availableList: string[] = [];
   const seen = new Set<string>();
@@ -97,7 +85,7 @@ export function calculateMatrixStats(
   portfolioOverrides: PortfolioStateMap = {},
   matrixRows: CountryMatrixRow[] = COUNTRY_MATRIX
 ) {
-  const committees: CommitteeId[] = ["uncopuos", "unhrc", "unodc", "nes75", "undp", "ip_journalism", "ip_photojournalism", "unga"];
+  const committees: CommitteeId[] = ["uncopuos", "unhrc", "unodc", "nes75", "undp", "ip", "unga"];
   
   let totalSeats = 0;
   let available = 0;

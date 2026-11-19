@@ -20,6 +20,7 @@ export interface Committee {
   eb: EBReference[];
   guideUrl?: string;
   portfolioUrl?: string;
+  portfolios?: string[];
 }
 
 export interface SecretariatMember {
