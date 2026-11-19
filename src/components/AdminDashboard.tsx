@@ -254,6 +254,69 @@ function PortfolioStatusSelector({ country, committee, currentStatus, onUpdate }
   );
 }
 
+export const FIRST_ROUND_COMMITTEE_NAMES: Record<string, string> = {
+  uncopuos: "UNCOPUOS (Outer Space)",
+  unhrc: "UNHRC (Human Rights)",
+  unodc: "UNODC (Drugs & Crime)",
+  nes75: "NES'75 (Historic Crisis)",
+  undp: "UNDP (Development)",
+  ip: "IP (International Press)",
+  ip_journalism: "IP (Journalism)",
+  ip_photojournalism: "IP (Photojournalism)",
+  unga: "UNGA (Online)",
+};
+
+export const getFirstRoundNormalizedCommittees = (r: FirstRoundRegistrationDetails) => {
+  if (r.committeePreferences && r.committeePreferences.length > 0) {
+    return r.committeePreferences.map((cp, idx) => ({
+      rank: cp.rank || idx + 1,
+      committee: cp.committee,
+      committeeName: cp.committeeName || FIRST_ROUND_COMMITTEE_NAMES[cp.committee] || cp.committee.toUpperCase(),
+      portfolios: Array.isArray(cp.portfolios) ? cp.portfolios : []
+    }));
+  }
+
+  const list: Array<{ rank: number; committee: string; committeeName: string; portfolios: string[] }> = [];
+
+  const addComm = (rank: number, comm?: string, portList?: string[], singlePort?: string) => {
+    if (!comm) return;
+    const ports = (Array.isArray(portList) && portList.length > 0)
+      ? portList
+      : (singlePort ? [singlePort] : []);
+    list.push({
+      rank,
+      committee: comm,
+      committeeName: FIRST_ROUND_COMMITTEE_NAMES[comm] || comm.toUpperCase(),
+      portfolios: ports
+    });
+  };
+
+  addComm(1, r.pref1Committee, r.pref1Portfolios, r.pref1Country);
+  addComm(2, r.pref2Committee, r.pref2Portfolios, r.pref2Country);
+  addComm(3, r.pref3Committee, r.pref3Portfolios, r.pref3Country);
+
+  if (list.length === 0 && r.preferences && r.preferences.length > 0) {
+    const grouped = new Map<string, string[]>();
+    r.preferences.forEach((p) => {
+      if (!grouped.has(p.committee)) grouped.set(p.committee, []);
+      if (p.country && !grouped.get(p.committee)!.includes(p.country)) {
+        grouped.get(p.committee)!.push(p.country);
+      }
+    });
+    let rank = 1;
+    grouped.forEach((ports, comm) => {
+      list.push({
+        rank: rank++,
+        committee: comm,
+        committeeName: FIRST_ROUND_COMMITTEE_NAMES[comm] || comm.toUpperCase(),
+        portfolios: ports
+      });
+    });
+  }
+
+  return list;
+};
+
 export const resolveMediaUrl = (url?: string): string => {
   if (!url) return "";
   const trimmed = url.trim();
@@ -2140,11 +2203,34 @@ export default function AdminDashboard() {
       "MUN Experience": r.munExperience || "",
       "Past MUN Details": r.pastMunDetails || "",
       "Pref 1 Committee": (r.pref1Committee || "").toUpperCase(),
-      "Pref 1 Portfolio": r.pref1Country || "",
+      "Pref 1 Portfolios (All 5)": (r.pref1Portfolios && r.pref1Portfolios.length > 0) ? r.pref1Portfolios.join("; ") : (r.pref1Country || ""),
+      "Pref 1 - Portfolio 1 (Top Choice)": r.pref1Portfolios?.[0] || r.pref1Country || "",
+      "Pref 1 - Portfolio 2": r.pref1Portfolios?.[1] || "",
+      "Pref 1 - Portfolio 3": r.pref1Portfolios?.[2] || "",
+      "Pref 1 - Portfolio 4": r.pref1Portfolios?.[3] || "",
+      "Pref 1 - Portfolio 5": r.pref1Portfolios?.[4] || "",
       "Pref 2 Committee": (r.pref2Committee || "").toUpperCase(),
-      "Pref 2 Portfolio": r.pref2Country || "",
+      "Pref 2 Portfolios (All 5)": (r.pref2Portfolios && r.pref2Portfolios.length > 0) ? r.pref2Portfolios.join("; ") : (r.pref2Country || ""),
+      "Pref 2 - Portfolio 1": r.pref2Portfolios?.[0] || r.pref2Country || "",
+      "Pref 2 - Portfolio 2": r.pref2Portfolios?.[1] || "",
+      "Pref 2 - Portfolio 3": r.pref2Portfolios?.[2] || "",
+      "Pref 2 - Portfolio 4": r.pref2Portfolios?.[3] || "",
+      "Pref 2 - Portfolio 5": r.pref2Portfolios?.[4] || "",
       "Pref 3 Committee": (r.pref3Committee || "").toUpperCase(),
-      "Pref 3 Portfolio": r.pref3Country || "",
+      "Pref 3 Portfolios (All 5)": (r.pref3Portfolios && r.pref3Portfolios.length > 0) ? r.pref3Portfolios.join("; ") : (r.pref3Country || ""),
+      "Pref 3 - Portfolio 1": r.pref3Portfolios?.[0] || r.pref3Country || "",
+      "Pref 3 - Portfolio 2": r.pref3Portfolios?.[1] || "",
+      "Pref 3 - Portfolio 3": r.pref3Portfolios?.[2] || "",
+      "Pref 3 - Portfolio 4": r.pref3Portfolios?.[3] || "",
+      "Pref 3 - Portfolio 5": r.pref3Portfolios?.[4] || "",
+      "Total Portfolios Selected": (r.preferences?.length) || ((r.pref1Portfolios?.length || 0) + (r.pref2Portfolios?.length || 0) + (r.pref3Portfolios?.length || 0)) || (r.pref1Country ? 3 : 0),
+      "15 Portfolios Priority Sequence": (r.preferences && r.preferences.length > 0)
+        ? r.preferences.map(p => `[#${p.rank}] ${p.committee.toUpperCase()}: ${p.country}`).join(" | ")
+        : [
+            ...(r.pref1Portfolios || (r.pref1Country ? [r.pref1Country] : [])).map((p, i) => `[#${i + 1}] ${(r.pref1Committee || "").toUpperCase()}: ${p}`),
+            ...(r.pref2Portfolios || (r.pref2Country ? [r.pref2Country] : [])).map((p, i) => `[#${i + 6}] ${(r.pref2Committee || "").toUpperCase()}: ${p}`),
+            ...(r.pref3Portfolios || (r.pref3Country ? [r.pref3Country] : [])).map((p, i) => `[#${i + 11}] ${(r.pref3Committee || "").toUpperCase()}: ${p}`),
+          ].join(" | "),
       "Motivation Statement": r.motivation || "",
       "Accommodation Requested": r.accommodationRequired === "yes" ? "YES" : "NO",
       "Has Aadhaar/Passport File": r.aadharPhotoUrl ? "YES" : "NO",
@@ -2666,7 +2752,11 @@ export default function AdminDashboard() {
       (r.uid || "").toLowerCase().includes(q) ||
       (r.pref1Country || "").toLowerCase().includes(q) ||
       (r.pref2Country || "").toLowerCase().includes(q) ||
-      (r.pref3Country || "").toLowerCase().includes(q)
+      (r.pref3Country || "").toLowerCase().includes(q) ||
+      (r.pref1Portfolios?.some(p => p.toLowerCase().includes(q))) ||
+      (r.pref2Portfolios?.some(p => p.toLowerCase().includes(q))) ||
+      (r.pref3Portfolios?.some(p => p.toLowerCase().includes(q))) ||
+      (r.preferences?.some(p => p.country.toLowerCase().includes(q)))
     );
 
     const matchesCommittee =
@@ -2674,7 +2764,9 @@ export default function AdminDashboard() {
       r.pref1Committee === firstRoundCommitteeFilter ||
       r.pref2Committee === firstRoundCommitteeFilter ||
       r.pref3Committee === firstRoundCommitteeFilter ||
-      r.allottedCommittee === firstRoundCommitteeFilter;
+      r.allottedCommittee === firstRoundCommitteeFilter ||
+      r.committeePreferences?.some(cp => cp.committee === firstRoundCommitteeFilter) ||
+      r.preferences?.some(p => p.committee === firstRoundCommitteeFilter);
 
     const matchesStatus =
       firstRoundStatusFilter === "all" ||
@@ -3886,30 +3978,63 @@ export default function AdminDashboard() {
                             </div>
                           </td>
 
-                          {/* 3 Ranked Country Matrix Preferences */}
-                          <td className="p-3.5 max-w-[240px]">
-                            <div className="space-y-1 text-[11px]">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-mono text-[9px] bg-[#C9A86A] text-[#1A1F1A] font-bold px-1 py-0.2">#1</span>
-                                <span className="text-[#EDE6D3] font-medium">{item.pref1Country || "N/A"}</span>
-                                <span className="text-[#8A9A7E] text-[10px]">({(item.pref1Committee || "").toUpperCase()})</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-mono text-[9px] bg-[#2E3B2F] border border-[#C9A86A]/40 text-[#EDE6D3] font-bold px-1 py-0.2">#2</span>
-                                <span className="text-[#EDE6D3]/90">{item.pref2Country || "N/A"}</span>
-                                <span className="text-[#8A9A7E] text-[10px]">({(item.pref2Committee || "").toUpperCase()})</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-mono text-[9px] bg-[#2E3B2F] border border-[#C9A86A]/40 text-[#EDE6D3] font-bold px-1 py-0.2">#3</span>
-                                <span className="text-[#EDE6D3]/80">{item.pref3Country || "N/A"}</span>
-                                <span className="text-[#8A9A7E] text-[10px]">({(item.pref3Committee || "").toUpperCase()})</span>
-                              </div>
-                              {item.allottedCountry && (
-                                <div className="mt-1.5 p-1 bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-mono text-[10px]">
-                                  Allotted: {item.allottedCountry} ({(item.allottedCommittee || "").toUpperCase()})
+                          {/* 15 Portfolios Across 3 Councils */}
+                          <td className="p-3.5 min-w-[260px] max-w-[320px]">
+                            {(() => {
+                              const comms = getFirstRoundNormalizedCommittees(item);
+                              const totalCount = (item.preferences?.length) || 
+                                ((item.pref1Portfolios?.length || 0) + (item.pref2Portfolios?.length || 0) + (item.pref3Portfolios?.length || 0)) ||
+                                (item.pref1Country ? 3 : 0);
+                              return (
+                                <div className="space-y-1.5 text-[11px]">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-mono text-[9px] tracking-wider uppercase text-[#C9A86A] font-bold">
+                                      {totalCount >= 15 ? "15 Portfolios (3 Councils)" : `${totalCount} Portfolios`}
+                                    </span>
+                                    <button
+                                      onClick={() => setSelectedFirstRoundReg(item)}
+                                      className="text-[9px] text-[#8A9A7E] hover:text-[#C9A86A] underline font-mono cursor-pointer"
+                                    >
+                                      View All
+                                    </button>
+                                  </div>
+                                  <div className="space-y-1">
+                                    {comms.map((c) => (
+                                      <div key={c.rank} className="bg-[#1A1F1A]/80 border border-[#C9A86A]/20 px-2 py-1">
+                                        <div className="flex items-center justify-between text-[10px] mb-0.5">
+                                          <div className="flex items-center gap-1 font-mono">
+                                            <span className={`px-1 py-0.2 font-bold text-[8px] ${c.rank === 1 ? "bg-[#C9A86A] text-[#1A1F1A]" : "bg-[#2E3B2F] text-[#C9A86A] border border-[#C9A86A]/30"}`}>
+                                              PREF #{c.rank}
+                                            </span>
+                                            <span className="text-[#EDE6D3] font-semibold">{c.committee.toUpperCase()}</span>
+                                          </div>
+                                          <span className="text-[9px] font-mono text-[#8A9A7E]">
+                                            {c.portfolios.length} {c.portfolios.length === 1 ? "choice" : "choices"}
+                                          </span>
+                                        </div>
+                                        <div className="text-[10px] text-[#EDE6D3]/90 truncate" title={c.portfolios.join(", ")}>
+                                          <span className="text-[#C9A86A] font-medium">1: {c.portfolios[0] || "—"}</span>
+                                          {c.portfolios.length > 1 && (
+                                            <span className="text-[#8A9A7E] text-[9px] ml-1">
+                                              (+{c.portfolios.length - 1} more: {c.portfolios.slice(1).join(", ")})
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                    {comms.length === 0 && (
+                                      <span className="text-[10px] text-[#8A9A7E] italic">No preferences recorded</span>
+                                    )}
+                                  </div>
+                                  {item.allottedCountry && (
+                                    <div className="mt-1 p-1 bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-mono text-[10px] flex items-center justify-between">
+                                      <span>Allotted: <strong className="text-white">{item.allottedCountry}</strong></span>
+                                      <span className="uppercase text-[9px] text-emerald-400">({item.allottedCommittee})</span>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
+                              );
+                            })()}
                           </td>
 
                           {/* CA Code, Accomm & Fee */}
@@ -3978,8 +4103,8 @@ export default function AdminDashboard() {
                                 onClick={() => {
                                   setAllotFirstRoundModalReg(item);
                                   setAllotFirstRoundForm({
-                                    committee: item.pref1Committee || "uncopuos",
-                                    country: item.pref1Country || "",
+                                    committee: item.allottedCommittee || item.pref1Committee || "uncopuos",
+                                    country: item.allottedCountry || item.pref1Portfolios?.[0] || item.pref1Country || "",
                                     adminNotes: item.adminNotes || ""
                                   });
                                 }}
@@ -10604,34 +10729,136 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* 3 Ranked Country Matrix Preferences */}
+                  {/* Diplomatic Allocation: 15 Ranked Portfolios Across 3 Councils */}
                   <div className="bg-[#1A1F1A] border border-[#C9A86A]/40 p-4 space-y-3">
-                    <span className="text-[10px] font-mono text-[#C9A86A] uppercase tracking-wider font-bold block">
-                      3 Ranked Country Matrix Preferences
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                      <div className="p-2.5 bg-[#2E3B2F] border border-[#C9A86A]">
-                        <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-1.5 py-0.2 inline-block mb-1">
-                          1ST PREF
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 border-b border-[#C9A86A]/20 pb-2">
+                      <div>
+                        <span className="text-[10px] font-mono text-[#C9A86A] uppercase tracking-wider font-bold block">
+                          // DIPLOMATIC ALLOCATION: 15 PORTFOLIOS ACROSS 3 COUNCILS
                         </span>
-                        <div className="font-serif text-sm font-semibold text-[#EDE6D3]">{selectedFirstRoundReg.pref1Country || "N/A"}</div>
-                        <div className="text-[10px] text-[#8A9A7E]">{(selectedFirstRoundReg.pref1Committee || "").toUpperCase()}</div>
-                      </div>
-                      <div className="p-2.5 bg-[#2E3B2F] border border-[#C9A86A]/50">
-                        <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 font-bold px-1.5 py-0.2 inline-block mb-1">
-                          2ND PREF
+                        <span className="text-[11px] text-[#8A9A7E]">
+                          Order of council selection dictates council priority. Portfolios in Committee #1 carry highest overall preference (Ranks 1–5).
                         </span>
-                        <div className="font-serif text-sm font-semibold text-[#EDE6D3]">{selectedFirstRoundReg.pref2Country || "N/A"}</div>
-                        <div className="text-[10px] text-[#8A9A7E]">{(selectedFirstRoundReg.pref2Committee || "").toUpperCase()}</div>
                       </div>
-                      <div className="p-2.5 bg-[#2E3B2F] border border-[#C9A86A]/30">
-                        <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 font-bold px-1.5 py-0.2 inline-block mb-1">
-                          3RD PREF
-                        </span>
-                        <div className="font-serif text-sm font-semibold text-[#EDE6D3]">{selectedFirstRoundReg.pref3Country || "N/A"}</div>
-                        <div className="text-[10px] text-[#8A9A7E]">{(selectedFirstRoundReg.pref3Committee || "").toUpperCase()}</div>
-                      </div>
+                      <span className="font-mono text-[10px] bg-[#2E3B2F] text-[#C9A86A] border border-[#C9A86A]/40 px-2 py-0.5 font-bold self-start sm:self-auto">
+                        15 Portfolios Mandatory
+                      </span>
                     </div>
+
+                    {(() => {
+                      const comms = getFirstRoundNormalizedCommittees(selectedFirstRoundReg);
+                      if (comms.length === 0) {
+                        return (
+                          <div className="p-4 text-center text-xs text-[#8A9A7E] italic bg-[#2E3B2F]">
+                            No committee or portfolio preferences recorded for this delegate.
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {comms.map((c, cIdx) => {
+                            const rankOffset = cIdx * 5;
+                            const isFirstPref = c.rank === 1;
+                            return (
+                              <div
+                                key={c.rank}
+                                className={`p-3 bg-[#2E3B2F] border ${
+                                  isFirstPref ? "border-[#C9A86A] ring-1 ring-[#C9A86A]/30" : "border-[#C9A86A]/40"
+                                } flex flex-col justify-between`}
+                              >
+                                <div>
+                                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                                    <span
+                                      className={`font-mono text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 inline-block ${
+                                        isFirstPref
+                                          ? "bg-[#C9A86A] text-[#1A1F1A]"
+                                          : "bg-[#1A1F1A] text-[#EDE6D3] border border-[#C9A86A]/40"
+                                      }`}
+                                    >
+                                      {isFirstPref ? "1ST COUNCIL PREF (TOP PRIORITY)" : `${c.rank}${c.rank === 2 ? "ND" : "RD"} COUNCIL PREF`}
+                                    </span>
+                                    <span className="text-[9px] font-mono text-[#8A9A7E]">
+                                      Ranks {rankOffset + 1}–{rankOffset + 5}
+                                    </span>
+                                  </div>
+                                  <h5 className="font-serif text-sm font-bold text-[#EDE6D3] mb-1">
+                                    {c.committeeName || c.committee.toUpperCase()}
+                                  </h5>
+                                  <span className="text-[9px] font-mono text-[#8A9A7E] uppercase block mb-2">
+                                    Council ID: {c.committee}
+                                  </span>
+
+                                  {/* List of 5 portfolios */}
+                                  <div className="space-y-1.5 mt-2">
+                                    {c.portfolios.map((portfolio, pIdx) => {
+                                      const globalRank = rankOffset + pIdx + 1;
+                                      const isAllotted =
+                                        selectedFirstRoundReg.allottedCountry?.toLowerCase() === portfolio.toLowerCase() &&
+                                        selectedFirstRoundReg.allottedCommittee?.toLowerCase() === c.committee.toLowerCase();
+                                      return (
+                                        <div
+                                          key={pIdx}
+                                          className={`p-1.5 border text-xs flex items-center justify-between gap-1.5 transition-colors ${
+                                            isAllotted
+                                              ? "bg-emerald-950/70 border-emerald-500 text-emerald-200"
+                                              : globalRank === 1
+                                              ? "bg-[#1A1F1A] border-[#C9A86A] text-[#EDE6D3]"
+                                              : "bg-[#1A1F1A]/80 border-[#8A9A7E]/20 text-[#EDE6D3]/90"
+                                          }`}
+                                        >
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <span
+                                              className={`font-mono text-[9px] font-bold px-1 py-0.2 shrink-0 ${
+                                                globalRank === 1
+                                                  ? "bg-[#C9A86A] text-[#1A1F1A]"
+                                                  : globalRank <= 5
+                                                  ? "bg-[#C9A86A]/30 text-[#C9A86A] border border-[#C9A86A]/50"
+                                                  : "bg-[#2E3B2F] text-[#8A9A7E]"
+                                              }`}
+                                            >
+                                              #{globalRank}
+                                            </span>
+                                            <div className="min-w-0">
+                                              <span className="font-medium text-[11px] block truncate">
+                                                {portfolio}
+                                              </span>
+                                              <span className="text-[8px] font-mono text-[#8A9A7E] block">
+                                                Choice {pIdx + 1} of 5
+                                              </span>
+                                            </div>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setAllotFirstRoundModalReg(selectedFirstRoundReg);
+                                              setAllotFirstRoundForm({
+                                                committee: c.committee,
+                                                country: portfolio,
+                                                adminNotes: selectedFirstRoundReg.adminNotes || `Allotted Choice #${pIdx + 1} (Rank #${globalRank}) in ${c.committee.toUpperCase()}`
+                                              });
+                                            }}
+                                            className="px-1.5 py-0.5 bg-[#1A1F1A] border border-[#C9A86A]/40 text-[#C9A86A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-[9px] font-mono shrink-0 transition-colors cursor-pointer"
+                                            title={`Quick-Allot ${portfolio} in ${c.committee.toUpperCase()}`}
+                                          >
+                                            Allot
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                    {c.portfolios.length === 0 && (
+                                      <span className="text-[10px] text-[#8A9A7E] italic block py-1">
+                                        No portfolios listed
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Portfolio Allotment Status */}
@@ -10746,8 +10973,8 @@ export default function AdminDashboard() {
                         onClick={() => {
                           setAllotFirstRoundModalReg(selectedFirstRoundReg);
                           setAllotFirstRoundForm({
-                            committee: selectedFirstRoundReg.pref1Committee || "uncopuos",
-                            country: selectedFirstRoundReg.pref1Country || "",
+                            committee: selectedFirstRoundReg.allottedCommittee || selectedFirstRoundReg.pref1Committee || "uncopuos",
+                            country: selectedFirstRoundReg.allottedCountry || selectedFirstRoundReg.pref1Portfolios?.[0] || selectedFirstRoundReg.pref1Country || "",
                             adminNotes: selectedFirstRoundReg.adminNotes || ""
                           });
                         }}
@@ -10769,7 +10996,7 @@ export default function AdminDashboard() {
            ======================================================== */}
         {allotFirstRoundModalReg && (
           <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in flex items-center justify-center p-4">
-            <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-md w-full p-6 text-left relative shadow-2xl">
+            <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-2xl w-full p-6 text-left relative shadow-2xl">
               <div className="flex items-center justify-between border-b border-[#C9A86A]/30 pb-3">
                 <div>
                   <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold block">
@@ -10790,60 +11017,90 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              {/* Preferences Reference with quick-apply buttons */}
+              {/* Preferences Reference with quick-apply buttons for all 15 portfolios */}
               <div className="mt-4 p-3 bg-[#1A1F1A] border border-[#8A9A7E]/20 text-xs">
-                <span className="text-[10px] font-mono text-[#C9A86A] uppercase block mb-1.5 font-bold">
-                  Delegate Ranked Preferences (Click to Quick-Allot):
-                </span>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-[#EDE6D3]">
-                    <span><strong className="text-[#C9A86A]">1st:</strong> {(allotFirstRoundModalReg.pref1Committee || "").toUpperCase()} &mdash; {allotFirstRoundModalReg.pref1Country || "Any"}</span>
-                    {allotFirstRoundModalReg.pref1Country && (
-                      <button
-                        type="button"
-                        onClick={() => setAllotFirstRoundForm(prev => ({
-                          ...prev,
-                          committee: allotFirstRoundModalReg.pref1Committee || "uncopuos",
-                          country: allotFirstRoundModalReg.pref1Country || ""
-                        }))}
-                        className="px-2 py-0.5 bg-[#2E3B2F] border border-[#C9A86A]/40 text-[#C9A86A] text-[10px] font-mono hover:bg-[#C9A86A] hover:text-[#1A1F1A]"
-                      >
-                        Apply
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between text-[#EDE6D3]">
-                    <span><strong className="text-[#8A9A7E]">2nd:</strong> {(allotFirstRoundModalReg.pref2Committee || "").toUpperCase()} &mdash; {allotFirstRoundModalReg.pref2Country || "Any"}</span>
-                    {allotFirstRoundModalReg.pref2Country && (
-                      <button
-                        type="button"
-                        onClick={() => setAllotFirstRoundForm(prev => ({
-                          ...prev,
-                          committee: allotFirstRoundModalReg.pref2Committee || "uncopuos",
-                          country: allotFirstRoundModalReg.pref2Country || ""
-                        }))}
-                        className="px-2 py-0.5 bg-[#2E3B2F] border border-[#C9A86A]/40 text-[#C9A86A] text-[10px] font-mono hover:bg-[#C9A86A] hover:text-[#1A1F1A]"
-                      >
-                        Apply
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between text-[#EDE6D3]">
-                    <span><strong className="text-[#8A9A7E]">3rd:</strong> {(allotFirstRoundModalReg.pref3Committee || "").toUpperCase()} &mdash; {allotFirstRoundModalReg.pref3Country || "Any"}</span>
-                    {allotFirstRoundModalReg.pref3Country && (
-                      <button
-                        type="button"
-                        onClick={() => setAllotFirstRoundForm(prev => ({
-                          ...prev,
-                          committee: allotFirstRoundModalReg.pref3Committee || "uncopuos",
-                          country: allotFirstRoundModalReg.pref3Country || ""
-                        }))}
-                        className="px-2 py-0.5 bg-[#2E3B2F] border border-[#C9A86A]/40 text-[#C9A86A] text-[10px] font-mono hover:bg-[#C9A86A] hover:text-[#1A1F1A]"
-                      >
-                        Apply
-                      </button>
-                    )}
-                  </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-mono text-[#C9A86A] uppercase font-bold">
+                    Delegate Ranked Preferences (Click Any Portfolio to Quick-Allot):
+                  </span>
+                  <span className="text-[9px] font-mono text-[#8A9A7E]">
+                    Top Choice = Rank #1 (Most Preferred)
+                  </span>
+                </div>
+
+                <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
+                  {(() => {
+                    const comms = getFirstRoundNormalizedCommittees(allotFirstRoundModalReg);
+                    if (comms.length === 0) {
+                      return (
+                        <div className="text-[#8A9A7E] italic text-[11px] py-1">
+                          No preferences recorded for this delegate.
+                        </div>
+                      );
+                    }
+
+                    return comms.map((c, cIdx) => {
+                      const rankOffset = cIdx * 5;
+                      const isFirst = c.rank === 1;
+                      return (
+                        <div key={c.rank} className="p-2 bg-[#2E3B2F]/60 border border-[#C9A86A]/20">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="font-mono text-[9px] font-bold text-[#C9A86A] uppercase flex items-center gap-1">
+                              <span className={`px-1 py-0.2 ${isFirst ? "bg-[#C9A86A] text-[#1A1F1A]" : "bg-[#1A1F1A] text-[#EDE6D3] border border-[#C9A86A]/40"}`}>
+                                PREF #{c.rank}
+                              </span>
+                              <span>{c.committeeName || c.committee.toUpperCase()}</span>
+                            </span>
+                            <span className="text-[9px] font-mono text-[#8A9A7E]">
+                              Ranks {rankOffset + 1}–{rankOffset + 5}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {c.portfolios.map((port, pIdx) => {
+                              const globalRank = rankOffset + pIdx + 1;
+                              const isSelected =
+                                allotFirstRoundForm.committee.toLowerCase() === c.committee.toLowerCase() &&
+                                allotFirstRoundForm.country.toLowerCase() === port.toLowerCase();
+                              return (
+                                <button
+                                  key={pIdx}
+                                  type="button"
+                                  onClick={() => setAllotFirstRoundForm(prev => ({
+                                    ...prev,
+                                    committee: c.committee,
+                                    country: port,
+                                    adminNotes: prev.adminNotes || `Allotted Choice #${pIdx + 1} (Rank #${globalRank}) in ${c.committee.toUpperCase()}`
+                                  }))}
+                                  className={`text-left p-1.5 border text-[11px] flex items-center justify-between gap-1 transition-colors cursor-pointer ${
+                                    isSelected
+                                      ? "bg-[#C9A86A] border-[#C9A86A] text-[#1A1F1A] font-bold shadow"
+                                      : "bg-[#1A1F1A] border-[#8A9A7E]/30 text-[#EDE6D3] hover:border-[#C9A86A] hover:bg-[#2E3B2F]"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-1 truncate">
+                                    <span className={`font-mono text-[8px] px-1 py-0.2 ${
+                                      isSelected
+                                        ? "bg-[#1A1F1A] text-[#C9A86A]"
+                                        : globalRank === 1
+                                        ? "bg-[#C9A86A] text-[#1A1F1A] font-bold"
+                                        : "bg-[#2E3B2F] text-[#8A9A7E]"
+                                    }`}>
+                                      #{globalRank}
+                                    </span>
+                                    <span className="truncate">{port}</span>
+                                  </div>
+                                  <span className={`text-[8px] font-mono shrink-0 uppercase ${isSelected ? "text-[#1A1F1A]" : "text-[#8A9A7E]"}`}>
+                                    {isSelected ? "Selected" : `Apply`}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 

@@ -13,7 +13,8 @@ import {
   Sparkles, Download, School, FileText, Globe, Landmark,
   X, CheckSquare, HeartHandshake, Compass, Filter, Search,
   Tag, ShieldAlert, Award, ExternalLink,
-  Layers, CheckCheck, Clock, Ban, CreditCard, QrCode
+  Layers, CheckCheck, Clock, Ban, CreditCard, QrCode,
+  ArrowUp, ArrowDown, Trash2
 } from "lucide-react";
 import { useFirebase } from "../FirebaseContext";
 import { db } from "../firebase";
@@ -55,18 +56,14 @@ export const MATRIX_COMMITTEES: { id: CommitteeId; label: string; name: string }
   { id: "unhrc", label: "UNHRC", name: "UN Human Rights Council" },
   { id: "unodc", label: "UNODC", name: "UN Office on Drugs and Crime" },
   { id: "nes75", label: "NES'75", name: "National Emergency Summit 1975" },
-  { id: "undp", label: "UNDP", name: "UN Development Programme" },
-  { id: "ip", label: "IP", name: "International Press" }
+  { id: "undp", label: "UNDP", name: "UN Development Programme" }
 ];
 
-export const IP_PORTFOLIOS = [
-  "IP(Journalism)",
-  "IP(photojournalism)"
-];
-
-interface SelectedPreference {
-  rank: number;
+export interface RankedPortfolioPreference {
+  rank: number; // Overall rank 1 to 15 (Committee 1 choices have highest preference)
+  committeeRank: number; // 1, 2, or 3
   committee: CommitteeId;
+  portfolioRank: number; // 1 to 5 within committee
   country: string;
 }
 
@@ -154,8 +151,10 @@ export default function FirstRoundRegistration({
     paymentScreenshotName: ""
   });
 
-  // Ordered preferences: The order of clicking is the order of preference!
-  const [selectedPrefs, setSelectedPrefs] = useState<SelectedPreference[]>([]);
+  // Committee Preferences (3 distinct committees in order of preference)
+  const [selectedCommittees, setSelectedCommittees] = useState<CommitteeId[]>([]);
+  // Portfolios selected per committee in order of preference (exactly 5 per committee = 15 total)
+  const [committeePortfolios, setCommitteePortfolios] = useState<Record<string, string[]>>({});
 
   // Fee for First Round is strictly Rs 1,299 (Socials has no extra charge)
   const calculatedFee = 1299;
@@ -168,6 +167,72 @@ export default function FirstRoundRegistration({
   const [activeCouncilTab, setActiveCouncilTab] = useState<CommitteeId>("uncopuos");
   const [matrixSearch, setMatrixSearch] = useState("");
   const [matrixStatusFilter, setMatrixStatusFilter] = useState<"all" | "Available">("all");
+
+  // Total portfolios count across all selected committees (Target: 15)
+  const totalPortfoliosCount = useMemo(() => {
+    return selectedCommittees.reduce((sum, commId) => sum + (committeePortfolios[commId]?.length || 0), 0);
+  }, [selectedCommittees, committeePortfolios]);
+
+  // Overall ranked preferences: 15 portfolios across 3 committees
+  // Committee 1 (Choice 1 to 5 = Rank 1 to 5 - Highest Priority)
+  // Committee 2 (Choice 1 to 5 = Rank 6 to 10)
+  // Committee 3 (Choice 1 to 5 = Rank 11 to 15)
+  const allRankedPreferences = useMemo(() => {
+    const list: RankedPortfolioPreference[] = [];
+    selectedCommittees.forEach((commId, cIdx) => {
+      const ports = committeePortfolios[commId] || [];
+      ports.forEach((country, pIdx) => {
+        list.push({
+          rank: list.length + 1,
+          committeeRank: cIdx + 1,
+          committee: commId,
+          portfolioRank: pIdx + 1,
+          country
+        });
+      });
+    });
+    return list;
+  }, [selectedCommittees, committeePortfolios]);
+
+  // Helper to load existing/cached preferences
+  const loadRegistrationPreferences = (data: FirstRoundRegistrationDetails) => {
+    if (data.committeePreferences && data.committeePreferences.length > 0) {
+      const comms = data.committeePreferences.map(cp => cp.committee as CommitteeId);
+      setSelectedCommittees(comms);
+      const portMap: Record<string, string[]> = {};
+      data.committeePreferences.forEach(cp => {
+        portMap[cp.committee] = cp.portfolios || [];
+      });
+      setCommitteePortfolios(portMap);
+    } else if (data.pref1Portfolios || data.pref2Portfolios || data.pref3Portfolios) {
+      const comms = [data.pref1Committee, data.pref2Committee, data.pref3Committee].filter(Boolean) as CommitteeId[];
+      setSelectedCommittees(comms);
+      setCommitteePortfolios({
+        [data.pref1Committee]: data.pref1Portfolios || (data.pref1Country ? [data.pref1Country] : []),
+        [data.pref2Committee]: data.pref2Portfolios || (data.pref2Country ? [data.pref2Country] : []),
+        [data.pref3Committee]: data.pref3Portfolios || (data.pref3Country ? [data.pref3Country] : [])
+      });
+    } else if (data.preferences && data.preferences.length > 0) {
+      const comms: CommitteeId[] = [];
+      const portMap: Record<string, string[]> = {};
+      data.preferences.forEach(p => {
+        const cId = p.committee as CommitteeId;
+        if (!comms.includes(cId)) comms.push(cId);
+        if (!portMap[cId]) portMap[cId] = [];
+        if (!portMap[cId].includes(p.country)) portMap[cId].push(p.country);
+      });
+      setSelectedCommittees(comms);
+      setCommitteePortfolios(portMap);
+    } else if (data.pref1Committee || data.pref2Committee || data.pref3Committee) {
+      const comms = [data.pref1Committee, data.pref2Committee, data.pref3Committee].filter(Boolean) as CommitteeId[];
+      setSelectedCommittees(comms);
+      const portMap: Record<string, string[]> = {};
+      if (data.pref1Committee && data.pref1Country) portMap[data.pref1Committee] = [data.pref1Country];
+      if (data.pref2Committee && data.pref2Country) portMap[data.pref2Committee] = [data.pref2Country];
+      if (data.pref3Committee && data.pref3Country) portMap[data.pref3Committee] = [data.pref3Country];
+      setCommitteePortfolios(portMap);
+    }
+  };
 
   // Subscribe to live portfolio states and country matrix
   useEffect(() => {
@@ -216,28 +281,45 @@ export default function FirstRoundRegistration({
     };
   }, []);
 
-  // Sync selectedPrefs with formData.pref1/2/3
+  // Sync selectedCommittees & committeePortfolios with formData.pref1/2/3
   useEffect(() => {
+    const c1 = selectedCommittees[0] || "";
+    const c2 = selectedCommittees[1] || "";
+    const c3 = selectedCommittees[2] || "";
+
+    const c1Ports = committeePortfolios[c1] || [];
+    const c2Ports = committeePortfolios[c2] || [];
+    const c3Ports = committeePortfolios[c3] || [];
+
     setFormData(prev => ({
       ...prev,
-      pref1Committee: selectedPrefs[0]?.committee || "",
-      pref1Country: selectedPrefs[0]?.country || "",
-      pref2Committee: selectedPrefs[1]?.committee || "",
-      pref2Country: selectedPrefs[1]?.country || "",
-      pref3Committee: selectedPrefs[2]?.committee || "",
-      pref3Country: selectedPrefs[2]?.country || "",
+      pref1Committee: c1,
+      pref1Country: c1Ports[0] || "",
+      pref2Committee: c2,
+      pref2Country: c2Ports[0] || "",
+      pref3Committee: c3,
+      pref3Country: c3Ports[0] || ""
     }));
-  }, [selectedPrefs]);
+  }, [selectedCommittees, committeePortfolios]);
 
   // Handle Initial Preference from external link / country matrix page
   useEffect(() => {
     if (initialPreference && initialPreference.country && initialPreference.committee) {
       const commId = initialPreference.committee as CommitteeId;
       setActiveCouncilTab(commId);
-      setSelectedPrefs(prev => {
-        const exists = prev.some(p => p.country === initialPreference.country && p.committee === commId);
-        if (!exists && prev.length < 3) {
-          return [...prev, { rank: prev.length + 1, committee: commId, country: initialPreference.country! }];
+      setSelectedCommittees(prev => {
+        if (!prev.includes(commId) && prev.length < 3) {
+          return [...prev, commId];
+        }
+        return prev;
+      });
+      setCommitteePortfolios(prev => {
+        const existing = prev[commId] || [];
+        if (!existing.includes(initialPreference.country!) && existing.length < 5) {
+          return {
+            ...prev,
+            [commId]: [...existing, initialPreference.country!]
+          };
         }
         return prev;
       });
@@ -267,6 +349,7 @@ export default function FirstRoundRegistration({
         const parsed = JSON.parse(cached);
         if (parsed && (parsed.id || parsed.name)) {
           setSubmittedPass(parsed);
+          loadRegistrationPreferences(parsed);
         }
       }
     } catch { }
@@ -283,6 +366,7 @@ export default function FirstRoundRegistration({
         if (docSnap.exists()) {
           const data = docSnap.data() as FirstRoundRegistrationDetails;
           setSubmittedPass(data);
+          loadRegistrationPreferences(data);
         } else {
           // Check local backup table
           fetch("/api/first-round-registrations")
@@ -295,6 +379,7 @@ export default function FirstRoundRegistration({
                 );
                 if (found) {
                   setSubmittedPass(found);
+                  loadRegistrationPreferences(found);
                 }
               }
             })
@@ -310,38 +395,62 @@ export default function FirstRoundRegistration({
 
   // Get effective portfolio status
   const getPortfolioStatus = (row: CountryMatrixRow, committee: CommitteeId): PortfolioStatus => {
-    let status = portfolioOverrides[row.country]?.[committee] ?? row[committee];
-    if (!status && (committee === "ip" || committee === "ip_journalism" || committee === "ip_photojournalism")) {
-      status = portfolioOverrides[row.country]?.ip ?? row.ip;
-    }
-    return status || "N/A";
+    return portfolioOverrides[row.country]?.[committee] ?? row[committee] ?? "N/A";
   };
 
-  // Check if a specific (country, committee) is currently selected
-  const getSelectedRank = (country: string, committee: CommitteeId): number | null => {
-    const found = selectedPrefs.find(p => p.country === country && p.committee === committee);
-    return found ? found.rank : null;
+  // Get portfolio selection details in committee and overall
+  const getSelectedInfo = (country: string, committee: CommitteeId) => {
+    const commIndex = selectedCommittees.indexOf(committee);
+    if (commIndex === -1) return null;
+    const ports = committeePortfolios[committee] || [];
+    const portIndex = ports.indexOf(country);
+    if (portIndex === -1) return null;
+
+    const overall = allRankedPreferences.find(p => p.country === country && p.committee === committee);
+    return {
+      committeeRank: commIndex + 1,
+      portfolioRankInComm: portIndex + 1,
+      overallRank: overall ? overall.rank : commIndex * 5 + portIndex + 1
+    };
   };
 
-  // Toggle selection on a portfolio: The order of clicking is the order of preference!
+  // Toggle selection on a portfolio: Order of clicking is portfolio preference order!
   const handleTogglePortfolio = (country: string, committee: CommitteeId) => {
-    const existingIndex = selectedPrefs.findIndex(p => p.country === country && p.committee === committee);
+    const currentPorts = committeePortfolios[committee] || [];
+    const isAlreadySelected = currentPorts.includes(country);
 
-    if (existingIndex >= 0) {
-      // Unselect: remove and re-index remaining items 1..N
-      const updated = selectedPrefs
-        .filter((_, idx) => idx !== existingIndex)
-        .map((p, idx) => ({ ...p, rank: idx + 1 }));
-      setSelectedPrefs(updated);
+    if (isAlreadySelected) {
+      // Deselect: remove from this committee
+      const updated = currentPorts.filter(c => c !== country);
+      setCommitteePortfolios(prev => ({
+        ...prev,
+        [committee]: updated
+      }));
     } else {
-      // Select new preference
-      if (selectedPrefs.length >= 3) {
-        alert("You have already selected all 3 preferences. Please deselect one of your existing choices first to pick a different portfolio.");
+      // Ensure committee is in selectedCommittees
+      let currentCommittees = [...selectedCommittees];
+      if (!currentCommittees.includes(committee)) {
+        if (currentCommittees.length >= 3) {
+          const commName = MATRIX_COMMITTEES.find(c => c.id === committee)?.label || committee.toUpperCase();
+          alert(`You have already chosen 3 committees. Please remove one of your chosen committees from the preference dock above to select portfolios in ${commName}.`);
+          return;
+        }
+        currentCommittees.push(committee);
+        setSelectedCommittees(currentCommittees);
+      }
+
+      // Check limit of 5 portfolios per committee
+      if (currentPorts.length >= 5) {
+        const commName = MATRIX_COMMITTEES.find(c => c.id === committee)?.label || committee.toUpperCase();
+        alert(`You have already selected 5 portfolios for ${commName}. Deselect one of your existing choices in this committee to pick a different portfolio.`);
         return;
       }
-      const newRank = selectedPrefs.length + 1;
-      const updated = [...selectedPrefs, { rank: newRank, committee, country }];
-      setSelectedPrefs(updated);
+
+      // Add portfolio to this committee
+      setCommitteePortfolios(prev => ({
+        ...prev,
+        [committee]: [...(prev[committee] || []), country]
+      }));
 
       // Clear preference error if resolved
       if (errors.preferences) {
@@ -354,22 +463,37 @@ export default function FirstRoundRegistration({
     }
   };
 
-  // Remove specific preference by rank
-  const handleRemovePreference = (rank: number) => {
-    const updated = selectedPrefs
-      .filter(p => p.rank !== rank)
-      .map((p, idx) => ({ ...p, rank: idx + 1 }));
-    setSelectedPrefs(updated);
+  // Move committee up or down in preference order
+  const handleMoveCommittee = (index: number, direction: "up" | "down") => {
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (target < 0 || target >= selectedCommittees.length) return;
+    const next = [...selectedCommittees];
+    const temp = next[index];
+    next[index] = next[target];
+    next[target] = temp;
+    setSelectedCommittees(next);
+  };
+
+  // Remove a committee and its selected portfolios
+  const handleRemoveCommittee = (committee: CommitteeId) => {
+    setSelectedCommittees(prev => prev.filter(c => c !== committee));
+    setCommitteePortfolios(prev => {
+      const next = { ...prev };
+      delete next[committee];
+      return next;
+    });
+  };
+
+  // Remove a specific portfolio from a committee
+  const handleRemovePortfolio = (committee: CommitteeId, country: string) => {
+    setCommitteePortfolios(prev => ({
+      ...prev,
+      [committee]: (prev[committee] || []).filter(c => c !== country)
+    }));
   };
 
   // Count available seats in any committee
   const countAvailableInCouncil = (committee: CommitteeId): number => {
-    if (committee === "ip") {
-      return IP_PORTFOLIOS.filter(name => {
-        const st = portfolioOverrides[name]?.ip ?? "Available";
-        return st === "Available";
-      }).length;
-    }
     let count = 0;
     matrixRows.forEach(row => {
       const st = getPortfolioStatus(row, committee);
@@ -378,43 +502,15 @@ export default function FirstRoundRegistration({
     return count;
   };
 
-  // ================= COUNCIL VIEW: SHOW AVAILABLE SEATS FIRST =================
+  // ================= COUNCIL VIEW: SHOW SELECTED AND AVAILABLE SEATS FIRST =================
   const councilPortfoliosSorted = useMemo(() => {
-    const getStatusPriority = (item: { selectedRank: number | null; status: PortfolioStatus }) => {
-      if (item.selectedRank !== null) return 0;
+    const getStatusPriority = (item: { isSelected: boolean; status: PortfolioStatus }) => {
+      if (item.isSelected) return 0;
       if (item.status === "Available") return 1;
       if (item.status === "Reserved") return 2;
       if (item.status === "Assigned") return 3;
       return 4;
     };
-
-    // If IP chamber is active, display only IP(Journalism) and IP(photojournalism)
-    if (activeCouncilTab === "ip") {
-      const ipItems = IP_PORTFOLIOS.filter(name => {
-        if (!matrixSearch.trim()) return true;
-        const q = matrixSearch.toLowerCase().trim();
-        return name.toLowerCase().includes(q) || "international press".includes(q) || "journalism".includes(q) || "photojournalism".includes(q);
-      }).map(name => {
-        const status: PortfolioStatus = portfolioOverrides[name]?.ip ?? "Available";
-        const selectedRank = getSelectedRank(name, "ip");
-        return {
-          country: name,
-          row: { country: name } as any,
-          status,
-          selectedRank
-        };
-      });
-
-      const ipFiltered = matrixStatusFilter === "Available"
-        ? ipItems.filter(it => it.status === "Available" || it.selectedRank !== null)
-        : ipItems;
-
-      return ipFiltered.sort((a, b) => {
-        const pDiff = getStatusPriority(a) - getStatusPriority(b);
-        if (pDiff !== 0) return pDiff;
-        return a.country.localeCompare(b.country);
-      });
-    }
 
     // 1. Filter by search text for nation portfolios
     const list = matrixRows.filter(row => {
@@ -429,30 +525,39 @@ export default function FirstRoundRegistration({
       return false;
     });
 
-    // 2. Map row to status & preference rank
+    const currentPorts = committeePortfolios[activeCouncilTab] || [];
+
+    // 2. Map row to status & preference info
     const items = list.map(row => {
       const status = getPortfolioStatus(row, activeCouncilTab);
-      const selectedRank = getSelectedRank(row.country, activeCouncilTab);
+      const portRankInComm = currentPorts.indexOf(row.country) >= 0 ? currentPorts.indexOf(row.country) + 1 : null;
+      const isSelected = portRankInComm !== null;
+      const selectedInfo = isSelected ? getSelectedInfo(row.country, activeCouncilTab) : null;
       return {
         country: row.country,
         row,
         status,
-        selectedRank
+        isSelected,
+        portRankInComm,
+        selectedInfo
       };
     });
 
     // 3. Status filter
     const statusFiltered = matrixStatusFilter === "Available"
-      ? items.filter(it => it.status === "Available" || it.selectedRank !== null)
+      ? items.filter(it => it.status === "Available" || it.isSelected)
       : items;
 
-    // 4. SORT: SHOW AVAILABLE SEATS FIRST!
+    // 4. SORT: Selected portfolios first, then Available seats!
     return statusFiltered.sort((a, b) => {
       const pDiff = getStatusPriority(a) - getStatusPriority(b);
       if (pDiff !== 0) return pDiff;
+      if (a.isSelected && b.isSelected) {
+        return (a.portRankInComm || 0) - (b.portRankInComm || 0);
+      }
       return a.country.localeCompare(b.country);
     });
-  }, [matrixRows, activeCouncilTab, matrixSearch, matrixStatusFilter, portfolioOverrides, selectedPrefs]);
+  }, [matrixRows, activeCouncilTab, matrixSearch, matrixStatusFilter, portfolioOverrides, selectedCommittees, committeePortfolios, allRankedPreferences]);
 
   // Validation across 4 stages
   const validateStep = (currentStep: number): boolean => {
@@ -511,8 +616,20 @@ export default function FirstRoundRegistration({
     }
 
     if (currentStep === 3) {
-      if (selectedPrefs.length < 3) {
-        newErrors.preferences = `Please select all 3 preferences from the Council View (${selectedPrefs.length}/3 currently selected).`;
+      if (selectedCommittees.length < 3) {
+        newErrors.preferences = `Please select all 3 committees in your order of preference (${selectedCommittees.length}/3 currently selected).`;
+      } else {
+        const c1Count = committeePortfolios[selectedCommittees[0]]?.length || 0;
+        const c2Count = committeePortfolios[selectedCommittees[1]]?.length || 0;
+        const c3Count = committeePortfolios[selectedCommittees[2]]?.length || 0;
+
+        if (c1Count < 5 || c2Count < 5 || c3Count < 5) {
+          const missing: string[] = [];
+          if (c1Count < 5) missing.push(`${selectedCommittees[0].toUpperCase()} (${c1Count}/5)`);
+          if (c2Count < 5) missing.push(`${selectedCommittees[1].toUpperCase()} (${c2Count}/5)`);
+          if (c3Count < 5) missing.push(`${selectedCommittees[2].toUpperCase()} (${c3Count}/5)`);
+          newErrors.preferences = `Per committee it is mandatory to choose 5 portfolios (15 portfolios total). Still needed in: ${missing.join(", ")}.`;
+        }
       }
       if (!formData.motivation.trim()) {
         newErrors.motivation = "Statement of Purpose / Past MUN awards & achievements is mandatory.";
@@ -614,16 +731,31 @@ export default function FirstRoundRegistration({
       munExperience: formData.munExperience || "None",
       pastMunDetails: formData.pastMunDetails.trim(),
 
-      // 3 Ranked Country Matrix Preferences (Ordered by click sequence!)
-      pref1Committee: selectedPrefs[0]?.committee || "",
-      pref1Country: selectedPrefs[0]?.country || "",
-      pref2Committee: selectedPrefs[1]?.committee || "",
-      pref2Country: selectedPrefs[1]?.country || "",
-      pref3Committee: selectedPrefs[2]?.committee || "",
-      pref3Country: selectedPrefs[2]?.country || "",
-      preferences: selectedPrefs.map(p => ({
+      // 3 Ranked Committees & 15 Portfolios (Order of Selection & Preference)
+      pref1Committee: selectedCommittees[0] || "",
+      pref1Country: committeePortfolios[selectedCommittees[0]]?.[0] || "",
+      pref1Portfolios: committeePortfolios[selectedCommittees[0]] || [],
+
+      pref2Committee: selectedCommittees[1] || "",
+      pref2Country: committeePortfolios[selectedCommittees[1]]?.[0] || "",
+      pref2Portfolios: committeePortfolios[selectedCommittees[1]] || [],
+
+      pref3Committee: selectedCommittees[2] || "",
+      pref3Country: committeePortfolios[selectedCommittees[2]]?.[0] || "",
+      pref3Portfolios: committeePortfolios[selectedCommittees[2]] || [],
+
+      committeePreferences: selectedCommittees.map((commId, idx) => ({
+        rank: idx + 1,
+        committee: commId,
+        committeeName: MATRIX_COMMITTEES.find(c => c.id === commId)?.name || commId.toUpperCase(),
+        portfolios: committeePortfolios[commId] || []
+      })),
+
+      preferences: allRankedPreferences.map(p => ({
         rank: p.rank,
+        committeeRank: p.committeeRank,
         committee: p.committee,
+        portfolioRank: p.portfolioRank,
         country: p.country
       })),
       motivation: formData.motivation.trim(),
@@ -913,40 +1045,75 @@ export default function FirstRoundRegistration({
                 </div>
               </div>
 
-              {/* 3 Ranked Country Matrix Preferences */}
+              {/* 15 Ranked Country Matrix Preferences across 3 Committees */}
               <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-4 space-y-3">
-                <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-[#C9A86A] block font-bold">
-                  REGISTERED COUNCIL PREFERENCES (ORDER OF PREFERENCE)
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                  <div className="p-2.5 bg-[#2E3B2F] border border-[#C9A86A]">
-                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-1.5 py-0.2 inline-block mb-1">
-                      #1 PREFERENCE
-                    </span>
-                    <strong className="font-serif text-sm text-[#EDE6D3] block">{submittedPass.pref1Country || "N/A"}</strong>
-                    <span className="text-[10px] text-[#C9A86A] block font-mono">
-                      {p1?.abbreviation || submittedPass.pref1Committee.toUpperCase()}
-                    </span>
+                <div className="flex items-center justify-between border-b border-[#C9A86A]/20 pb-2">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-[#C9A86A] block font-bold">
+                    REGISTERED COUNCIL PREFERENCES (15 PORTFOLIOS ACROSS 3 COMMITTEES)
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                    15 Portfolios Logged
+                  </span>
+                </div>
+                <div className="space-y-3 text-xs">
+                  {/* Comm 1 */}
+                  <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-2 py-0.5">
+                        #1 COMMITTEE PREFERENCE (HIGHEST PRIORITY): {(submittedPass.pref1Committee || "").toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
+                      {(submittedPass.pref1Portfolios && submittedPass.pref1Portfolios.length > 0
+                        ? submittedPass.pref1Portfolios
+                        : [submittedPass.pref1Country || "N/A"]
+                      ).map((port, idx) => (
+                        <div key={idx} className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30">
+                          <span className="text-[8px] font-mono text-[#C9A86A] block">Choice #{idx + 1} (Rank {idx + 1})</span>
+                          <strong className="text-xs font-serif text-[#EDE6D3] block line-clamp-1">{port}</strong>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="p-2.5 bg-[#2E3B2F] border border-[#C9A86A]/50">
-                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 font-bold px-1.5 py-0.2 inline-block mb-1">
-                      #2 PREFERENCE
-                    </span>
-                    <strong className="font-serif text-sm text-[#EDE6D3] block">{submittedPass.pref2Country || "N/A"}</strong>
-                    <span className="text-[10px] text-[#C9A86A] block font-mono">
-                      {p2?.abbreviation || submittedPass.pref2Committee.toUpperCase()}
-                    </span>
+                  {/* Comm 2 */}
+                  <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 font-bold px-2 py-0.5">
+                        #2 COMMITTEE PREFERENCE: {(submittedPass.pref2Committee || "").toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
+                      {(submittedPass.pref2Portfolios && submittedPass.pref2Portfolios.length > 0
+                        ? submittedPass.pref2Portfolios
+                        : [submittedPass.pref2Country || "N/A"]
+                      ).map((port, idx) => (
+                        <div key={idx} className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30">
+                          <span className="text-[8px] font-mono text-[#8A9A7E] block">Choice #{idx + 1} (Rank {idx + 6})</span>
+                          <strong className="text-xs font-serif text-[#EDE6D3] block line-clamp-1">{port}</strong>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="p-2.5 bg-[#2E3B2F] border border-[#C9A86A]/30">
-                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 font-bold px-1.5 py-0.2 inline-block mb-1">
-                      #3 PREFERENCE
-                    </span>
-                    <strong className="font-serif text-sm text-[#EDE6D3] block">{submittedPass.pref3Country || "N/A"}</strong>
-                    <span className="text-[10px] text-[#C9A86A] block font-mono">
-                      {p3?.abbreviation || submittedPass.pref3Committee.toUpperCase()}
-                    </span>
+                  {/* Comm 3 */}
+                  <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 font-bold px-2 py-0.5">
+                        #3 COMMITTEE PREFERENCE: {(submittedPass.pref3Committee || "").toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
+                      {(submittedPass.pref3Portfolios && submittedPass.pref3Portfolios.length > 0
+                        ? submittedPass.pref3Portfolios
+                        : [submittedPass.pref3Country || "N/A"]
+                      ).map((port, idx) => (
+                        <div key={idx} className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30">
+                          <span className="text-[8px] font-mono text-[#8A9A7E] block">Choice #{idx + 1} (Rank {idx + 11})</span>
+                          <strong className="text-xs font-serif text-[#EDE6D3] block line-clamp-1">{port}</strong>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1490,13 +1657,15 @@ export default function FirstRoundRegistration({
           <div className="bg-[#2E3B2F] border border-[#C9A86A]/40 p-6 sm:p-8 space-y-6 shadow-xl">
             <div className="border-b border-[#C9A86A]/20 pb-4">
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] block">
-                STAGE III &bull; COUNCIL VIEW PORTFOLIO ALLOCATION
+                STAGE III &bull; COUNCIL &amp; PORTFOLIO ALLOCATION (15 PORTFOLIOS TOTAL)
               </span>
               <h2 className="font-serif text-xl sm:text-2xl text-[#EDE6D3] font-normal">
                 Ranked Preferences (Council View)
               </h2>
               <p className="font-sans text-xs text-[#8A9A7E] mt-1">
-                Select your 3  preferences by clicking cards in the Council View below. <strong className="text-[#EDE6D3]">Available seats are shown first</strong>. The order of clicking is the order of preference (1st click = 1st Preference, 2nd click = 2nd Preference, 3rd click = 3rd Preference). Click again to deselect.
+                <strong>1.</strong> The order in which you choose committees determines your committee preference order (1st, 2nd, and 3rd).<br />
+                <strong>2.</strong> Per committee, it is mandatory to choose exactly 5 portfolios in order of preference.<br />
+                <strong>3.</strong> Total 15 portfolios must be selected. The portfolios in your 1st Committee hold the highest overall preference.
               </p>
             </div>
 
@@ -1533,24 +1702,45 @@ export default function FirstRoundRegistration({
               </div>
             </div>
 
-            {/* ================= PREFERENCE TRAY: LIVE DIPLOMATIC DOCK ================= */}
+            {/* ================= PREFERENCE TRAY: LIVE DIPLOMATIC DOCK (15 PORTFOLIOS) ================= */}
             <div className="border-2 border-[#C9A86A] bg-[#1A1F1A] p-5 shadow-2xl space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#C9A86A]/20 pb-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-[#C9A86A]" />
                   <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] font-bold">
-                    ORDER OF PREFERENCE ({selectedPrefs.length}/3 SELECTED)
+                    DIPLOMATIC ALLOCATION DOCK ({totalPortfoliosCount}/15 PORTFOLIOS ACROSS {selectedCommittees.length}/3 COMMITTEES)
                   </span>
                 </div>
-                {selectedPrefs.length > 0 && (
+                {totalPortfoliosCount > 0 && (
                   <button
                     type="button"
-                    onClick={() => setSelectedPrefs([])}
+                    onClick={() => {
+                      setSelectedCommittees([]);
+                      setCommitteePortfolios({});
+                    }}
                     className="text-[10px] font-sans uppercase tracking-wider text-[#8A9A7E] hover:text-rose-400 underline transition-colors cursor-pointer self-start sm:self-auto"
                   >
                     Clear All Preferences
                   </button>
                 )}
+              </div>
+
+              {/* Progress Summary Bar */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-mono">
+                  <span className="text-[#EDE6D3]">
+                    Overall Progress: <strong className={totalPortfoliosCount === 15 ? "text-emerald-400" : "text-[#C9A86A]"}>{totalPortfoliosCount} / 15 Portfolios</strong>
+                  </span>
+                  <span className="text-[#8A9A7E]">
+                    {selectedCommittees.length} of 3 Committees Configured
+                  </span>
+                </div>
+                <div className="w-full bg-[#2E3B2F] h-2 rounded-none overflow-hidden border border-[#C9A86A]/30">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#C9A86A] to-emerald-400 transition-all duration-300"
+                    style={{ width: `${(totalPortfoliosCount / 15) * 100}%` }}
+                  />
+                </div>
               </div>
 
               {errors.preferences && (
@@ -1560,115 +1750,175 @@ export default function FirstRoundRegistration({
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* PREF 1 */}
-                <div className={`p-4 border-2 transition-all ${selectedPrefs[0]
-                  ? "border-[#C9A86A] bg-[#2E3B2F] shadow-lg"
-                  : "border-dashed border-[#C9A86A]/40 bg-[#1A1F1A]/50"
-                  }`}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-2 py-0.5">
-                      ★ 1ST PREFERENCE
-                    </span>
-                    {selectedPrefs[0] && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePreference(1)}
-                        className="text-[#8A9A7E] hover:text-rose-400 p-0.5 transition-colors cursor-pointer"
-                        title="Remove Preference 1"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  {selectedPrefs[0] ? (
-                    <div>
-                      <strong className="font-serif text-base text-[#EDE6D3] block">
-                        {selectedPrefs[0].country}
-                      </strong>
-                      <span className="font-sans text-xs text-[#C9A86A] block mt-0.5">
-                        {MATRIX_COMMITTEES.find(c => c.id === selectedPrefs[0].committee)?.label || selectedPrefs[0].committee.toUpperCase()}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="text-center py-2 text-[#8A9A7E] font-sans text-xs italic">
-                      Click 1st portfolio in council view below
-                    </div>
-                  )}
-                </div>
+              {/* 3 Committee Preference Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                {[0, 1, 2].map((slotIdx) => {
+                  const commId = selectedCommittees[slotIdx];
+                  const commObj = commId ? MATRIX_COMMITTEES.find(c => c.id === commId) : null;
+                  const ports = commId ? (committeePortfolios[commId] || []) : [];
+                  const rankLabels = ["1ST", "2ND", "3RD"];
+                  const overallStartRank = slotIdx * 5 + 1;
+                  const overallEndRank = slotIdx * 5 + 5;
+                  const isTopPriority = slotIdx === 0;
 
-                {/* PREF 2 */}
-                <div className={`p-4 border-2 transition-all ${selectedPrefs[1]
-                  ? "border-[#C9A86A] bg-[#2E3B2F] shadow-lg"
-                  : "border-dashed border-[#C9A86A]/40 bg-[#1A1F1A]/50"
-                  }`}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#2E3B2F] border border-[#C9A86A]/40 font-bold px-2 py-0.5">
-                      ★ 2ND PREFERENCE
-                    </span>
-                    {selectedPrefs[1] && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePreference(2)}
-                        className="text-[#8A9A7E] hover:text-rose-400 p-0.5 transition-colors cursor-pointer"
-                        title="Remove Preference 2"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  {selectedPrefs[1] ? (
-                    <div>
-                      <strong className="font-serif text-base text-[#EDE6D3] block">
-                        {selectedPrefs[1].country}
-                      </strong>
-                      <span className="font-sans text-xs text-[#C9A86A] block mt-0.5">
-                        {MATRIX_COMMITTEES.find(c => c.id === selectedPrefs[1].committee)?.label || selectedPrefs[1].committee.toUpperCase()}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="text-center py-2 text-[#8A9A7E] font-sans text-xs italic">
-                      {selectedPrefs.length >= 1 ? "Click 2nd portfolio in council view" : "Awaiting 1st selection"}
-                    </div>
-                  )}
-                </div>
+                  return (
+                    <div
+                      key={slotIdx}
+                      className={`p-4 border-2 transition-all flex flex-col justify-between ${commId
+                        ? isTopPriority
+                          ? "border-[#C9A86A] bg-[#2E3B2F] shadow-lg ring-1 ring-[#C9A86A]/40"
+                          : "border-[#C9A86A]/60 bg-[#253026]"
+                        : "border-dashed border-[#C9A86A]/30 bg-[#1A1F1A]/50"
+                        }`}
+                    >
+                      <div>
+                        {/* Committee Header & Controls */}
+                        <div className="flex items-start justify-between gap-1.5 mb-2 pb-2 border-b border-[#C9A86A]/20">
+                          <div>
+                            <span className={`font-mono text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.2 inline-block mb-1 ${isTopPriority
+                              ? "bg-[#C9A86A] text-[#1A1F1A]"
+                              : "bg-[#1A1F1A] text-[#EDE6D3] border border-[#C9A86A]/40"
+                              }`}>
+                              ★ {rankLabels[slotIdx]} COMMITTEE PREF {isTopPriority && "(MOST PREFERRED)"}
+                            </span>
+                            <h4 className="font-serif text-sm font-semibold text-[#EDE6D3] leading-snug">
+                              {commObj ? commObj.label : `Select Committee #${slotIdx + 1}`}
+                            </h4>
+                            <span className="font-mono text-[9px] text-[#8A9A7E] block mt-0.5">
+                              {commId ? `Ranks ${overallStartRank}–${overallEndRank} • ${ports.length}/5 Selected` : "Awaiting committee selection"}
+                            </span>
+                          </div>
 
-                {/* PREF 3 */}
-                <div className={`p-4 border-2 transition-all ${selectedPrefs[2]
-                  ? "border-[#C9A86A] bg-[#2E3B2F] shadow-lg"
-                  : "border-dashed border-[#C9A86A]/40 bg-[#1A1F1A]/50"
-                  }`}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#2E3B2F] border border-[#C9A86A]/40 font-bold px-2 py-0.5">
-                      ★ 3RD PREFERENCE
-                    </span>
-                    {selectedPrefs[2] && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePreference(3)}
-                        className="text-[#8A9A7E] hover:text-rose-400 p-0.5 transition-colors cursor-pointer"
-                        title="Remove Preference 3"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  {selectedPrefs[2] ? (
-                    <div>
-                      <strong className="font-serif text-base text-[#EDE6D3] block">
-                        {selectedPrefs[2].country}
-                      </strong>
-                      <span className="font-sans text-xs text-[#C9A86A] block mt-0.5">
-                        {MATRIX_COMMITTEES.find(c => c.id === selectedPrefs[2].committee)?.label || selectedPrefs[2].committee.toUpperCase()}
-                      </span>
+                          {commId && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              {slotIdx > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveCommittee(slotIdx, "up")}
+                                  className="p-1 bg-[#1A1F1A] border border-[#C9A86A]/30 hover:border-[#C9A86A] text-[#8A9A7E] hover:text-[#C9A86A] cursor-pointer"
+                                  title="Increase Preference Rank (Move Up)"
+                                >
+                                  <ArrowUp className="h-3 w-3" />
+                                </button>
+                              )}
+                              {slotIdx < selectedCommittees.length - 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveCommittee(slotIdx, "down")}
+                                  className="p-1 bg-[#1A1F1A] border border-[#C9A86A]/30 hover:border-[#C9A86A] text-[#8A9A7E] hover:text-[#C9A86A] cursor-pointer"
+                                  title="Decrease Preference Rank (Move Down)"
+                                >
+                                  <ArrowDown className="h-3 w-3" />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveCommittee(commId)}
+                                className="p-1 bg-[#1A1F1A] border border-rose-500/30 hover:border-rose-500 text-[#8A9A7E] hover:text-rose-400 cursor-pointer"
+                                title="Remove Committee"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 5 Portfolio Slots */}
+                        <div className="space-y-1.5 my-2">
+                          {[0, 1, 2, 3, 4].map((portIdx) => {
+                            const country = ports[portIdx];
+                            const overallRank = overallStartRank + portIdx;
+
+                            return (
+                              <div
+                                key={portIdx}
+                                className={`p-2 text-xs flex items-center justify-between border transition-all ${country
+                                  ? "bg-[#1A1F1A] border-[#C9A86A]/40 text-[#EDE6D3]"
+                                  : "bg-[#141814]/40 border-dashed border-[#8A9A7E]/20 text-[#8A9A7E]/60"
+                                  }`}
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0 pr-1">
+                                  <span className={`font-mono text-[9px] px-1 py-0.2 font-bold shrink-0 ${country
+                                    ? isTopPriority
+                                      ? "bg-[#C9A86A] text-[#1A1F1A]"
+                                      : "bg-[#2E3B2F] text-[#C9A86A] border border-[#C9A86A]/40"
+                                    : "text-[#8A9A7E]/50"
+                                    }`}>
+                                    #{portIdx + 1}
+                                  </span>
+                                  <span className="font-serif text-xs truncate">
+                                    {country || <span className="font-sans text-[10px] italic">Choice #{portIdx + 1} empty</span>}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className="font-mono text-[9px] text-[#8A9A7E]/80">
+                                    R#{overallRank}
+                                  </span>
+                                  {country && commId && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemovePortfolio(commId, country)}
+                                      className="text-[#8A9A7E] hover:text-rose-400 p-0.5 cursor-pointer"
+                                      title="Remove choice"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Footer Actions */}
+                      <div className="pt-2 border-t border-[#C9A86A]/20 mt-2">
+                        {commId ? (
+                          <button
+                            type="button"
+                            onClick={() => setActiveCouncilTab(commId)}
+                            className={`w-full py-1 text-[10px] font-mono uppercase tracking-wider transition-colors cursor-pointer border ${activeCouncilTab === commId
+                              ? "bg-[#C9A86A] text-[#1A1F1A] font-bold border-[#C9A86A]"
+                              : "bg-[#1A1F1A] text-[#C9A86A] border-[#C9A86A]/40 hover:bg-[#2E3B2F]"
+                              }`}
+                          >
+                            {activeCouncilTab === commId ? "Currently Viewing Chamber" : "Browse & Select in This Chamber"}
+                          </button>
+                        ) : (
+                          <span className="block text-center text-[10px] font-sans text-[#8A9A7E]/70 py-1">
+                            Click a council tab below to add
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    <div className="text-center py-2 text-[#8A9A7E] font-sans text-xs italic">
-                      {selectedPrefs.length >= 2 ? "Click 3rd portfolio in council view" : "Awaiting previous selections"}
-                    </div>
-                  )}
-                </div>
+                  );
+                })}
               </div>
+
+              {/* Quick Committee Selector Pills (if fewer than 3 chosen) */}
+              {selectedCommittees.length < 3 && (
+                <div className="p-3 bg-[#233124] border border-[#C9A86A]/40 text-xs flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-[#C9A86A] font-semibold">
+                    Click to add as Committee Preference #{selectedCommittees.length + 1}:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {MATRIX_COMMITTEES.filter(c => !selectedCommittees.includes(c.id)).map(comm => (
+                      <button
+                        key={comm.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCommittees(prev => [...prev, comm.id]);
+                          setActiveCouncilTab(comm.id);
+                        }}
+                        className="px-2.5 py-1 bg-[#1A1F1A] border border-[#C9A86A]/40 hover:border-[#C9A86A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-[#EDE6D3] text-[10px] font-sans uppercase font-bold transition-colors cursor-pointer"
+                      >
+                        + Add {comm.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* ================= THE COUNCIL VIEW INTERFACE ================= */}
@@ -1676,10 +1926,10 @@ export default function FirstRoundRegistration({
               <div className="border-b border-[#C9A86A]/20 pb-3">
                 <h3 className="font-serif text-lg text-[#EDE6D3] font-medium flex items-center gap-2">
                   <Landmark className="h-4 w-4 text-[#C9A86A]" />
-                  Portfolio Matrix of Committees (IP: choose Journalism or Photojournalism )
+                  Portfolio Matrix of Committees
                 </h3>
                 <p className="font-sans text-xs text-[#8A9A7E] mt-0.5">
-                  Browse by committee chamber below. Portfolios currently <strong className="text-emerald-400">Available</strong> appear first in each council.
+                  Browse by committee chamber below. Select 5 portfolios in each of your 3 committees. Selected and Available portfolios appear first.
                 </p>
               </div>
 
@@ -1688,6 +1938,9 @@ export default function FirstRoundRegistration({
                 {MATRIX_COMMITTEES.map(comm => {
                   const availCount = countAvailableInCouncil(comm.id);
                   const isCurrent = activeCouncilTab === comm.id;
+                  const commRankIdx = selectedCommittees.indexOf(comm.id);
+                  const portsCount = committeePortfolios[comm.id]?.length || 0;
+
                   return (
                     <button
                       key={comm.id}
@@ -1699,7 +1952,12 @@ export default function FirstRoundRegistration({
                         }`}
                     >
                       <span>{comm.label}</span>
-                      {comm.id !== "ip" && (
+                      {commRankIdx !== -1 ? (
+                        <span className={`text-[9px] font-mono px-1.5 py-0.2 font-bold ${isCurrent ? "bg-[#1A1F1A] text-[#C9A86A]" : "bg-emerald-950/90 text-emerald-300 border border-emerald-500/40"
+                          }`}>
+                          #{commRankIdx + 1} PREF ({portsCount}/5)
+                        </span>
+                      ) : (
                         <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-xs ${isCurrent ? "bg-[#1A1F1A] text-[#C9A86A]" : "bg-[#1A1F1A]/70 text-emerald-400"
                           }`}>
                           {availCount} Open
@@ -1713,14 +1971,22 @@ export default function FirstRoundRegistration({
               {/* Active Council Masthead */}
               <div className="bg-[#2E3B2F]/60 border-l-2 border-[#C9A86A] p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <span className="font-serif text-sm font-semibold text-[#EDE6D3] block">
-                    {MATRIX_COMMITTEES.find(c => c.id === activeCouncilTab)?.name}
-                  </span>
-                  <span className="font-mono text-[10px] text-[#8A9A7E]">
-                    Committee Code: {activeCouncilTab.toUpperCase()}
-                    {activeCouncilTab !== "ip" && (
-                      <> &bull; Total Available Seats: <strong className="text-emerald-400">{countAvailableInCouncil(activeCouncilTab)}</strong></>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-serif text-sm font-semibold text-[#EDE6D3]">
+                      {MATRIX_COMMITTEES.find(c => c.id === activeCouncilTab)?.name}
+                    </span>
+                    {selectedCommittees.includes(activeCouncilTab) ? (
+                      <span className="font-mono text-[9px] bg-[#C9A86A] text-[#1A1F1A] font-bold px-1.5 py-0.2">
+                        COMMITTEE PREFERENCE #{selectedCommittees.indexOf(activeCouncilTab) + 1} ({committeePortfolios[activeCouncilTab]?.length || 0}/5 PORTFOLIOS)
+                      </span>
+                    ) : (
+                      <span className="font-mono text-[9px] bg-[#1A1F1A] text-[#C9A86A] border border-[#C9A86A]/40 px-1.5 py-0.2">
+                        {selectedCommittees.length < 3 ? `+ Click any portfolio to add as Preference #${selectedCommittees.length + 1}` : "3 Committees already chosen"}
+                      </span>
                     )}
+                  </div>
+                  <span className="font-mono text-[10px] text-[#8A9A7E] block mt-0.5">
+                    Council Code: {activeCouncilTab.toUpperCase()} &bull; Total Available Seats: <strong className="text-emerald-400">{countAvailableInCouncil(activeCouncilTab)}</strong>
                   </span>
                 </div>
 
@@ -1767,12 +2033,14 @@ export default function FirstRoundRegistration({
                 </div>
               </div>
 
-              {/* Council Portfolios Grid - Available Seats First */}
+              {/* Council Portfolios Grid - Selected & Available Seats First */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-[480px] overflow-y-auto pr-1">
                 {councilPortfoliosSorted.length > 0 ? (
                   councilPortfoliosSorted.map((item) => {
                     const isClickable = item.status === "Available" || item.status === "Reserved";
-                    const isSelected = item.selectedRank !== null;
+                    const isSelected = item.isSelected;
+                    const commPorts = committeePortfolios[activeCouncilTab] || [];
+                    const isCommFull = commPorts.length >= 5;
 
                     return (
                       <div
@@ -1784,11 +2052,13 @@ export default function FirstRoundRegistration({
                         }}
                         className={`p-3 border transition-all text-left relative cursor-pointer ${isSelected
                           ? "border-2 border-[#C9A86A] bg-[#2E3B2F] shadow-lg ring-1 ring-[#C9A86A]"
-                          : item.status === "Available"
-                            ? "border-emerald-500/30 bg-[#1A1F1A] hover:border-[#C9A86A] hover:bg-[#233124]"
-                            : item.status === "Reserved"
-                              ? "border-[#C9A86A]/40 bg-[#1A1F1A]/80 hover:border-[#C9A86A]"
-                              : "border-[#8A9A7E]/10 bg-[#141814]/40 opacity-40 cursor-not-allowed"
+                          : isCommFull
+                            ? "border-[#8A9A7E]/20 bg-[#1A1F1A]/60 opacity-60"
+                            : item.status === "Available"
+                              ? "border-emerald-500/30 bg-[#1A1F1A] hover:border-[#C9A86A] hover:bg-[#233124]"
+                              : item.status === "Reserved"
+                                ? "border-[#C9A86A]/40 bg-[#1A1F1A]/80 hover:border-[#C9A86A]"
+                                : "border-[#8A9A7E]/10 bg-[#141814]/40 opacity-40 cursor-not-allowed"
                           }`}
                       >
                         <div className="flex items-center justify-between mb-1.5">
@@ -1798,7 +2068,7 @@ export default function FirstRoundRegistration({
 
                           {isSelected ? (
                             <span className="font-mono text-[9px] bg-[#C9A86A] text-[#1A1F1A] font-bold px-1.5 py-0.2 shadow-sm">
-                              #{item.selectedRank} PREF
+                              CHOICE #{item.portRankInComm} &bull; R#{item.selectedInfo?.overallRank}
                             </span>
                           ) : (
                             <span className={`font-mono text-[8px] uppercase px-1.5 py-0.2 ${item.status === "Available"
@@ -1821,9 +2091,13 @@ export default function FirstRoundRegistration({
                             <span className="text-rose-400 font-semibold inline-flex items-center gap-1">
                               <X className="h-3 w-3" /> Click to Deselect
                             </span>
+                          ) : isCommFull ? (
+                            <span className="text-[#8A9A7E]/70 font-mono text-[9px]">
+                              5/5 Selected in Council
+                            </span>
                           ) : isClickable ? (
                             <span className="text-emerald-400/90 group-hover:text-[#C9A86A]">
-                              + Click to Select
+                              + Add as Choice #{commPorts.length + 1}
                             </span>
                           ) : (
                             <span className="text-[#8A9A7E]/50 flex items-center gap-1">
@@ -1887,10 +2161,10 @@ export default function FirstRoundRegistration({
               <button
                 type="button"
                 onClick={handleNext}
-                disabled={selectedPrefs.length < 3}
+                disabled={totalPortfoliosCount < 15}
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#C9A86A] text-[#1A1F1A] font-sans font-bold text-xs uppercase tracking-wider hover:bg-[#bfa060] transition-colors cursor-pointer shadow-lg disabled:opacity-50"
               >
-                <span>Proceed to Payment with QR</span>
+                <span>Proceed to Payment with QR ({totalPortfoliosCount}/15 Portfolios)</span>
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>

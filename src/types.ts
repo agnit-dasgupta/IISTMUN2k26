@@ -274,17 +274,27 @@ export interface FirstRoundRegistrationDetails {
   munExperience: string; // "None", "1-2", "3-5", "5+"
   pastMunDetails?: string;
 
-  // Council & Portfolio Preferences from Country Matrix
-  // Order of clicking is the order of preference
+  // Council & Portfolio Preferences from Country Matrix: 3 Committees, 5 Portfolios each (15 Total)
   pref1Committee: string;
   pref1Country: string;
+  pref1Portfolios?: string[];
   pref2Committee: string;
   pref2Country: string;
+  pref2Portfolios?: string[];
   pref3Committee: string;
   pref3Country: string;
-  preferences?: Array<{
+  pref3Portfolios?: string[];
+  committeePreferences?: Array<{
     rank: number;
     committee: string;
+    committeeName?: string;
+    portfolios: string[];
+  }>;
+  preferences?: Array<{
+    rank: number;
+    committeeRank?: number;
+    committee: string;
+    portfolioRank?: number;
     country: string;
   }>;
   motivation?: string;
