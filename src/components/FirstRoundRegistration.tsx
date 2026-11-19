@@ -671,11 +671,29 @@ export default function FirstRoundRegistration({
     }
 
     if (currentStep === 4) {
-      if (formData.utrNumber.trim()) {
+      if (!formData.paymentMode.trim()) {
+        newErrors.paymentMode = "Payment mode is mandatory.";
+      }
+
+      if (!formData.utrNumber.trim()) {
+        newErrors.utrNumber = "12-digit UTR / UPI Reference Number is mandatory.";
+      } else {
         const cleanUtr = formData.utrNumber.trim().replace(/\s+/g, "");
         if (cleanUtr.length < 6) {
           newErrors.utrNumber = "Please enter a valid 12-digit UTR / UPI Reference Number.";
         }
+      }
+
+      if (!formData.payerName.trim()) {
+        newErrors.payerName = "Payer account name (bank / UPI holder) is mandatory.";
+      }
+
+      if (!formData.paymentDate.trim()) {
+        newErrors.paymentDate = "Date of payment is mandatory.";
+      }
+
+      if (!formData.paymentScreenshotUrl.trim()) {
+        newErrors.paymentScreenshotUrl = "Uploading payment confirmation screenshot or receipt is mandatory.";
       }
     }
 
@@ -2374,13 +2392,22 @@ export default function FirstRoundRegistration({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Payment Mode */}
                 <div>
-                  <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">
-                    Payment Mode
+                  <label className="block font-sans text-[9px] uppercase text-[#C9A86A] mb-1 font-semibold">
+                    Payment Mode *
                   </label>
                   <select
                     value={formData.paymentMode}
-                    onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value })}
-                    className="w-full border border-[#8A9A7E]/30 bg-[#2E3B2F] px-3.5 py-2.5 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A]"
+                    onChange={(e) => {
+                      setFormData({ ...formData, paymentMode: e.target.value });
+                      if (errors.paymentMode) {
+                        setErrors(prev => {
+                          const next = { ...prev };
+                          delete next.paymentMode;
+                          return next;
+                        });
+                      }
+                    }}
+                    className={`w-full border bg-[#2E3B2F] px-3.5 py-2.5 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A] ${errors.paymentMode ? "border-rose-500" : "border-[#8A9A7E]/30"}`}
                   >
                     <option value="UPI / QR Scan" className="bg-[#1A1F1A]">UPI / QR Scan</option>
                     <option value="Google Pay" className="bg-[#1A1F1A]">Google Pay</option>
@@ -2388,18 +2415,28 @@ export default function FirstRoundRegistration({
                     <option value="Paytm" className="bg-[#1A1F1A]">Paytm</option>
                     <option value="Net Banking / IMPS" className="bg-[#1A1F1A]">Net Banking / IMPS Transfer</option>
                   </select>
+                  {errors.paymentMode && <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.paymentMode}</p>}
                 </div>
 
                 {/* UTR / UPI Reference Number */}
                 <div>
-                  <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">
-                    12-Digit UTR / UPI Reference Number
+                  <label className="block font-sans text-[9px] uppercase text-[#C9A86A] mb-1 font-semibold">
+                    12-Digit UTR / UPI Reference Number *
                   </label>
                   <input
                     type="text"
                     value={formData.utrNumber}
-                    onChange={(e) => setFormData({ ...formData, utrNumber: e.target.value })}
-                    className="w-full border border-[#8A9A7E]/30 bg-[#2E3B2F] px-3.5 py-2.5 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/50 outline-none focus:border-[#C9A86A] font-mono"
+                    onChange={(e) => {
+                      setFormData({ ...formData, utrNumber: e.target.value });
+                      if (errors.utrNumber) {
+                        setErrors(prev => {
+                          const next = { ...prev };
+                          delete next.utrNumber;
+                          return next;
+                        });
+                      }
+                    }}
+                    className={`w-full border bg-[#2E3B2F] px-3.5 py-2.5 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/50 outline-none focus:border-[#C9A86A] font-mono ${errors.utrNumber ? "border-rose-500" : "border-[#8A9A7E]/30"}`}
                     placeholder="e.g. 403819284729"
                   />
                   {errors.utrNumber && <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.utrNumber}</p>}
@@ -2407,14 +2444,23 @@ export default function FirstRoundRegistration({
 
                 {/* Payer Account Name */}
                 <div>
-                  <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">
-                    Payer Name (Bank / UPI Account Holder)
+                  <label className="block font-sans text-[9px] uppercase text-[#C9A86A] mb-1 font-semibold">
+                    Payer Name (Bank / UPI Account Holder) *
                   </label>
                   <input
                     type="text"
                     value={formData.payerName}
-                    onChange={(e) => setFormData({ ...formData, payerName: e.target.value })}
-                    className="w-full border border-[#8A9A7E]/30 bg-[#2E3B2F] px-3.5 py-2.5 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/50 outline-none focus:border-[#C9A86A]"
+                    onChange={(e) => {
+                      setFormData({ ...formData, payerName: e.target.value });
+                      if (errors.payerName) {
+                        setErrors(prev => {
+                          const next = { ...prev };
+                          delete next.payerName;
+                          return next;
+                        });
+                      }
+                    }}
+                    className={`w-full border bg-[#2E3B2F] px-3.5 py-2.5 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/50 outline-none focus:border-[#C9A86A] ${errors.payerName ? "border-rose-500" : "border-[#8A9A7E]/30"}`}
                     placeholder="Name on bank / UPI account"
                   />
                   {errors.payerName && <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.payerName}</p>}
@@ -2422,22 +2468,32 @@ export default function FirstRoundRegistration({
 
                 {/* Date of Payment */}
                 <div>
-                  <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1 font-semibold">
-                    Date of Payment
+                  <label className="block font-sans text-[9px] uppercase text-[#C9A86A] mb-1 font-semibold">
+                    Date of Payment *
                   </label>
                   <input
                     type="date"
                     value={formData.paymentDate}
-                    onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                    className="w-full border border-[#8A9A7E]/30 bg-[#2E3B2F] px-3.5 py-2.5 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A]"
+                    onChange={(e) => {
+                      setFormData({ ...formData, paymentDate: e.target.value });
+                      if (errors.paymentDate) {
+                        setErrors(prev => {
+                          const next = { ...prev };
+                          delete next.paymentDate;
+                          return next;
+                        });
+                      }
+                    }}
+                    className={`w-full border bg-[#2E3B2F] px-3.5 py-2.5 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A] ${errors.paymentDate ? "border-rose-500" : "border-[#8A9A7E]/30"}`}
                   />
+                  {errors.paymentDate && <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.paymentDate}</p>}
                 </div>
               </div>
 
               {/* Screenshot Upload Zone */}
               <div>
-                <label className="block font-sans text-[9px] uppercase text-[#8A9A7E] mb-1.5 font-semibold">
-                  Payment Confirmation Screenshot (JPEG / PNG / PDF)
+                <label className="block font-sans text-[9px] uppercase text-[#C9A86A] mb-1.5 font-semibold">
+                  Payment Confirmation Screenshot (JPEG / PNG / PDF) *
                 </label>
                 <FileUploadZone
                   label="Upload UPI Payment Receipt"
@@ -2446,9 +2502,21 @@ export default function FirstRoundRegistration({
                   maxSizeMB={5}
                   valueUrl={formData.paymentScreenshotUrl}
                   valueName={formData.paymentScreenshotName}
-                  onChange={(url, name) => setFormData({ ...formData, paymentScreenshotUrl: url, paymentScreenshotName: name })}
+                  onChange={(url, name) => {
+                    setFormData({ ...formData, paymentScreenshotUrl: url, paymentScreenshotName: name });
+                    if (errors.paymentScreenshotUrl) {
+                      setErrors(prev => {
+                        const next = { ...prev };
+                        delete next.paymentScreenshotUrl;
+                        return next;
+                      });
+                    }
+                  }}
                   onClear={() => setFormData({ ...formData, paymentScreenshotUrl: "", paymentScreenshotName: "" })}
                 />
+                {errors.paymentScreenshotUrl && (
+                  <p className="text-[10px] text-rose-400 mt-1.5 font-semibold">{errors.paymentScreenshotUrl}</p>
+                )}
               </div>
             </div>
 
