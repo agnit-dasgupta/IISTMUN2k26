@@ -338,6 +338,11 @@ export default function SchoolRegistration({
       if (!formData.pref2Country) newErrors.pref2Country = "Second preference portfolio is required.";
       if (!formData.pref3Committee) newErrors.pref3Committee = "Third preference committee is required.";
       if (!formData.pref3Country) newErrors.pref3Country = "Third preference portfolio is required.";
+      if (!formData.motivation.trim()) {
+        newErrors.motivation = "Statement of Purpose (past MUN awards & achievements) is mandatory.";
+      } else if (formData.motivation.trim().length < 15) {
+        newErrors.motivation = "Please provide at least 15 characters detailing your past MUN awards or purpose.";
+      }
     }
 
     setErrors(newErrors);
@@ -1602,16 +1607,33 @@ export default function SchoolRegistration({
 
             {/* Motivation / SOP */}
             <div>
-              <label className="block font-sans text-xs uppercase tracking-wider text-[#C9A86A] mb-1 font-semibold">
-                Statement of Purpose / Motivation (Optional)
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block font-sans text-xs uppercase tracking-wider text-[#C9A86A] font-semibold">
+                  Statement of Purpose / Past MUN Awards &amp; Achievements *
+                </label>
+                <span className={`text-[10px] font-mono ${formData.motivation.trim().length >= 15 ? "text-emerald-400" : "text-[#8A9A7E]"}`}>
+                  {formData.motivation.trim().length} / 15 min chars
+                </span>
+              </div>
               <textarea
                 value={formData.motivation}
-                onChange={(e) => setFormData({ ...formData, motivation: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, motivation: e.target.value });
+                  if (errors.motivation) {
+                    setErrors(prev => {
+                      const next = { ...prev };
+                      delete next.motivation;
+                      return next;
+                    });
+                  }
+                }}
                 rows={3}
-                placeholder="Please write about your past MUN awards and achievements, if any."
-                className="w-full border border-[#8A9A7E]/40 bg-[#1A1F1A] p-3 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A] font-sans leading-relaxed"
+                placeholder="Please write about your past MUN awards, achievements, or statement of purpose (if first-time delegate, state your motivation)..."
+                className={`w-full border bg-[#1A1F1A] p-3 text-xs text-[#EDE6D3] outline-none focus:border-[#C9A86A] font-sans leading-relaxed ${errors.motivation ? "border-rose-500" : "border-[#8A9A7E]/40"}`}
               />
+              {errors.motivation && (
+                <p className="text-[10px] text-rose-400 mt-1 font-semibold">{errors.motivation}</p>
+              )}
             </div>
 
 
