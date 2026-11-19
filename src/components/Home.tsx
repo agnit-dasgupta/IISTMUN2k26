@@ -286,7 +286,35 @@ export default function Home({ setActiveTab }: HomeProps) {
                 </div>
               </button>
 
-              {/* Notice 2: UNGA (Online Committee) registrations now open */}
+              {/* Notice 2: First Round Registrations open • For university students and above */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("register-portal-first-round");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="border border-[#C9A86A]/70 hover:border-[#C9A86A] bg-[#2E3B2F]/80 hover:bg-[#2E3B2F] p-4 sm:p-5 text-left flex items-start gap-3 shadow-lg group transition-all duration-300 cursor-pointer"
+              >
+                <span className="relative flex h-2.5 w-2.5 mt-1 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C9A86A] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#C9A86A]"></span>
+                </span>
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#C9A86A] block font-bold">
+                      First Round
+                    </span>
+                    <span className="text-[8px] font-mono text-[#1A1F1A] bg-[#C9A86A] px-1.5 rounded-none font-bold">
+                      NOW OPEN
+                    </span>
+                  </div>
+                  <span className="font-sans text-xs text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#C9A86A] transition-colors truncate">
+                    University Students & Above &bull; Fees &gt;&gt;
+                  </span>
+                </div>
+              </button>
+
+              {/* Notice 3: UNGA (Online Committee) registrations now open */}
               <button
                 type="button"
                 onClick={() => {
@@ -314,33 +342,9 @@ export default function Home({ setActiveTab }: HomeProps) {
                 </div>
               </button>
 
-              {/* Notice 3: Campus ambassador registrations open */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab("register-portal-ca");
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="border border-[#8BA06F]/70 hover:border-[#8BA06F] bg-[#1A1F1A]/95 hover:bg-[#2E3B2F]/60 p-4 sm:p-5 text-left flex items-start gap-3 shadow-lg group transition-all duration-300 cursor-pointer"
-              >
-                <span className="relative flex h-2.5 w-2.5 mt-1 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8BA06F] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#8BA06F]"></span>
-                </span>
-                <div className="space-y-0.5 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-sans text-[9px] uppercase tracking-[0.2em] text-[#8BA06F] block font-medium">
-                      Campus Ambassador
-                    </span>
-                    <span className="text-[8px] font-mono text-[#1A1F1A] bg-[#8BA06F] px-1 rounded-none font-semibold">
-                      JOIN
-                    </span>
-                  </div>
-                  <span className="font-sans text-xs text-[#EDE6D3] font-medium tracking-wide block group-hover:text-[#8BA06F] transition-colors truncate">
-                    Outreach Fellowship
-                  </span>
-                </div>
-              </button>
+
+
+
 
             </div>
           </div>

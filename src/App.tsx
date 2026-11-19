@@ -28,7 +28,8 @@ const getInitialTab = () => {
     const path = window.location.pathname.replace(/^\/+/, "").split("/")[0].toLowerCase();
     const validTabs = [
       "home", "secretariat", "committees", "matrix", "schedule", "faq",
-      "register-portal", "register-portal-school", "register-school", "register-portal-priority", "register-portal-unga",
+      "register-portal", "register-portal-first-round", "register-first-round", "first-round",
+      "register-portal-school", "register-school", "register-portal-priority", "register-portal-unga",
       "register-portal-eb", "register-portal-ca", "register", "register-unga",
       "workshop-register", "admin", "accommodation", "about"
     ];
@@ -87,7 +88,7 @@ export default function App() {
           if (committee === "unga") {
             handleTabChange("register-portal-unga");
           } else {
-            handleTabChange("register-portal-school");
+            handleTabChange("register-portal-first-round");
           }
         }} />;
       case "schedule":
@@ -95,6 +96,10 @@ export default function App() {
       case "faq":
         return <FAQs />;
       case "register-portal":
+      case "register-portal-first-round":
+      case "register-first-round":
+      case "first-round":
+        return <RegisterPortal initialPortalTab="first-round" initialPreference={initialPreference} clearInitialPreference={() => setInitialPreference(null)} setActiveTab={handleTabChange} />;
       case "register-portal-school":
       case "register-school":
       case "register-portal-priority":

@@ -193,6 +193,85 @@ async function startServer() {
     }
   });
 
+  const FIRST_ROUND_REGISTRATIONS_FILE = path.join(process.cwd(), "data", "local_first_round_registrations.json");
+
+  // Helper to read local first round registrations
+  const readLocalFirstRoundRegistrations = (): any[] => {
+    try {
+      if (fs.existsSync(FIRST_ROUND_REGISTRATIONS_FILE)) {
+        const raw = fs.readFileSync(FIRST_ROUND_REGISTRATIONS_FILE, "utf-8");
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn("Could not read local_first_round_registrations.json:", e);
+    }
+    return [];
+  };
+
+  // Helper to write local first round registrations
+  const writeLocalFirstRoundRegistrations = (list: any[]) => {
+    try {
+      const dir = path.dirname(FIRST_ROUND_REGISTRATIONS_FILE);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(FIRST_ROUND_REGISTRATIONS_FILE, JSON.stringify(list, null, 2), "utf-8");
+    } catch (e) {
+      console.error("Could not write local_first_round_registrations.json:", e);
+    }
+  };
+
+  // GET /api/first-round-registrations
+  app.get("/api/first-round-registrations", (req, res) => {
+    const list = readLocalFirstRoundRegistrations();
+    return res.json({ status: "success", count: list.length, data: list });
+  });
+
+  // POST /api/first-round-registrations
+  app.post("/api/first-round-registrations", (req, res) => {
+    try {
+      const regData = req.body;
+      if (!regData || (!regData.id && !regData.uid)) {
+        return res.status(400).json({ status: "error", message: "Invalid first round registration payload" });
+      }
+
+      const list = readLocalFirstRoundRegistrations();
+      const identifier = regData.id || regData.uid;
+      const existingIdx = list.findIndex(r => {
+        if (regData.id && r.id) return r.id === regData.id;
+        if (regData.id && r.uid) return r.uid === regData.id;
+        if (regData.uid && r.id) return r.id === regData.uid;
+        return Boolean(regData.uid && r.uid && r.uid === regData.uid);
+      });
+
+      if (existingIdx >= 0) {
+        list[existingIdx] = { ...list[existingIdx], ...regData, updatedAt: new Date().toISOString() };
+      } else {
+        list.unshift({ ...regData, createdAt: new Date().toISOString() });
+      }
+
+      writeLocalFirstRoundRegistrations(list);
+      console.log(`[FIRST ROUND REGISTRATION BACKUP SUCCESS] Stored ticket ${identifier} (${regData.name || "Candidate"})`);
+      return res.json({ status: "success", data: regData });
+    } catch (err: any) {
+      console.error("Error saving local first round registration:", err);
+      return res.status(500).json({ status: "error", message: err.message || "Failed to persist first round registration" });
+    }
+  });
+
+  // DELETE /api/first-round-registrations/:id
+  app.delete("/api/first-round-registrations/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const list = readLocalFirstRoundRegistrations();
+      const updated = list.filter(r => r.id !== id && r.uid !== id);
+      writeLocalFirstRoundRegistrations(updated);
+      return res.json({ status: "success", message: `Deleted first round registration ${id}` });
+    } catch (err: any) {
+      return res.status(500).json({ status: "error", message: err.message || "Failed to delete" });
+    }
+  });
+
   const COUNTRY_MATRIX_FILE = path.join(process.cwd(), "data", "local_country_matrix.json");
   const COMMITTEES_FILE = path.join(process.cwd(), "data", "local_committees.json");
 

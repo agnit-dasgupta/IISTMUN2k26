@@ -35,30 +35,33 @@ import { motion, AnimatePresence } from "motion/react";
 import Registration, { PRIORITY_REGISTRATIONS_OPEN } from "./Registration";
 import SchoolRegistration from "./SchoolRegistration";
 import UNGARegistration from "./UNGARegistration";
+import FirstRoundRegistration from "./FirstRoundRegistration";
 import { School } from "lucide-react";
 
 export const EB_REGISTRATIONS_OPEN = false;
 
 interface RegisterPortalProps {
-  initialPortalTab?: "school" | "priority" | "unga" | "campus-ambassador" | "eb";
+  initialPortalTab?: "first-round" | "first_round" | "school" | "priority" | "unga" | "campus-ambassador" | "eb";
   initialPreference?: { country?: string; committee: string } | null;
   clearInitialPreference?: () => void;
   setActiveTab: (tab: string) => void;
 }
 
 export default function RegisterPortal({
-  initialPortalTab = "school",
+  initialPortalTab = "first-round",
   initialPreference,
   clearInitialPreference,
   setActiveTab
 }: RegisterPortalProps) {
   const { user } = useFirebase();
-  const [selectedForm, setSelectedForm] = useState<"school" | "priority" | "unga" | "campus-ambassador">(
+  const [selectedForm, setSelectedForm] = useState<"first-round" | "school" | "priority" | "unga" | "campus-ambassador">(
     initialPortalTab === "campus-ambassador"
       ? "campus-ambassador"
       : initialPortalTab === "unga"
         ? "unga"
-        : "school"
+        : (initialPortalTab === "school" || initialPortalTab === "priority")
+          ? "school"
+          : "first-round"
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
@@ -108,7 +111,9 @@ export default function RegisterPortal({
           ? "campus-ambassador"
           : initialPortalTab === "unga"
             ? "unga"
-            : "school"
+            : (initialPortalTab === "school" || initialPortalTab === "priority")
+              ? "school"
+              : "first-round"
       );
     }
   }, [initialPortalTab]);
@@ -227,7 +232,7 @@ export default function RegisterPortal({
               CONVOCATION DISPATCH • 14TH EDITION
             </span>
             <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] border border-[#C9A86A]/40 bg-[#C9A86A]/10 px-2.5 py-1 font-semibold">
-              SCHOOL ROUND OPEN • UNGA (ONLINE) OPEN • CAMPUS AMBASSADOR OPEN
+              FIRST ROUND (COLLEGE) OPEN • SCHOOL ROUND OPEN • UNGA ONLINE OPEN • CA OPEN
             </span>
           </div>
 
@@ -238,7 +243,7 @@ export default function RegisterPortal({
 
           <p className="font-sans text-xs sm:text-sm text-[#EDE6D3]/80 leading-relaxed font-light">
             Welcome to the official registration portal of <strong className="text-[#EDE6D3]">IIST Model United Nations 2027</strong>.
-            School delegate applications for secondary students (Classes 8&ndash;12, ₹999 / ₹1,148 with socials) and <span className="text-[#C9A86A] font-medium">UNGA (Online Committee)</span> registrations are now live with rolling portfolio allotments. You can also join the prestigious <span className="text-[#8BA06F] font-medium">Campus Ambassador Network</span> to represent IISTMUN at your academic institution.
+            <span className="text-[#C9A86A] font-semibold"> First Round applications for college &amp; university delegates</span> (₹1,299 with live Country Matrix), school delegate registrations (Classes 8&ndash;12, ₹999), and <span className="text-[#C9A86A] font-medium">UNGA (Online Committee)</span> are now active with rolling allocations. You can also join the prestigious <span className="text-[#8BA06F] font-medium">Campus Ambassador Network</span> to represent IISTMUN at your college.
           </p>
 
           <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-mono text-[#8A9A7E]">
@@ -263,9 +268,44 @@ export default function RegisterPortal({
         </div>
       </div>
 
-      {/* Triad Selector Tabs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
-        {/* Section A: School Round Registrations (On-Campus) */}
+      {/* Quadrant Selector Tabs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+        {/* Section 1: First Round Registrations (College & Higher) */}
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedForm("first-round");
+            setSubmittedCA(null);
+          }}
+          className={`p-5 text-left border transition-all duration-200 cursor-pointer relative ${selectedForm === "first-round"
+            ? "border-[#C9A86A] bg-[#2E3B2F] shadow-lg"
+            : "border-[#C9A86A]/20 bg-[#1A1F1A]/70 hover:border-[#C9A86A]/50 hover:bg-[#2E3B2F]/40"
+            }`}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C9A86A]">
+              SECTION 1 &bull; FIRST ROUND
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-2 py-0.5">
+                NOW OPEN
+              </span>
+              <GraduationCap className={`h-5 w-5 ${selectedForm === "first-round" ? "text-[#C9A86A]" : "text-[#8A9A7E]"}`} />
+            </div>
+          </div>
+          <h2 className="font-serif text-lg text-[#EDE6D3] font-medium block">
+            First Round Registration
+          </h2>
+          <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
+            College &amp; Higher &bull; ₹1,299 Base Fee &bull; Live Country Matrix.
+          </p>
+
+          {selectedForm === "first-round" && (
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#C9A86A]" />
+          )}
+        </button>
+
+        {/* Section 2: School Round Registrations (Classes 8-12) */}
         <button
           type="button"
           onClick={() => {
@@ -279,9 +319,9 @@ export default function RegisterPortal({
         >
           <div className="flex items-center justify-between mb-2">
             <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C9A86A]">
-              SECTION A &bull; SCHOOL ROUND
+              SECTION 2 &bull; SCHOOL ROUND
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-2 py-0.5">
                 NOW OPEN
               </span>
@@ -300,7 +340,7 @@ export default function RegisterPortal({
           )}
         </button>
 
-        {/* Section B: UNGA (Online Committee) Registration */}
+        {/* Section 3: UNGA (Online Committee) Registration */}
         <button
           type="button"
           onClick={() => {
@@ -314,9 +354,9 @@ export default function RegisterPortal({
         >
           <div className="flex items-center justify-between mb-2">
             <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#C9A86A]">
-              SECTION B &bull; ONLINE
+              SECTION 3 &bull; ONLINE
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] px-2 py-0.5 font-bold">
                 NOW OPEN
               </span>
@@ -327,14 +367,14 @@ export default function RegisterPortal({
             UNGA (Online Committee)
           </h2>
           <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
-            Dates: 16th & 17th Jan 2027
+            Digital Diplomacy &bull; Dates: 16th &amp; 17th Jan 2027.
           </p>
           {selectedForm === "unga" && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#C9A86A]" />
           )}
         </button>
 
-        {/* Section C: Campus Ambassador Registration */}
+        {/* Section 4: Campus Ambassador Registration */}
         <button
           type="button"
           onClick={() => {
@@ -348,9 +388,9 @@ export default function RegisterPortal({
         >
           <div className="flex items-center justify-between mb-2">
             <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#8BA06F]">
-              SECTION C &bull; OUTREACH
+              SECTION 4 &bull; OUTREACH
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span className="font-mono text-[9px] uppercase tracking-wider text-emerald-300 bg-emerald-950/70 border border-emerald-500/40 px-2 py-0.5">
                 NOW OPEN
               </span>
@@ -361,7 +401,7 @@ export default function RegisterPortal({
             Campus Ambassador
           </h2>
           <p className="font-sans text-xs text-[#8A9A7E] mt-1 leading-relaxed">
-            Represent IISTMUN 2027 at your college, lead contingents &amp; earn rewards.
+            Represent IISTMUN at your college &amp; earn rewards.
           </p>
           {selectedForm === "campus-ambassador" && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#8BA06F]" />
@@ -369,7 +409,17 @@ export default function RegisterPortal({
         </button>
       </div>
 
-      {/* SECTION A: SCHOOL ROUND REGISTRATION FORM */}
+      {/* SECTION 1: FIRST ROUND REGISTRATION FORM (COLLEGE & HIGHER) */}
+      {selectedForm === "first-round" && (
+        <FirstRoundRegistration
+          embedded={true}
+          initialPreference={initialPreference}
+          clearInitialPreference={clearInitialPreference}
+          setActiveTab={setActiveTab}
+        />
+      )}
+
+      {/* SECTION 2: SCHOOL ROUND REGISTRATION FORM */}
       {(selectedForm === "school" || selectedForm === "priority") && (
         <SchoolRegistration
           embedded={true}
@@ -379,7 +429,7 @@ export default function RegisterPortal({
         />
       )}
 
-      {/* SECTION B: UNGA ONLINE REGISTRATION FORM */}
+      {/* SECTION 3: UNGA ONLINE REGISTRATION FORM */}
       {selectedForm === "unga" && (
         <UNGARegistration
           embedded={true}

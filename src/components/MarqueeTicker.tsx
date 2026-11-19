@@ -4,7 +4,7 @@
  */
 
 import React from "react";
-import { Award, ShieldCheck, ArrowRight, Sparkles, Orbit, Globe, School } from "lucide-react";
+import { Award, ShieldCheck, ArrowRight, Sparkles, Orbit, Globe, School, Star } from "lucide-react";
 import { motion } from "motion/react";
 
 interface MarqueeTickerProps {
@@ -54,6 +54,14 @@ export default function MarqueeTicker({ setActiveTab }: MarqueeTickerProps) {
       targetTab: "register-portal-ca",
       highlight: false
     },
+    {
+      badge: "FIRST ROUND",
+      lead: "First Round Registrations open • For university students and above.",
+      cta: "Register for First Round",
+      icon: Star,
+      targetTab: "register-portal-first-round",
+      highlight: true
+    }
   ];
 
   // Exactly two identical halves ensure keyframes translateX(-50%) produces a 100% seamless, mathematically continuous loop
@@ -86,14 +94,12 @@ export default function MarqueeTicker({ setActiveTab }: MarqueeTickerProps) {
               className="flex items-center gap-3 px-6 sm:px-8 font-sans text-xs tracking-wider uppercase text-[#EDE6D3]/90 whitespace-nowrap transition-colors hover:text-white"
             >
               {/* Pulsing / Static Status Tag */}
-              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-none text-[10px] font-mono font-semibold border ${
-                (item as any).closed
-                  ? "bg-rose-950/80 border-rose-500/40 text-rose-300"
-                  : "bg-[#C9A86A]/15 border-[#C9A86A]/40 text-[#C9A86A]"
-              }`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${
-                  (item as any).closed ? "bg-rose-500" : "animate-pulse bg-[#C9A86A]"
-                }`} />
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-none text-[10px] font-mono font-semibold border ${(item as any).closed
+                ? "bg-rose-950/80 border-rose-500/40 text-rose-300"
+                : "bg-[#C9A86A]/15 border-[#C9A86A]/40 text-[#C9A86A]"
+                }`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${(item as any).closed ? "bg-rose-500" : "animate-pulse bg-[#C9A86A]"
+                  }`} />
                 {item.badge}
               </span>
 

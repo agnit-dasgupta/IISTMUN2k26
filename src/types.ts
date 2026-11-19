@@ -230,6 +230,86 @@ export interface SchoolRegistrationDetails {
   adminNotes?: string;
 }
 
+export interface FirstRoundRegistrationDetails {
+  uid?: string;
+  userId?: string;
+  id: string; // e.g. FR-2027-1234
+  timestamp: string;
+  round: "first_round";
+  createdAt?: any;
+  updatedAt?: any;
+  status: "Pending Verification" | "Registration Confirmed" | "Portfolio Allotted" | "Waitlisted" | "Rejected";
+
+  // Personal Information
+  name: string;
+  email: string;
+  phone: string;
+  gender: string;
+  dob: string;
+  cityState: string;
+  fullAddress?: string;
+
+  // Emergency Contact
+  emergencyContactName: string;
+  emergencyContactRelation: string;
+  emergencyContactPhone: string;
+
+  // Identity Clearance (Mandatory)
+  aadharNumber: string; // Aadhaar or Passport Number
+  aadharPhotoUrl: string; // Aadhaar / Passport photo upload
+  aadharPhotoName?: string;
+  idCardUrl: string; // College ID card upload
+  idCardName?: string;
+
+  // College / Higher Institution Information
+  institution: string; // College / University / Institute
+  course: string; // Degree / Discipline e.g. B.Tech Aerospace, BA Political Science, MBBS, MBA
+  yearOfStudy: string; // "1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "Postgraduate / PhD", "Alumni / Professional"
+  rollNumber?: string; // College Roll / Registration Number
+
+  // Referral
+  campusAmbassadorCode?: string; // Optional Campus Ambassador referral code
+
+  // Model UN Experience
+  munExperience: string; // "None", "1-2", "3-5", "5+"
+  pastMunDetails?: string;
+
+  // Council & Portfolio Preferences from Country Matrix
+  // Order of clicking is the order of preference
+  pref1Committee: string;
+  pref1Country: string;
+  pref2Committee: string;
+  pref2Country: string;
+  pref3Committee: string;
+  pref3Country: string;
+  preferences?: Array<{
+    rank: number;
+    committee: string;
+    country: string;
+  }>;
+  motivation?: string;
+
+  // Logistics
+  accommodationRequired?: "yes" | "no";
+
+  // Delegate Socials & Fee Payment
+  attendingSocials?: boolean;
+  feeAmount?: number; // Rs 1299 (Socials included at no extra charge)
+  paymentMode?: string;
+  transactionId?: string;
+  utrNumber?: string;
+  payerName?: string;
+  paymentDate?: string;
+  paymentScreenshotUrl?: string;
+  paymentScreenshotName?: string;
+  paymentStatus?: "Pending" | "Verified" | "Rejected";
+
+  // Administrative Allocation
+  allottedCommittee?: string;
+  allottedCountry?: string;
+  adminNotes?: string;
+}
+
 
 export interface ContactQuery {
   id?: string;

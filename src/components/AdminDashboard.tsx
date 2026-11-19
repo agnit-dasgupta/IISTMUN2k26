@@ -50,7 +50,8 @@ import {
   Bed,
   School,
   Clock,
-  CreditCard
+  CreditCard,
+  Tag
 } from "lucide-react";
 
 export const FIRESTORE_RULES_TEXT = `rules_version = '2';
@@ -139,6 +140,14 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    match /first_round_registrations/{registrationId} {
+      allow get: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if true;
+      allow update: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+      allow delete: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
+    }
+
     match /unga_registrations/{registrationId} {
       allow get: if isAdmin() || (isSignedIn() && (registrationId == request.auth.uid || resource.data.userId == request.auth.uid));
       allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
@@ -204,7 +213,7 @@ import {
   syncLocalRegistrationsToFirestore,
   CollectionCounts 
 } from "../utils/firestoreSeed";
-import { RegistrationDetails, PriorityRegistrationDetails, SchoolRegistrationDetails, CountryMatrixRow, PortfolioStatus, CommitteeId, ContactQuery, EBRegistration, CampusAmbassadorRegistration, WorkshopRegistrationDetails, AccommodationBooking, AccommodationSettings } from "../types";
+import { RegistrationDetails, PriorityRegistrationDetails, SchoolRegistrationDetails, FirstRoundRegistrationDetails, CountryMatrixRow, PortfolioStatus, CommitteeId, ContactQuery, EBRegistration, CampusAmbassadorRegistration, WorkshopRegistrationDetails, AccommodationBooking, AccommodationSettings } from "../types";
 import { 
   calculateMatrixStats, 
   getEffectivePortfolioStatus, 
@@ -376,11 +385,22 @@ export default function AdminDashboard() {
   const [workshopSearch, setWorkshopSearch] = useState("");
 
   // Sub-tabs
-  const [activeSubTab, setActiveSubTab] = useState<"school" | "priority" | "unga" | "registrations" | "matrix" | "eb" | "campus-ambassador" | "workshop" | "accommodation" | "queries" | "database">("school");
+  const [activeSubTab, setActiveSubTab] = useState<"first_round" | "school" | "priority" | "unga" | "registrations" | "matrix" | "eb" | "campus-ambassador" | "workshop" | "accommodation" | "queries" | "database">("first_round");
   const [portfolioSearch, setPortfolioSearch] = useState("");
   const [matrixCommitteeFilter, setMatrixCommitteeFilter] = useState("all");
   const [matrixStatusFilter, setMatrixStatusFilter] = useState("all");
   const [portfolioOverrides, setPortfolioOverrides] = useState<Record<string, Partial<Record<CommitteeId | "copuos" | "disec" | "aippm" | "unsc", PortfolioStatus>>>>({});
+
+  // First Round registrations state (College & Higher)
+  const [firstRoundRegistrations, setFirstRoundRegistrations] = useState<FirstRoundRegistrationDetails[]>([]);
+  const [firstRoundSearch, setFirstRoundSearch] = useState("");
+  const [firstRoundCommitteeFilter, setFirstRoundCommitteeFilter] = useState("all");
+  const [firstRoundStatusFilter, setFirstRoundStatusFilter] = useState("all");
+  const [selectedFirstRoundReg, setSelectedFirstRoundReg] = useState<FirstRoundRegistrationDetails | null>(null);
+  const [confirmFirstRoundDeleteId, setConfirmFirstRoundDeleteId] = useState<string | null>(null);
+  const [isUpdatingFirstRoundStatus, setIsUpdatingFirstRoundStatus] = useState(false);
+  const [allotFirstRoundModalReg, setAllotFirstRoundModalReg] = useState<FirstRoundRegistrationDetails | null>(null);
+  const [allotFirstRoundForm, setAllotFirstRoundForm] = useState({ committee: "uncopuos", country: "", adminNotes: "" });
 
   // School Round registrations state
   const [schoolRegistrations, setSchoolRegistrations] = useState<SchoolRegistrationDetails[]>([]);
@@ -1013,6 +1033,76 @@ export default function AdminDashboard() {
         })
         .catch(() => {
           setSchoolRegistrations(mergeSchoolRecords([]));
+        });
+    });
+
+    return () => unsubscribe();
+  }, [isAdmin]);
+
+  // Sync First Round Registrations from Firestore 'first_round_registrations' and '/api/first-round-registrations'
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const mergeFirstRoundRecords = (baseList: FirstRoundRegistrationDetails[], backupList: any[] = []) => {
+      const deduplicated: FirstRoundRegistrationDetails[] = [];
+      baseList.forEach((b) => {
+        const alreadyExists = deduplicated.some((c) =>
+          (c.id && b.id && c.id === b.id) ||
+          (c.uid && b.uid && c.uid === b.uid && c.name === b.name)
+        );
+        if (!alreadyExists) {
+          deduplicated.push(b);
+        }
+      });
+
+      const combined = [...deduplicated];
+
+      backupList.forEach((b) => {
+        if (!combined.some((c) => (c.id && c.id === b.id) || (c.uid && c.uid === b.id) || (c.userId && c.userId === b.userId))) {
+          combined.push(b as FirstRoundRegistrationDetails);
+        }
+      });
+
+      combined.sort((a, b) => {
+        const timeA = new Date(a.timestamp || 0).getTime();
+        const timeB = new Date(b.timestamp || 0).getTime();
+        return timeB - timeA;
+      });
+
+      return combined;
+    };
+
+    const q = query(collection(db, "first_round_registrations"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: FirstRoundRegistrationDetails[] = [];
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        list.push({
+          uid: docSnap.id,
+          id: d.id || docSnap.id,
+          ...d
+        } as FirstRoundRegistrationDetails);
+      });
+
+      fetch("/api/first-round-registrations")
+        .then((res) => res.json())
+        .then((res) => {
+          const backup = (res.data && Array.isArray(res.data)) ? res.data : [];
+          setFirstRoundRegistrations(mergeFirstRoundRecords(list, backup));
+        })
+        .catch(() => {
+          setFirstRoundRegistrations(mergeFirstRoundRecords(list));
+        });
+    }, (error) => {
+      console.warn("first_round_registrations subscription status:", error instanceof Error ? error.message : "Access error");
+      fetch("/api/first-round-registrations")
+        .then((res) => res.json())
+        .then((res) => {
+          const backup = (res.data && Array.isArray(res.data)) ? res.data : [];
+          setFirstRoundRegistrations(mergeFirstRoundRecords([], backup));
+        })
+        .catch(() => {
+          setFirstRoundRegistrations(mergeFirstRoundRecords([]));
         });
     });
 
@@ -2022,6 +2112,151 @@ export default function AdminDashboard() {
     showToast(`Exported ${list.length} school registration(s) to Excel!`);
   };
 
+  const exportFirstRoundToExcel = (itemsToExport?: FirstRoundRegistrationDetails[], customLabel?: string) => {
+    const list = itemsToExport ?? firstRoundRegistrations;
+    if (list.length === 0) {
+      showToast("No First Round registrations available to export.");
+      return;
+    }
+
+    const dataToExport = list.map((r, idx) => ({
+      "Sl. No": idx + 1,
+      "Ticket ID": r.id || r.uid || "",
+      "Delegate Name": r.name || "",
+      "Email Address": r.email || "",
+      "Phone / WhatsApp": r.phone || "",
+      "Aadhaar / Passport": r.aadharNumber || "",
+      "Gender": r.gender || "",
+      "Date of Birth": r.dob || "",
+      "City & State": r.cityState || "",
+      "College / University": r.institution || "",
+      "Course / Degree": r.course || "",
+      "Year of Study": r.yearOfStudy || "",
+      "Roll / Student No": r.rollNumber || "",
+      "Campus Ambassador Code": r.campusAmbassadorCode || "NONE",
+      "Emergency Contact Name": r.emergencyContactName || "",
+      "Emergency Contact Relation": r.emergencyContactRelation || "",
+      "Emergency Contact Phone": r.emergencyContactPhone || "",
+      "MUN Experience": r.munExperience || "",
+      "Past MUN Details": r.pastMunDetails || "",
+      "Pref 1 Committee": (r.pref1Committee || "").toUpperCase(),
+      "Pref 1 Portfolio": r.pref1Country || "",
+      "Pref 2 Committee": (r.pref2Committee || "").toUpperCase(),
+      "Pref 2 Portfolio": r.pref2Country || "",
+      "Pref 3 Committee": (r.pref3Committee || "").toUpperCase(),
+      "Pref 3 Portfolio": r.pref3Country || "",
+      "Motivation Statement": r.motivation || "",
+      "Accommodation Requested": r.accommodationRequired === "yes" ? "YES" : "NO",
+      "Has Aadhaar/Passport File": r.aadharPhotoUrl ? "YES" : "NO",
+      "Has College ID File": r.idCardUrl ? "YES" : "NO",
+      "Attending Socials": r.attendingSocials ? "YES (Included)" : "NO",
+      "Fee Amount (₹)": 1299,
+      "Payment Mode": r.paymentMode || "UPI",
+      "UTR / Transaction ID": r.utrNumber || r.transactionId || "",
+      "Payment Date": r.paymentDate || "",
+      "Payment Screenshot URL": r.paymentScreenshotUrl || "",
+      "Payment Status": r.paymentStatus || (r.utrNumber ? "Pending Verification" : "Pending"),
+      "Status": r.status || "Pending Verification",
+      "Allotted Committee": (r.allottedCommittee || "").toUpperCase(),
+      "Allotted Portfolio": r.allottedCountry || "",
+      "Admin Notes": r.adminNotes || "",
+      "Submission Date": r.timestamp || ""
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "First Round Registrations");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const suffix = customLabel ? `_${customLabel.replace(/[^a-zA-Z0-9_-]/g, "_")}` : "";
+    XLSX.writeFile(workbook, `IISTMUN_2027_First_Round_Registrations${suffix}_${dateStr}.xlsx`);
+    showToast(`Exported ${list.length} first round registration(s) to Excel!`);
+  };
+
+  const handleUpdateFirstRoundStatus = async (
+    id: string,
+    newStatus: string
+  ) => {
+    setIsUpdatingFirstRoundStatus(true);
+    try {
+      const updates: any = { status: newStatus, updatedAt: new Date().toISOString() };
+      await updateDoc(doc(db, "first_round_registrations", id), updates).catch(() => {});
+      await fetch("/api/first-round-registrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...updates })
+      }).catch(() => {});
+
+      showToast(`Updated status to ${newStatus}`);
+      if (selectedFirstRoundReg && (selectedFirstRoundReg.id === id || selectedFirstRoundReg.uid === id)) {
+        setSelectedFirstRoundReg((prev) => (prev ? { ...prev, ...updates } : null));
+      }
+      setFirstRoundRegistrations((prev) =>
+        prev.map((r) => ((r.id === id || r.uid === id) ? { ...r, ...updates } : r))
+      );
+    } catch (err) {
+      console.error("First round status update error:", err);
+      showToast("Failed to update status. Check permissions.");
+    } finally {
+      setIsUpdatingFirstRoundStatus(false);
+    }
+  };
+
+  const handleSaveFirstRoundAllotment = async () => {
+    if (!allotFirstRoundModalReg) return;
+    const id = allotFirstRoundModalReg.uid || allotFirstRoundModalReg.id || "";
+    if (!id) return;
+    try {
+      const updates: any = {
+        allottedCommittee: allotFirstRoundForm.committee,
+        allottedCountry: allotFirstRoundForm.country,
+        adminNotes: allotFirstRoundForm.adminNotes,
+        status: "Portfolio Allotted",
+        updatedAt: new Date().toISOString()
+      };
+      await updateDoc(doc(db, "first_round_registrations", id), updates).catch(() => {});
+      await fetch("/api/first-round-registrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...updates })
+      }).catch(() => {});
+
+      if (allotFirstRoundForm.country && allotFirstRoundForm.committee) {
+        await updatePortfolioStatus(allotFirstRoundForm.country, allotFirstRoundForm.committee, "Assigned");
+      }
+
+      showToast(`Allotted ${allotFirstRoundForm.country || "Portfolio"} in ${allotFirstRoundForm.committee.toUpperCase()} to ${allotFirstRoundModalReg.name}!`);
+      if (selectedFirstRoundReg && (selectedFirstRoundReg.id === id || selectedFirstRoundReg.uid === id)) {
+        setSelectedFirstRoundReg((prev) => (prev ? { ...prev, ...updates } : null));
+      }
+      setFirstRoundRegistrations((prev) =>
+        prev.map((r) => ((r.id === id || r.uid === id) ? { ...r, ...updates } : r))
+      );
+      setAllotFirstRoundModalReg(null);
+    } catch (err) {
+      console.error("First round allotment error:", err);
+      showToast("Error updating portfolio allotment.");
+    }
+  };
+
+  const handleDeleteFirstRound = async (id: string, name: string) => {
+    setActionLoading(true);
+    try {
+      await deleteDoc(doc(db, "first_round_registrations", id)).catch(() => {});
+      await fetch(`/api/first-round-registrations/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
+
+      setFirstRoundRegistrations((prev) => prev.filter((p) => p.id !== id && p.uid !== id));
+      if (selectedFirstRoundReg && (selectedFirstRoundReg.id === id || selectedFirstRoundReg.uid === id)) {
+        setSelectedFirstRoundReg(null);
+      }
+      setConfirmFirstRoundDeleteId(null);
+      showToast(`Deleted First Round registration for ${name}.`);
+    } catch (err) {
+      showToast("Error deleting registration.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const exportMatrixToExcel = () => {
     const dataToExport = COUNTRY_MATRIX.map((row) => ({
       "Country / Portfolio": row.country,
@@ -2412,6 +2647,41 @@ export default function AdminDashboard() {
       setIsDeletingQuery(false);
     }
   };
+
+  // Filter First Round registrations (College & Higher)
+  const filteredFirstRound = firstRoundRegistrations.filter((r) => {
+    const q = firstRoundSearch.toLowerCase().trim();
+    const matchesSearch = !q || (
+      (r.name || "").toLowerCase().includes(q) ||
+      (r.email || "").toLowerCase().includes(q) ||
+      (r.phone || "").toLowerCase().includes(q) ||
+      (r.aadharNumber || "").toLowerCase().includes(q) ||
+      (r.institution || "").toLowerCase().includes(q) ||
+      (r.course || "").toLowerCase().includes(q) ||
+      (r.yearOfStudy || "").toLowerCase().includes(q) ||
+      (r.rollNumber || "").toLowerCase().includes(q) ||
+      (r.campusAmbassadorCode || "").toLowerCase().includes(q) ||
+      (r.emergencyContactName || "").toLowerCase().includes(q) ||
+      (r.id || "").toLowerCase().includes(q) ||
+      (r.uid || "").toLowerCase().includes(q) ||
+      (r.pref1Country || "").toLowerCase().includes(q) ||
+      (r.pref2Country || "").toLowerCase().includes(q) ||
+      (r.pref3Country || "").toLowerCase().includes(q)
+    );
+
+    const matchesCommittee =
+      firstRoundCommitteeFilter === "all" ||
+      r.pref1Committee === firstRoundCommitteeFilter ||
+      r.pref2Committee === firstRoundCommitteeFilter ||
+      r.pref3Committee === firstRoundCommitteeFilter ||
+      r.allottedCommittee === firstRoundCommitteeFilter;
+
+    const matchesStatus =
+      firstRoundStatusFilter === "all" ||
+      r.status === firstRoundStatusFilter;
+
+    return matchesSearch && matchesCommittee && matchesStatus;
+  });
 
   // Filter School Round registrations
   const filteredSchool = schoolRegistrations.filter((r) => {
@@ -3173,6 +3443,22 @@ export default function AdminDashboard() {
         {/* Admin Navigation Sub-Tabs */}
         <div className="flex border-b border-[#C9A86A]/25 mb-8 overflow-x-auto scrollbar-none gap-1">
           <button
+            onClick={() => setActiveSubTab("first_round")}
+            className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeSubTab === "first_round"
+                ? "border-[#C9A86A] text-[#C9A86A] font-semibold bg-[#2E3B2F]/40"
+                : "border-transparent text-[#8A9A7E] hover:text-[#EDE6D3]"
+            }`}
+          >
+            <GraduationCap className="h-3.5 w-3.5 text-[#C9A86A]" />
+            <span>First Round (College) ({firstRoundRegistrations.length})</span>
+            {firstRoundRegistrations.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-[#C9A86A] text-[#1A1F1A] text-[9px] font-bold">
+                {firstRoundRegistrations.length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setActiveSubTab("school")}
             className={`px-5 py-3 font-sans text-xs font-medium uppercase tracking-[0.15em] border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
               activeSubTab === "school"
@@ -3327,6 +3613,408 @@ export default function AdminDashboard() {
             <span>Firestore Database</span>
           </button>
         </div>
+
+        {/* ========================================================
+            SUB-TAB: FIRST ROUND DELEGATE REGISTRATIONS (COLLEGE & HIGHER)
+           ======================================================== */}
+        {activeSubTab === "first_round" && (
+          <div className="space-y-8 animate-fade-in text-left">
+            {/* Header & Export Actions */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#C9A86A]/20 pb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                    // FIRST ROUND REGISTRY (COLLEGE &amp; HIGHER)
+                  </span>
+                  <span className="font-sans text-[10px] uppercase tracking-[0.2em] text-[#8A9A7E]">
+                    Secretariat Desk &bull; Direct Telemetry
+                  </span>
+                </div>
+                <h2 className="font-serif text-2xl sm:text-3xl font-normal text-[#EDE6D3] tracking-wide">
+                  First Round Delegations Ledger
+                </h2>
+                <p className="font-sans text-xs text-[#8A9A7E] mt-1">
+                  Undergraduate, postgraduate &amp; doctoral scholars, verified college enrollment proofs, Aadhaar/Passport verification, fee tier (₹1,299 / ₹1,448 with socials), and ranked Country Matrix preferences.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => exportFirstRoundToExcel()}
+                  disabled={firstRoundRegistrations.length === 0}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  title="Download all First Round registrations as an Excel spreadsheet (.xlsx)"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  <span>Download First Round Excel ({firstRoundRegistrations.length})</span>
+                </button>
+                {filteredFirstRound.length !== firstRoundRegistrations.length && (
+                  <button
+                    onClick={() => exportFirstRoundToExcel(filteredFirstRound, "Filtered")}
+                    disabled={filteredFirstRound.length === 0}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 border border-[#C9A86A] bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#C9A86A] font-sans text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    title="Download currently filtered First Round registrations as an Excel spreadsheet"
+                  >
+                    <Filter className="h-3.5 w-3.5" />
+                    <span>Download Filtered ({filteredFirstRound.length})</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E]">TOTAL FIRST ROUND</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">{firstRoundRegistrations.length}</span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                    <GraduationCap className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-emerald-400">VERIFIED / CONFIRMED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {firstRoundRegistrations.filter(r => r.status === "Registration Confirmed" || r.status === "Portfolio Allotted").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-emerald-500/30 text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A]">PORTFOLIO ALLOTTED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {firstRoundRegistrations.filter(r => r.status === "Portfolio Allotted").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-[#C9A86A]/30 text-[#C9A86A]">
+                    <Award className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-amber-300">PENDING REVIEW</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {firstRoundRegistrations.filter(r => r.status === "Pending Verification").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-amber-500/30 text-amber-300">
+                    <Clock className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-[#C9A86A]/30 bg-[#2E3B2F] p-4 text-left shadow-sm col-span-2 sm:col-span-1">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-teal-400">ACCOMMODATION NEEDED</span>
+                <div className="flex justify-between items-end mt-1.5">
+                  <span className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                    {firstRoundRegistrations.filter(r => r.accommodationRequired === "yes").length}
+                  </span>
+                  <div className="p-1.5 bg-[#1A1F1A] border border-teal-500/30 text-teal-400">
+                    <Bed className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filters Bar */}
+            <div className="p-4 bg-[#2E3B2F] border border-[#C9A86A]/30 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 shadow-md">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8A9A7E]" />
+                <input
+                  type="text"
+                  value={firstRoundSearch}
+                  onChange={(e) => setFirstRoundSearch(e.target.value)}
+                  placeholder="Search by delegate name, college, course, CA code, email, phone, ID, country..."
+                  className="w-full pl-9 pr-4 py-2 bg-[#1A1F1A] border border-[#8A9A7E]/30 text-xs text-[#EDE6D3] placeholder-[#8A9A7E]/60 focus:outline-none focus:border-[#C9A86A]"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Committee Filter */}
+                <select
+                  value={firstRoundCommitteeFilter}
+                  onChange={(e) => setFirstRoundCommitteeFilter(e.target.value)}
+                  className="bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#EDE6D3] px-3 py-2 text-xs focus:outline-none focus:border-[#C9A86A]"
+                >
+                  <option value="all">All Committees</option>
+                  <option value="uncopuos">UNCOPUOS</option>
+                  <option value="unhrc">UNHRC</option>
+                  <option value="unodc">UNODC</option>
+                  <option value="nes75">NES'75</option>
+                  <option value="undp">UNDP</option>
+                  <option value="ip_journalism">IP (Journalism)</option>
+                  <option value="ip_photojournalism">IP (Photojournalism)</option>
+                  <option value="unga">UNGA (Online)</option>
+                </select>
+
+                {/* Status Filter */}
+                <select
+                  value={firstRoundStatusFilter}
+                  onChange={(e) => setFirstRoundStatusFilter(e.target.value)}
+                  className="bg-[#1A1F1A] border border-[#8A9A7E]/30 text-[#EDE6D3] px-3 py-2 text-xs focus:outline-none focus:border-[#C9A86A]"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="Pending Verification">Pending Verification</option>
+                  <option value="Registration Confirmed">Registration Confirmed</option>
+                  <option value="Portfolio Allotted">Portfolio Allotted</option>
+                  <option value="Waitlisted">Waitlisted</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+
+                {(firstRoundSearch || firstRoundCommitteeFilter !== "all" || firstRoundStatusFilter !== "all") && (
+                  <button
+                    onClick={() => {
+                      setFirstRoundSearch("");
+                      setFirstRoundCommitteeFilter("all");
+                      setFirstRoundStatusFilter("all");
+                    }}
+                    className="p-2 border border-[#8A9A7E]/30 bg-[#1A1F1A] hover:bg-[#2E3B2F] text-[#8A9A7E] hover:text-[#EDE6D3] transition-colors cursor-pointer"
+                    title="Reset filters"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* First Round Ledger Table */}
+            <div className="border border-[#C9A86A]/30 bg-[#2E3B2F]/40 shadow-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[1100px]">
+                  <thead>
+                    <tr className="border-b border-[#C9A86A]/20 bg-[#1A1F1A]">
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Ticket &amp; Date</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Delegate Name &amp; Contact</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">College &amp; Degree</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">Clearance Proofs</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Matrix Preferences</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">CA Code &amp; Accomm</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold">Status</th>
+                      <th className="p-3.5 font-mono text-[9px] uppercase tracking-widest text-[#8A9A7E] font-bold text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#C9A86A]/10 text-xs font-sans">
+                    {filteredFirstRound.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="p-12 text-center text-[#8A9A7E]">
+                          <GraduationCap className="h-8 w-8 mx-auto mb-2 opacity-40 text-[#C9A86A]" />
+                          <p className="font-serif text-sm">No First Round registrations matched your query.</p>
+                          <span className="text-[10px] font-mono text-[#8A9A7E]/60">Check search term or adjust filters.</span>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredFirstRound.map((item) => (
+                        <tr key={item.id || item.uid} className="hover:bg-[#1A1F1A]/60 transition-colors">
+                          {/* Ticket & Timestamp */}
+                          <td className="p-3.5">
+                            <span className="font-mono text-xs font-bold text-[#C9A86A] block">
+                              {item.id}
+                            </span>
+                            <span className="text-[10px] text-[#8A9A7E] font-mono block mt-0.5">
+                              {item.timestamp || "N/A"}
+                            </span>
+                          </td>
+
+                          {/* Candidate Name & Contact */}
+                          <td className="p-3.5">
+                            <strong className="text-[#EDE6D3] font-medium block text-sm">
+                              {item.name}
+                            </strong>
+                            <div className="flex items-center gap-1.5 text-[11px] text-[#8A9A7E] mt-0.5">
+                              <Mail className="h-3 w-3" />
+                              <span>{item.email}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[11px] text-[#8A9A7E] mt-0.5">
+                              <Phone className="h-3 w-3" />
+                              <span className="font-mono">{item.phone}</span>
+                            </div>
+                          </td>
+
+                          {/* College & Degree */}
+                          <td className="p-3.5 max-w-[220px]">
+                            <span className="font-medium text-[#EDE6D3] block line-clamp-1">
+                              {item.institution}
+                            </span>
+                            <span className="text-[11px] text-[#8A9A7E] block mt-0.5">
+                              {item.course} &bull; {item.yearOfStudy}
+                            </span>
+                            {item.rollNumber && (
+                              <span className="font-mono text-[10px] text-[#8A9A7E]/70 block">
+                                Roll: {item.rollNumber}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Mandatory Proofs */}
+                          <td className="p-3.5">
+                            <div className="flex flex-col gap-1.5">
+                              {item.aadharPhotoUrl ? (
+                                <a
+                                  href={item.aadharPhotoUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-400 hover:text-emerald-300 underline"
+                                >
+                                  <ShieldCheck className="h-3 w-3" />
+                                  <span>Aadhaar/Pass ({item.aadharNumber ? `••••${item.aadharNumber.slice(-4)}` : "Uploaded"})</span>
+                                </a>
+                              ) : (
+                                <span className="text-[10px] text-rose-400 font-mono">No ID Proof</span>
+                              )}
+
+                              {item.idCardUrl ? (
+                                <a
+                                  href={item.idCardUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[10px] font-mono text-cyan-400 hover:text-cyan-300 underline"
+                                >
+                                  <School className="h-3 w-3" />
+                                  <span>College ID Card</span>
+                                </a>
+                              ) : (
+                                <span className="text-[10px] text-amber-400 font-mono">No College ID</span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* 3 Ranked Country Matrix Preferences */}
+                          <td className="p-3.5 max-w-[240px]">
+                            <div className="space-y-1 text-[11px]">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-[9px] bg-[#C9A86A] text-[#1A1F1A] font-bold px-1 py-0.2">#1</span>
+                                <span className="text-[#EDE6D3] font-medium">{item.pref1Country || "N/A"}</span>
+                                <span className="text-[#8A9A7E] text-[10px]">({(item.pref1Committee || "").toUpperCase()})</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-[9px] bg-[#2E3B2F] border border-[#C9A86A]/40 text-[#EDE6D3] font-bold px-1 py-0.2">#2</span>
+                                <span className="text-[#EDE6D3]/90">{item.pref2Country || "N/A"}</span>
+                                <span className="text-[#8A9A7E] text-[10px]">({(item.pref2Committee || "").toUpperCase()})</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-[9px] bg-[#2E3B2F] border border-[#C9A86A]/40 text-[#EDE6D3] font-bold px-1 py-0.2">#3</span>
+                                <span className="text-[#EDE6D3]/80">{item.pref3Country || "N/A"}</span>
+                                <span className="text-[#8A9A7E] text-[10px]">({(item.pref3Committee || "").toUpperCase()})</span>
+                              </div>
+                              {item.allottedCountry && (
+                                <div className="mt-1.5 p-1 bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-mono text-[10px]">
+                                  Allotted: {item.allottedCountry} ({(item.allottedCommittee || "").toUpperCase()})
+                                </div>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* CA Code, Accomm & Fee */}
+                          <td className="p-3.5">
+                            {item.campusAmbassadorCode ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#C9A86A]/20 border border-[#C9A86A]/50 text-[#C9A86A] font-mono text-[9px] font-bold mb-1 block w-fit">
+                                <Tag className="h-2.5 w-2.5" />
+                                {item.campusAmbassadorCode}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-[#8A9A7E] block mb-1">No CA Referral</span>
+                            )}
+                            <span className="text-[10px] text-[#8A9A7E] block">
+                              Accomm: <strong className={item.accommodationRequired === "yes" ? "text-teal-400" : "text-[#EDE6D3]"}>{item.accommodationRequired === "yes" ? "YES" : "NO"}</strong>
+                            </span>
+                            <span className="text-[10px] text-[#C9A86A] font-mono block mt-0.5">
+                              Fee: ₹{item.feeAmount || 1299}
+                            </span>
+                            {item.utrNumber ? (
+                              <span className="text-[9px] text-cyan-400 font-mono block mt-0.5 truncate max-w-[130px]" title={`UTR: ${item.utrNumber}`}>
+                                UTR: {item.utrNumber}
+                              </span>
+                            ) : (
+                              <span className="text-[9px] text-amber-400/80 font-mono block mt-0.5">
+                                Payment Pending
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Status */}
+                          <td className="p-3.5">
+                            <select
+                              value={item.status || "Pending Verification"}
+                              onChange={(e) => handleUpdateFirstRoundStatus(item.uid || item.id || "", e.target.value)}
+                              className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-1 border bg-[#1A1F1A] cursor-pointer outline-none ${
+                                item.status === "Registration Confirmed"
+                                  ? "border-emerald-500/40 text-emerald-400"
+                                  : item.status === "Portfolio Allotted"
+                                  ? "border-[#C9A86A] text-[#C9A86A]"
+                                  : item.status === "Waitlisted"
+                                  ? "border-amber-500/40 text-amber-300"
+                                  : item.status === "Rejected"
+                                  ? "border-rose-500/40 text-rose-400"
+                                  : "border-[#8A9A7E]/40 text-[#EDE6D3]"
+                              }`}
+                            >
+                              <option value="Pending Verification" className="bg-[#1A1F1A] text-[#EDE6D3]">Pending</option>
+                              <option value="Registration Confirmed" className="bg-[#1A1F1A] text-emerald-400">Confirmed</option>
+                              <option value="Portfolio Allotted" className="bg-[#1A1F1A] text-[#C9A86A]">Allotted</option>
+                              <option value="Waitlisted" className="bg-[#1A1F1A] text-amber-300">Waitlisted</option>
+                              <option value="Rejected" className="bg-[#1A1F1A] text-rose-400">Rejected</option>
+                            </select>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="p-3.5 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => setSelectedFirstRoundReg(item)}
+                                className="px-2.5 py-1 bg-[#1A1F1A] border border-[#C9A86A]/40 hover:border-[#C9A86A] text-[#C9A86A] text-[10px] font-sans uppercase tracking-wider font-semibold transition-colors cursor-pointer"
+                                title="Inspect candidate dossier"
+                              >
+                                Inspect
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setAllotFirstRoundModalReg(item);
+                                  setAllotFirstRoundForm({
+                                    committee: item.pref1Committee || "uncopuos",
+                                    country: item.pref1Country || "",
+                                    adminNotes: item.adminNotes || ""
+                                  });
+                                }}
+                                className="px-2.5 py-1 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-[10px] font-sans uppercase tracking-wider font-bold transition-colors cursor-pointer"
+                                title="Allot Council Portfolio"
+                              >
+                                Allot
+                              </button>
+                              {confirmFirstRoundDeleteId === (item.uid || item.id) ? (
+                                <button
+                                  onClick={() => handleDeleteFirstRound(item.uid || item.id, item.name)}
+                                  className="px-2 py-1 bg-rose-600 text-white text-[10px] font-sans uppercase font-bold cursor-pointer"
+                                >
+                                  Sure?
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setConfirmFirstRoundDeleteId(item.uid || item.id)}
+                                  className="p-1 text-[#8A9A7E] hover:text-rose-400 transition-colors cursor-pointer"
+                                  title="Delete record"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ========================================================
             SUB-TAB: SCHOOL ROUND DELEGATE REGISTRATIONS
@@ -9684,6 +10372,554 @@ export default function AdminDashboard() {
         )}
 
         {/* ========================================================
+            FIRST ROUND: CANDIDATE DOSSIER DRAWER
+           ======================================================== */}
+        {selectedFirstRoundReg && (
+          <div className="fixed inset-0 z-[110] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in text-left">
+            <div className="flex min-h-full items-start sm:items-center justify-center p-3 sm:p-4 text-center">
+              <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-3xl w-full p-6 sm:p-8 text-left relative shadow-2xl my-6">
+                
+                {/* Header */}
+                <div className="flex items-start justify-between border-b border-[#C9A86A]/30 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold">
+                        // FIRST ROUND DOSSIER (COLLEGE &amp; HIGHER)
+                      </span>
+                      <span className="font-mono text-xs text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 px-2 py-0.5 font-bold">
+                        {selectedFirstRoundReg.id || selectedFirstRoundReg.uid}
+                      </span>
+                      <span className={`px-2 py-0.5 text-[9px] font-sans font-bold uppercase tracking-wider border ${
+                        selectedFirstRoundReg.status === "Registration Confirmed"
+                          ? "bg-emerald-950/60 text-emerald-400 border-emerald-500/40"
+                          : selectedFirstRoundReg.status === "Portfolio Allotted"
+                          ? "bg-[#C9A86A]/20 text-[#C9A86A] border-[#C9A86A]/40"
+                          : selectedFirstRoundReg.status === "Waitlisted"
+                          ? "bg-amber-950/60 text-amber-300 border-amber-500/40"
+                          : selectedFirstRoundReg.status === "Rejected"
+                          ? "bg-rose-950/60 text-rose-400 border-rose-500/40"
+                          : "bg-[#1A1F1A] text-[#EDE6D3] border-[#8A9A7E]/40"
+                      }`}>
+                        {selectedFirstRoundReg.status || "Pending Verification"}
+                      </span>
+                      <span className="px-2 py-0.5 text-[8px] font-mono font-bold bg-[#C9A86A]/20 border border-[#C9A86A]/50 text-[#C9A86A]">
+                        ₹{selectedFirstRoundReg.feeAmount || 1299}
+                      </span>
+                      <span className="px-2 py-0.5 text-[8px] font-sans font-bold uppercase tracking-wider bg-purple-950/60 border border-purple-500/40 text-purple-300">
+                        SOCIALS INCLUDED
+                      </span>
+                    </div>
+                    <h3 className="font-serif text-2xl font-normal text-[#EDE6D3]">
+                      {selectedFirstRoundReg.name}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-[#8A9A7E] mt-1 font-mono">
+                      <span>Ticket: <strong className="text-[#C9A86A]">{selectedFirstRoundReg.id || selectedFirstRoundReg.uid}</strong></span>
+                      <span>&bull;</span>
+                      <span>Submitted: {selectedFirstRoundReg.timestamp || "N/A"}</span>
+                      {selectedFirstRoundReg.userId && (
+                        <>
+                          <span>&bull;</span>
+                          <span>UID: {selectedFirstRoundReg.userId}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedFirstRoundReg(null)}
+                    className="p-1.5 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#8A9A7E] hover:text-[#EDE6D3] hover:border-[#C9A86A] transition-colors cursor-pointer shrink-0"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Dossier Body */}
+                <div className="mt-6 space-y-6 max-h-[68vh] overflow-y-auto pr-2 scrollbar-thin">
+                  
+                  {/* Academic & College Info */}
+                  <div className="bg-[#1A1F1A] border border-[#C9A86A]/30 p-4 space-y-3">
+                    <span className="text-[10px] font-mono text-[#C9A86A] uppercase tracking-wider font-bold block">
+                      Collegiate &amp; Academic Standing
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">College / University</span>
+                        <span className="font-semibold text-[#EDE6D3]">{selectedFirstRoundReg.institution}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Field of Study / Degree</span>
+                        <span className="font-semibold text-[#EDE6D3]">{selectedFirstRoundReg.course}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Year of Study</span>
+                        <span className="font-semibold text-[#EDE6D3]">{selectedFirstRoundReg.yearOfStudy}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">College Roll No / Reg No</span>
+                        <span className="font-mono text-[#EDE6D3]">{selectedFirstRoundReg.rollNumber || "Not Provided"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">CA Referral Code</span>
+                        <span className="font-mono text-[#C9A86A] font-bold">{selectedFirstRoundReg.campusAmbassadorCode || "None (Direct Entry)"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Accommodation Request</span>
+                        <span className={selectedFirstRoundReg.accommodationRequired === "yes" ? "text-teal-400 font-bold" : "text-[#8A9A7E]"}>
+                          {selectedFirstRoundReg.accommodationRequired === "yes" ? "YES (Hostel Required)" : "NO (Self-arranged)"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Personal Contact & Guardian */}
+                  <div className="bg-[#1A1F1A] border border-[#8A9A7E]/20 p-4 space-y-3">
+                    <span className="text-[10px] font-mono text-[#8A9A7E] uppercase tracking-wider font-bold block">
+                      Personal &amp; Emergency Details
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Email</span>
+                        <a href={`mailto:${selectedFirstRoundReg.email}`} className="text-[#EDE6D3] hover:text-[#C9A86A] underline">
+                          {selectedFirstRoundReg.email}
+                        </a>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Mobile Phone / WhatsApp</span>
+                        <a href={`tel:${selectedFirstRoundReg.phone}`} className="font-mono text-[#C9A86A]">
+                          {selectedFirstRoundReg.phone}
+                        </a>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">City &amp; State</span>
+                        <span className="text-[#EDE6D3]">{selectedFirstRoundReg.cityState}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Gender / DOB</span>
+                        <span className="text-[#EDE6D3]">{selectedFirstRoundReg.gender} &bull; {selectedFirstRoundReg.dob || "N/A"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Emergency Contact</span>
+                        <span className="text-[#EDE6D3] font-semibold">{selectedFirstRoundReg.emergencyContactName} ({selectedFirstRoundReg.emergencyContactRelation})</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Emergency Phone</span>
+                        <a href={`tel:${selectedFirstRoundReg.emergencyContactPhone}`} className="font-mono text-[#EDE6D3]">
+                          {selectedFirstRoundReg.emergencyContactPhone}
+                        </a>
+                      </div>
+                      {selectedFirstRoundReg.fullAddress && (
+                        <div className="sm:col-span-3 pt-2 border-t border-[#8A9A7E]/20">
+                          <span className="text-[10px] text-[#8A9A7E] block uppercase">Permanent Residential Address</span>
+                          <span className="text-[#EDE6D3] leading-relaxed">{selectedFirstRoundReg.fullAddress}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Model UN Diplomatic Credentials & Motivation */}
+                  <div className="bg-[#1A1F1A] border border-[#8BA06F]/40 p-4 space-y-3">
+                    <span className="text-[10px] font-mono text-[#8BA06F] uppercase tracking-wider font-bold block">
+                      Diplomatic Standing &amp; Conference Experience
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Prior MUN Experience</span>
+                        <span className="font-bold text-[#EDE6D3]">{selectedFirstRoundReg.munExperience || "None"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Past Accolades / Conferences</span>
+                        <span className="text-[#EDE6D3]">{selectedFirstRoundReg.pastMunDetails || "None Specified"}</span>
+                      </div>
+                      {selectedFirstRoundReg.motivation && (
+                        <div className="sm:col-span-2 pt-2 border-t border-[#8A9A7E]/20">
+                          <span className="text-[10px] text-[#8A9A7E] block uppercase mb-1">Statement of Purpose / Motivation</span>
+                          <p className="text-[#EDE6D3]/90 italic bg-[#2E3B2F]/40 p-2.5 border border-[#8A9A7E]/20 leading-relaxed text-xs">
+                            "{selectedFirstRoundReg.motivation}"
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Mandatory Uploads Clearance */}
+                  <div className="bg-[#1A1F1A] border border-[#C9A86A]/40 p-4 space-y-3">
+                    <span className="text-[10px] font-mono text-[#C9A86A] uppercase tracking-wider font-bold block">
+                      Clearance Documents &amp; Identity Proofs
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Aadhaar */}
+                      <div className="p-3 bg-[#2E3B2F]/60 border border-[#8A9A7E]/30 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-[#EDE6D3]">Aadhaar / Passport</span>
+                          <span className="font-mono text-[10px] text-[#C9A86A]">{selectedFirstRoundReg.aadharNumber || "N/A"}</span>
+                        </div>
+                        {selectedFirstRoundReg.aadharPhotoUrl ? (
+                          <div className="space-y-1">
+                            <a
+                              href={selectedFirstRoundReg.aadharPhotoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 underline font-mono"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              <span>View Aadhaar / Passport Document</span>
+                            </a>
+                            {selectedFirstRoundReg.aadharPhotoName && (
+                              <span className="text-[10px] text-[#8A9A7E] block font-mono">
+                                File: {selectedFirstRoundReg.aadharPhotoName}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-rose-400">No document attached</span>
+                        )}
+                      </div>
+
+                      {/* College ID */}
+                      <div className="p-3 bg-[#2E3B2F]/60 border border-[#8A9A7E]/30 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-[#EDE6D3]">College Student ID</span>
+                          <span className="font-mono text-[10px] text-cyan-400">Active Enrollment</span>
+                        </div>
+                        {selectedFirstRoundReg.idCardUrl ? (
+                          <div className="space-y-1">
+                            <a
+                              href={selectedFirstRoundReg.idCardUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 underline font-mono"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              <span>View College ID Document</span>
+                            </a>
+                            {selectedFirstRoundReg.idCardName && (
+                              <span className="text-[10px] text-[#8A9A7E] block font-mono">
+                                File: {selectedFirstRoundReg.idCardName}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-amber-400">No student ID attached</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3 Ranked Country Matrix Preferences */}
+                  <div className="bg-[#1A1F1A] border border-[#C9A86A]/40 p-4 space-y-3">
+                    <span className="text-[10px] font-mono text-[#C9A86A] uppercase tracking-wider font-bold block">
+                      3 Ranked Country Matrix Preferences
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                      <div className="p-2.5 bg-[#2E3B2F] border border-[#C9A86A]">
+                        <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-1.5 py-0.2 inline-block mb-1">
+                          1ST PREF
+                        </span>
+                        <div className="font-serif text-sm font-semibold text-[#EDE6D3]">{selectedFirstRoundReg.pref1Country || "N/A"}</div>
+                        <div className="text-[10px] text-[#8A9A7E]">{(selectedFirstRoundReg.pref1Committee || "").toUpperCase()}</div>
+                      </div>
+                      <div className="p-2.5 bg-[#2E3B2F] border border-[#C9A86A]/50">
+                        <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 font-bold px-1.5 py-0.2 inline-block mb-1">
+                          2ND PREF
+                        </span>
+                        <div className="font-serif text-sm font-semibold text-[#EDE6D3]">{selectedFirstRoundReg.pref2Country || "N/A"}</div>
+                        <div className="text-[10px] text-[#8A9A7E]">{(selectedFirstRoundReg.pref2Committee || "").toUpperCase()}</div>
+                      </div>
+                      <div className="p-2.5 bg-[#2E3B2F] border border-[#C9A86A]/30">
+                        <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 font-bold px-1.5 py-0.2 inline-block mb-1">
+                          3RD PREF
+                        </span>
+                        <div className="font-serif text-sm font-semibold text-[#EDE6D3]">{selectedFirstRoundReg.pref3Country || "N/A"}</div>
+                        <div className="text-[10px] text-[#8A9A7E]">{(selectedFirstRoundReg.pref3Committee || "").toUpperCase()}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Portfolio Allotment Status */}
+                  {selectedFirstRoundReg.allottedCountry && (
+                    <div className="bg-[#2E3B2F] border-2 border-emerald-500/60 p-4 space-y-1">
+                      <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest font-bold block">
+                        // ALLOTTED DIPLOMATIC PORTFOLIO
+                      </span>
+                      <div className="font-serif text-xl text-[#EDE6D3]">
+                        {selectedFirstRoundReg.allottedCountry}
+                        <span className="font-mono text-xs text-[#C9A86A] ml-2 font-bold">
+                          ({(selectedFirstRoundReg.allottedCommittee || "").toUpperCase()})
+                        </span>
+                      </div>
+                      {selectedFirstRoundReg.adminNotes && (
+                        <p className="text-xs text-[#8A9A7E] mt-1">
+                          Note: {selectedFirstRoundReg.adminNotes}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Fee Assessment & UPI Payment Credentials */}
+                  <div className="bg-[#1A1F1A] border border-[#C9A86A]/40 p-4 space-y-3">
+                    <div className="flex items-center justify-between border-b border-[#C9A86A]/20 pb-2">
+                      <span className="text-[10px] font-mono text-[#C9A86A] uppercase tracking-wider font-bold">
+                        Fee Assessment &amp; UPI Payment Credentials
+                      </span>
+                      <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 border ${
+                        selectedFirstRoundReg.paymentStatus === "Verified"
+                          ? "border-emerald-500/50 bg-emerald-950/60 text-emerald-400"
+                          : selectedFirstRoundReg.utrNumber
+                            ? "border-cyan-500/50 bg-cyan-950/60 text-cyan-300"
+                            : "border-amber-500/50 bg-amber-950/60 text-amber-300"
+                      }`}>
+                        {selectedFirstRoundReg.paymentStatus || (selectedFirstRoundReg.utrNumber ? "Remittance Submitted" : "Pending")}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Payable Amount</span>
+                        <strong className="text-sm font-serif text-[#C9A86A]">₹{selectedFirstRoundReg.feeAmount || 1299}</strong>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Payment Mode</span>
+                        <span className="font-mono text-[#EDE6D3]">{selectedFirstRoundReg.paymentMode || "UPI / QR Scan"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">12-Digit UTR Number</span>
+                        <span className="font-mono text-cyan-300 font-bold">{selectedFirstRoundReg.utrNumber || selectedFirstRoundReg.transactionId || "Not Provided"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Payer Name</span>
+                        <span className="text-[#EDE6D3]">{selectedFirstRoundReg.payerName || selectedFirstRoundReg.name}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Payment Date</span>
+                        <span className="font-mono text-[#EDE6D3]">{selectedFirstRoundReg.paymentDate || "Not Recorded"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-[#8A9A7E] block uppercase">Socials Access</span>
+                        <span className="text-emerald-400 font-semibold">Included (Complimentary)</span>
+                      </div>
+                    </div>
+
+                    {selectedFirstRoundReg.paymentScreenshotUrl ? (
+                      <div className="pt-2 border-t border-[#8A9A7E]/20 flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-[11px] text-[#8A9A7E]">
+                          <span>Payment Receipt: </span>
+                          <span className="text-[#EDE6D3] font-mono">{selectedFirstRoundReg.paymentScreenshotName || "Receipt_Proof"}</span>
+                        </div>
+                        <a
+                          href={selectedFirstRoundReg.paymentScreenshotUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#2E3B2F] border border-[#C9A86A]/40 text-[#C9A86A] hover:bg-[#C9A86A] hover:text-[#1A1F1A] text-xs font-mono transition-colors"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          <span>View Payment Receipt</span>
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="pt-2 border-t border-[#8A9A7E]/20 text-[11px] text-[#8A9A7E]/70 italic">
+                        No payment screenshot attached
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions & Status Updates */}
+                  <div className="bg-[#1A1F1A] border border-[#C9A86A]/30 p-4 space-y-3">
+                    <span className="text-[10px] font-mono text-[#C9A86A] uppercase tracking-wider font-bold block">
+                      Secretariat Actions &amp; Status
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {(["Pending Verification", "Registration Confirmed", "Portfolio Allotted", "Waitlisted", "Rejected"] as const).map(statusOption => (
+                        <button
+                          key={statusOption}
+                          disabled={isUpdatingFirstRoundStatus}
+                          onClick={() => handleUpdateFirstRoundStatus(selectedFirstRoundReg.uid || selectedFirstRoundReg.id, statusOption)}
+                          className={`px-3 py-1.5 text-xs font-sans uppercase tracking-wider font-semibold border transition-all cursor-pointer ${
+                            selectedFirstRoundReg.status === statusOption
+                              ? "bg-[#C9A86A] text-[#1A1F1A] border-[#C9A86A] font-bold"
+                              : "border-[#8A9A7E]/30 bg-[#2E3B2F] text-[#EDE6D3] hover:border-[#C9A86A]"
+                          }`}
+                        >
+                          {statusOption}
+                        </button>
+                      ))}
+
+                      <button
+                        onClick={() => {
+                          setAllotFirstRoundModalReg(selectedFirstRoundReg);
+                          setAllotFirstRoundForm({
+                            committee: selectedFirstRoundReg.pref1Committee || "uncopuos",
+                            country: selectedFirstRoundReg.pref1Country || "",
+                            adminNotes: selectedFirstRoundReg.adminNotes || ""
+                          });
+                        }}
+                        className="px-4 py-1.5 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] text-xs font-sans uppercase tracking-wider font-bold ml-auto transition-colors cursor-pointer shadow-md flex items-center gap-1.5"
+                      >
+                        <Award className="h-3.5 w-3.5" />
+                        <span>Allot Portfolio</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            FIRST ROUND: PORTFOLIO ALLOTMENT MODAL
+           ======================================================== */}
+        {allotFirstRoundModalReg && (
+          <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#141814]/90 backdrop-blur-md animate-fade-in flex items-center justify-center p-4">
+            <div className="bg-[#2E3B2F] border-2 border-[#C9A86A] max-w-md w-full p-6 text-left relative shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[#C9A86A]/30 pb-3">
+                <div>
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] font-bold block">
+                    // SECRETARIAT FIRST ROUND ALLOTMENT
+                  </span>
+                  <h4 className="font-serif text-xl text-[#EDE6D3]">
+                    Allot Council Portfolio
+                  </h4>
+                  <span className="font-sans text-xs text-[#8A9A7E]">
+                    Delegate: <strong className="text-[#EDE6D3]">{allotFirstRoundModalReg.name}</strong> ({allotFirstRoundModalReg.institution})
+                  </span>
+                </div>
+                <button
+                  onClick={() => setAllotFirstRoundModalReg(null)}
+                  className="p-1 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-[#8A9A7E] hover:text-[#EDE6D3] hover:border-[#C9A86A] cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Preferences Reference with quick-apply buttons */}
+              <div className="mt-4 p-3 bg-[#1A1F1A] border border-[#8A9A7E]/20 text-xs">
+                <span className="text-[10px] font-mono text-[#C9A86A] uppercase block mb-1.5 font-bold">
+                  Delegate Ranked Preferences (Click to Quick-Allot):
+                </span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[#EDE6D3]">
+                    <span><strong className="text-[#C9A86A]">1st:</strong> {(allotFirstRoundModalReg.pref1Committee || "").toUpperCase()} &mdash; {allotFirstRoundModalReg.pref1Country || "Any"}</span>
+                    {allotFirstRoundModalReg.pref1Country && (
+                      <button
+                        type="button"
+                        onClick={() => setAllotFirstRoundForm(prev => ({
+                          ...prev,
+                          committee: allotFirstRoundModalReg.pref1Committee || "uncopuos",
+                          country: allotFirstRoundModalReg.pref1Country || ""
+                        }))}
+                        className="px-2 py-0.5 bg-[#2E3B2F] border border-[#C9A86A]/40 text-[#C9A86A] text-[10px] font-mono hover:bg-[#C9A86A] hover:text-[#1A1F1A]"
+                      >
+                        Apply
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-[#EDE6D3]">
+                    <span><strong className="text-[#8A9A7E]">2nd:</strong> {(allotFirstRoundModalReg.pref2Committee || "").toUpperCase()} &mdash; {allotFirstRoundModalReg.pref2Country || "Any"}</span>
+                    {allotFirstRoundModalReg.pref2Country && (
+                      <button
+                        type="button"
+                        onClick={() => setAllotFirstRoundForm(prev => ({
+                          ...prev,
+                          committee: allotFirstRoundModalReg.pref2Committee || "uncopuos",
+                          country: allotFirstRoundModalReg.pref2Country || ""
+                        }))}
+                        className="px-2 py-0.5 bg-[#2E3B2F] border border-[#C9A86A]/40 text-[#C9A86A] text-[10px] font-mono hover:bg-[#C9A86A] hover:text-[#1A1F1A]"
+                      >
+                        Apply
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-[#EDE6D3]">
+                    <span><strong className="text-[#8A9A7E]">3rd:</strong> {(allotFirstRoundModalReg.pref3Committee || "").toUpperCase()} &mdash; {allotFirstRoundModalReg.pref3Country || "Any"}</span>
+                    {allotFirstRoundModalReg.pref3Country && (
+                      <button
+                        type="button"
+                        onClick={() => setAllotFirstRoundForm(prev => ({
+                          ...prev,
+                          committee: allotFirstRoundModalReg.pref3Committee || "uncopuos",
+                          country: allotFirstRoundModalReg.pref3Country || ""
+                        }))}
+                        className="px-2 py-0.5 bg-[#2E3B2F] border border-[#C9A86A]/40 text-[#C9A86A] text-[10px] font-mono hover:bg-[#C9A86A] hover:text-[#1A1F1A]"
+                      >
+                        Apply
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Controls */}
+              <div className="mt-4 space-y-4">
+                <div>
+                  <label className="block text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] mb-1 font-bold">
+                    Council / Committee *
+                  </label>
+                  <select
+                    value={allotFirstRoundForm.committee}
+                    onChange={(e) => setAllotFirstRoundForm({ ...allotFirstRoundForm, committee: e.target.value })}
+                    className="w-full bg-[#1A1F1A] border border-[#8A9A7E]/30 text-xs text-[#EDE6D3] p-2.5 outline-none focus:border-[#C9A86A]"
+                  >
+                    <option value="uncopuos">UNCOPUOS</option>
+                    <option value="unhrc">UNHRC</option>
+                    <option value="unodc">UNODC</option>
+                    <option value="nes75">NES'75</option>
+                    <option value="undp">UNDP</option>
+                    <option value="ip">IP (International Press)</option>
+                    <option value="ip_journalism">IP (Journalism)</option>
+                    <option value="ip_photojournalism">IP (Photojournalism)</option>
+                    <option value="unga">UNGA (Online)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] mb-1 font-bold flex items-center justify-between">
+                    <span>Allotted Nation / Portfolio *</span>
+                    <span className="text-[9px] text-[#8A9A7E] font-normal">Syncs status in Country Matrix</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={allotFirstRoundForm.country}
+                    onChange={(e) => setAllotFirstRoundForm({ ...allotFirstRoundForm, country: e.target.value })}
+                    placeholder="e.g. France, India, Japan..."
+                    className="w-full bg-[#1A1F1A] border border-[#8A9A7E]/30 text-xs text-[#EDE6D3] p-2.5 outline-none focus:border-[#C9A86A]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase tracking-wider text-[#C9A86A] mb-1 font-bold">
+                    Secretariat Allotment Notes (Optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={allotFirstRoundForm.adminNotes}
+                    onChange={(e) => setAllotFirstRoundForm({ ...allotFirstRoundForm, adminNotes: e.target.value })}
+                    placeholder="e.g. Assigned preference #1 following verification..."
+                    className="w-full bg-[#1A1F1A] border border-[#8A9A7E]/30 text-xs text-[#EDE6D3] p-2.5 outline-none focus:border-[#C9A86A]"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Buttons */}
+              <div className="mt-6 pt-4 border-t border-[#C9A86A]/20 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAllotFirstRoundModalReg(null)}
+                  className="px-4 py-2 border border-[#8A9A7E]/30 bg-[#1A1F1A] text-xs font-sans uppercase tracking-wider text-[#8A9A7E] hover:text-[#EDE6D3]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveFirstRoundAllotment}
+                  className="px-5 py-2 bg-[#C9A86A] hover:bg-[#dfbe7e] text-[#1A1F1A] font-sans font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-md"
+                >
+                  Confirm Allotment
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
             SCHOOL ROUND: CANDIDATE DOSSIER DRAWER
            ======================================================== */}
         {selectedSchoolReg && (
@@ -10137,6 +11373,7 @@ export default function AdminDashboard() {
                     <option value="unodc">UNODC</option>
                     <option value="nes75">NES'75</option>
                     <option value="undp">UNDP</option>
+                    <option value="ip">IP (International Press)</option>
                     <option value="ip_journalism">IP (Journalism)</option>
                     <option value="ip_photojournalism">IP (Photojournalism)</option>
                     <option value="unga">UNGA (Online)</option>
