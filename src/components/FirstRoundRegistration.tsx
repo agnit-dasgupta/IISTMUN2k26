@@ -665,8 +665,6 @@ export default function FirstRoundRegistration({
       }
       if (!formData.motivation.trim()) {
         newErrors.motivation = "Statement of Purpose / Past MUN awards & achievements is mandatory.";
-      } else if (formData.motivation.trim().length < 15) {
-        newErrors.motivation = "Please provide at least 15 characters detailing your past MUN awards or purpose.";
       }
     }
 
@@ -2179,14 +2177,9 @@ export default function FirstRoundRegistration({
 
             {/* Statement of Purpose / Past MUN Achievements */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block font-sans text-xs uppercase tracking-wider text-[#C9A86A] font-semibold">
-                  Statement of Purpose / Past MUN Awards &amp; Achievements *
-                </label>
-                <span className={`text-[10px] font-mono ${formData.motivation.trim().length >= 15 ? "text-emerald-400" : "text-[#8A9A7E]"}`}>
-                  {formData.motivation.trim().length} / 15 min chars
-                </span>
-              </div>
+              <label className="block font-sans text-xs uppercase tracking-wider text-[#C9A86A] mb-1 font-semibold">
+                Statement of Purpose / Past MUN Awards &amp; Achievements *
+              </label>
               <textarea
                 value={formData.motivation}
                 onChange={(e) => {

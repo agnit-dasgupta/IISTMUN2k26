@@ -136,8 +136,8 @@ export default function WorkshopRegistration({ setActiveTab }: WorkshopRegistrat
       if (!formData.phone.trim()) newErrors.phone = "Contact phone number is required.";
       if (!formData.institution.trim()) newErrors.institution = "Academic institution name is required.";
       if (!formData.course.trim()) newErrors.course = "Course / Department or Class is required.";
-      if (!formData.motivation.trim() || formData.motivation.length < 15) {
-        newErrors.motivation = "Please state your academic intent (minimum 15 characters).";
+      if (!formData.motivation.trim()) {
+        newErrors.motivation = "Please state your academic intent.";
       }
     } else {
       // School / Institutional Registration
@@ -844,7 +844,7 @@ export default function WorkshopRegistration({ setActiveTab }: WorkshopRegistrat
             {regType === "individual" && (
               <div>
                 <label className="font-sans text-[10px] uppercase tracking-[0.16em] text-[#8A9A7E] block font-semibold mb-1.5">
-                  Academic Intent & Motivation (Min 15 characters) <span className="text-[#C9A86A]">*</span>
+                  Academic Intent & Motivation <span className="text-[#C9A86A]">*</span>
                 </label>
                 <textarea
                   name="motivation"
