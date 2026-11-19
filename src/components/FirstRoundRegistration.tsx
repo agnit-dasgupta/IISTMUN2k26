@@ -61,7 +61,7 @@ export const MATRIX_COMMITTEES: { id: CommitteeId; label: string; name: string }
 ];
 
 export const getCommitteePortfolioTarget = (commId?: string): number => {
-  return commId === "ip" ? 2 : 5;
+  return commId === "ip" ? 1 : 5;
 };
 
 export interface RankedPortfolioPreference {
@@ -450,7 +450,23 @@ export default function FirstRoundRegistration({
         setSelectedCommittees(currentCommittees);
       }
 
-      // Check limit of portfolios per committee (2 for IP, 5 for other committees)
+      // If IP committee and already selected 1 portfolio, switch to the newly clicked one
+      if (committee === "ip" && currentPorts.length >= 1) {
+        setCommitteePortfolios(prev => ({
+          ...prev,
+          [committee]: [country]
+        }));
+        if (errors.preferences) {
+          setErrors(prev => {
+            const next = { ...prev };
+            delete next.preferences;
+            return next;
+          });
+        }
+        return;
+      }
+
+      // Check limit of portfolios per committee (1 for IP, 5 for other committees)
       const maxLimit = getCommitteePortfolioTarget(committee);
       if (currentPorts.length >= maxLimit) {
         const commName = MATRIX_COMMITTEES.find(c => c.id === committee)?.label || committee.toUpperCase();
@@ -1063,78 +1079,77 @@ export default function FirstRoundRegistration({
                 </div>
               </div>
 
-              {/* 15 Ranked Country Matrix Preferences across 3 Committees */}
-              <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-4 space-y-3">
-                <div className="flex items-center justify-between border-b border-[#C9A86A]/20 pb-2">
-                  <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-[#C9A86A] block font-bold">
-                    REGISTERED COUNCIL PREFERENCES (15 PORTFOLIOS ACROSS 3 COMMITTEES)
-                  </span>
-                  <span className="text-[10px] font-mono text-emerald-400 font-bold">
-                    15 Portfolios Logged
-                  </span>
-                </div>
-                <div className="space-y-3 text-xs">
-                  {/* Comm 1 */}
-                  <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-2 py-0.5">
-                        #1 COMMITTEE PREFERENCE (HIGHEST PRIORITY): {(submittedPass.pref1Committee || "").toUpperCase()}
+              {/* Ranked Country Matrix Preferences across 3 Committees */}
+              {(() => {
+                const p1 = submittedPass.pref1Portfolios && submittedPass.pref1Portfolios.length > 0 ? submittedPass.pref1Portfolios : (submittedPass.pref1Country ? [submittedPass.pref1Country] : []);
+                const p2 = submittedPass.pref2Portfolios && submittedPass.pref2Portfolios.length > 0 ? submittedPass.pref2Portfolios : (submittedPass.pref2Country ? [submittedPass.pref2Country] : []);
+                const p3 = submittedPass.pref3Portfolios && submittedPass.pref3Portfolios.length > 0 ? submittedPass.pref3Portfolios : (submittedPass.pref3Country ? [submittedPass.pref3Country] : []);
+                const totalLogged = p1.length + p2.length + p3.length;
+                return (
+                  <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-4 space-y-3">
+                    <div className="flex items-center justify-between border-b border-[#C9A86A]/20 pb-2">
+                      <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-[#C9A86A] block font-bold">
+                        REGISTERED COUNCIL PREFERENCES ({totalLogged || targetPortfoliosCount} PORTFOLIOS ACROSS 3 COMMITTEES)
+                      </span>
+                      <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                        {totalLogged || targetPortfoliosCount} Portfolios Logged
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
-                      {(submittedPass.pref1Portfolios && submittedPass.pref1Portfolios.length > 0
-                        ? submittedPass.pref1Portfolios
-                        : [submittedPass.pref1Country || "N/A"]
-                      ).map((port, idx) => (
-                        <div key={idx} className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30">
-                          <span className="text-[8px] font-mono text-[#C9A86A] block">Choice #{idx + 1} (Rank {idx + 1})</span>
-                          <strong className="text-xs font-serif text-[#EDE6D3] block line-clamp-1">{port}</strong>
+                    <div className="space-y-3 text-xs">
+                      {/* Comm 1 */}
+                      <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-mono text-[9px] uppercase tracking-wider text-[#1A1F1A] bg-[#C9A86A] font-bold px-2 py-0.5">
+                            #1 COMMITTEE PREFERENCE (HIGHEST PRIORITY): {(submittedPass.pref1Committee || "").toUpperCase()}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
+                          {p1.map((port, idx) => (
+                            <div key={idx} className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30">
+                              <span className="text-[8px] font-mono text-[#C9A86A] block">Choice #{idx + 1} (Rank {idx + 1})</span>
+                              <strong className="text-xs font-serif text-[#EDE6D3] block line-clamp-1">{port}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
 
-                  {/* Comm 2 */}
-                  <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]/50">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 font-bold px-2 py-0.5">
-                        #2 COMMITTEE PREFERENCE: {(submittedPass.pref2Committee || "").toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
-                      {(submittedPass.pref2Portfolios && submittedPass.pref2Portfolios.length > 0
-                        ? submittedPass.pref2Portfolios
-                        : [submittedPass.pref2Country || "N/A"]
-                      ).map((port, idx) => (
-                        <div key={idx} className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30">
-                          <span className="text-[8px] font-mono text-[#8A9A7E] block">Choice #{idx + 1} (Rank {idx + 6})</span>
-                          <strong className="text-xs font-serif text-[#EDE6D3] block line-clamp-1">{port}</strong>
+                      {/* Comm 2 */}
+                      <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]/50">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 font-bold px-2 py-0.5">
+                            #2 COMMITTEE PREFERENCE: {(submittedPass.pref2Committee || "").toUpperCase()}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
+                          {p2.map((port, idx) => (
+                            <div key={idx} className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30">
+                              <span className="text-[8px] font-mono text-[#8A9A7E] block">Choice #{idx + 1} (Rank {p1.length + idx + 1})</span>
+                              <strong className="text-xs font-serif text-[#EDE6D3] block line-clamp-1">{port}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
 
-                  {/* Comm 3 */}
-                  <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]/30">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 font-bold px-2 py-0.5">
-                        #3 COMMITTEE PREFERENCE: {(submittedPass.pref3Committee || "").toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
-                      {(submittedPass.pref3Portfolios && submittedPass.pref3Portfolios.length > 0
-                        ? submittedPass.pref3Portfolios
-                        : [submittedPass.pref3Country || "N/A"]
-                      ).map((port, idx) => (
-                        <div key={idx} className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30">
-                          <span className="text-[8px] font-mono text-[#8A9A7E] block">Choice #{idx + 1} (Rank {idx + 11})</span>
-                          <strong className="text-xs font-serif text-[#EDE6D3] block line-clamp-1">{port}</strong>
+                      {/* Comm 3 */}
+                      <div className="p-3 bg-[#2E3B2F] border border-[#C9A86A]/30">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-mono text-[9px] uppercase tracking-wider text-[#EDE6D3] bg-[#1A1F1A] border border-[#C9A86A]/40 font-bold px-2 py-0.5">
+                            #3 COMMITTEE PREFERENCE: {(submittedPass.pref3Committee || "").toUpperCase()}
+                          </span>
                         </div>
-                      ))}
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
+                          {p3.map((port, idx) => (
+                            <div key={idx} className="p-2 bg-[#1A1F1A] border border-[#C9A86A]/30">
+                              <span className="text-[8px] font-mono text-[#8A9A7E] block">Choice #{idx + 1} (Rank {p1.length + p2.length + idx + 1})</span>
+                              <strong className="text-xs font-serif text-[#EDE6D3] block line-clamp-1">{port}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
 
             {/* QR Security Verification Stub */}
@@ -1675,15 +1690,15 @@ export default function FirstRoundRegistration({
           <div className="bg-[#2E3B2F] border border-[#C9A86A]/40 p-6 sm:p-8 space-y-6 shadow-xl">
             <div className="border-b border-[#C9A86A]/20 pb-4">
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C9A86A] block">
-                STAGE III &bull; COUNCIL &amp; PORTFOLIO ALLOCATION (15 PORTFOLIOS TOTAL)
+                STAGE III &bull; COUNCIL &amp; PORTFOLIO ALLOCATION ({targetPortfoliosCount} PORTFOLIOS TOTAL)
               </span>
               <h2 className="font-serif text-xl sm:text-2xl text-[#EDE6D3] font-normal">
                 Ranked Preferences (Council View)
               </h2>
               <p className="font-sans text-xs text-[#8A9A7E] mt-1">
                 <strong>1.</strong> The order in which you choose committees determines your committee preference order (1st, 2nd, and 3rd).<br />
-                <strong>2.</strong> Per committee, it is mandatory to choose exactly 5 portfolios in order of preference.<br />
-                <strong>3.</strong> Total 15 portfolios must be selected. The portfolios in your 1st Committee hold the highest overall preference.
+                <strong>2.</strong> Per committee, it is mandatory to choose 5 portfolios in order of preference (1 portfolio for International Press).<br />
+                <strong>3.</strong> Portfolios in your 1st Committee hold the highest overall preference.
               </p>
             </div>
 
@@ -1720,7 +1735,7 @@ export default function FirstRoundRegistration({
               </div>
             </div>
 
-            {/* ================= PREFERENCE TRAY: LIVE DIPLOMATIC DOCK (15 PORTFOLIOS) ================= */}
+            {/* ================= PREFERENCE TRAY: LIVE DIPLOMATIC DOCK ({targetPortfoliosCount} PORTFOLIOS) ================= */}
             <div className="border-2 border-[#C9A86A] bg-[#1A1F1A] p-5 shadow-2xl space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#C9A86A]/20 pb-3">
                 <div className="flex items-center gap-2">
@@ -1805,7 +1820,7 @@ export default function FirstRoundRegistration({
                               {commObj ? commObj.label : `Select Committee #${slotIdx + 1}`}
                             </h4>
                             <span className="font-mono text-[9px] text-[#8A9A7E] block mt-0.5">
-                              {commId ? `Ranks ${overallStartRank}–${overallEndRank} • ${ports.length}/${commTarget} Selected` : "Awaiting committee selection"}
+                              {commId ? `${commTarget === 1 ? `Rank ${overallStartRank}` : `Ranks ${overallStartRank}–${overallEndRank}`} • ${ports.length}/${commTarget} Selected` : "Awaiting committee selection"}
                             </span>
                           </div>
 
@@ -1949,7 +1964,7 @@ export default function FirstRoundRegistration({
                   Portfolio Matrix of Committees
                 </h3>
                 <p className="font-sans text-xs text-[#8A9A7E] mt-0.5">
-                  Browse by committee chamber below. Select 5 portfolios in each of your 3 committees. Selected and Available portfolios appear first.
+                  Browse by committee chamber below. Select portfolios in each of your 3 committees. Selected and Available portfolios appear first.
                 </p>
               </div>
 
@@ -1980,7 +1995,7 @@ export default function FirstRoundRegistration({
                       ) : (
                         <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-xs ${isCurrent ? "bg-[#1A1F1A] text-[#C9A86A]" : "bg-[#1A1F1A]/70 text-emerald-400"
                           }`}>
-                          {availCount} Open
+                          {comm.id === "ip" ? "Select 1" : `${availCount} Open`}
                         </span>
                       )}
                     </button>

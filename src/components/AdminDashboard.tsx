@@ -10758,7 +10758,7 @@ export default function AdminDashboard() {
                       return (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           {comms.map((c, cIdx) => {
-                            const rankOffset = cIdx * 5;
+                            const rankOffset = comms.slice(0, cIdx).reduce((acc, prevC) => acc + prevC.portfolios.length, 0);
                             const isFirstPref = c.rank === 1;
                             return (
                               <div
@@ -10779,7 +10779,7 @@ export default function AdminDashboard() {
                                       {isFirstPref ? "1ST COUNCIL PREF (TOP PRIORITY)" : `${c.rank}${c.rank === 2 ? "ND" : "RD"} COUNCIL PREF`}
                                     </span>
                                     <span className="text-[9px] font-mono text-[#8A9A7E]">
-                                      Ranks {rankOffset + 1}–{rankOffset + 5}
+                                      {c.portfolios.length === 1 ? `Rank ${rankOffset + 1}` : `Ranks ${rankOffset + 1}–${rankOffset + c.portfolios.length}`}
                                     </span>
                                   </div>
                                   <h5 className="font-serif text-sm font-bold text-[#EDE6D3] mb-1">
@@ -11040,7 +11040,7 @@ export default function AdminDashboard() {
                     }
 
                     return comms.map((c, cIdx) => {
-                      const rankOffset = cIdx * 5;
+                      const rankOffset = comms.slice(0, cIdx).reduce((acc, prevC) => acc + prevC.portfolios.length, 0);
                       const isFirst = c.rank === 1;
                       return (
                         <div key={c.rank} className="p-2 bg-[#2E3B2F]/60 border border-[#C9A86A]/20">
@@ -11052,7 +11052,7 @@ export default function AdminDashboard() {
                               <span>{c.committeeName || c.committee.toUpperCase()}</span>
                             </span>
                             <span className="text-[9px] font-mono text-[#8A9A7E]">
-                              Ranks {rankOffset + 1}–{rankOffset + 5}
+                              {c.portfolios.length === 1 ? `Rank ${rankOffset + 1}` : `Ranks ${rankOffset + 1}–${rankOffset + c.portfolios.length}`}
                             </span>
                           </div>
 
