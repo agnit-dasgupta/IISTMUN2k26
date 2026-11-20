@@ -161,7 +161,8 @@ export default function FirstRoundRegistration({
     payerName: "",
     paymentDate: new Date().toISOString().split("T")[0],
     paymentScreenshotUrl: "",
-    paymentScreenshotName: ""
+    paymentScreenshotName: "",
+    agreedToTerms: false
   });
 
   // Committee Preferences (3 distinct committees in order of preference)
@@ -693,6 +694,10 @@ export default function FirstRoundRegistration({
       if (!formData.paymentScreenshotUrl.trim()) {
         newErrors.paymentScreenshotUrl = "Uploading payment confirmation screenshot or receipt is mandatory.";
       }
+
+      if (!formData.agreedToTerms) {
+        newErrors.agreedToTerms = "You must accept the terms and conditions written in First_Round_Registration.pdf to proceed.";
+      }
     }
 
     setErrors(newErrors);
@@ -823,7 +828,8 @@ export default function FirstRoundRegistration({
       paymentDate: formData.paymentDate || isoDate.split("T")[0],
       paymentScreenshotUrl: formData.paymentScreenshotUrl || "",
       paymentScreenshotName: formData.paymentScreenshotName || "",
-      paymentStatus: "Pending"
+      paymentStatus: "Pending",
+      agreedToTerms: Boolean(formData.agreedToTerms)
     };
 
     // Clean payload of undefined keys
@@ -2511,6 +2517,85 @@ export default function FirstRoundRegistration({
                   <p className="text-[10px] text-rose-400 mt-1.5 font-semibold">{errors.paymentScreenshotUrl}</p>
                 )}
               </div>
+            </div>
+
+            {/* Official Terms & Conditions Document Box */}
+            <div className="border border-[#C9A86A]/40 bg-[#1A1F1A] p-4 sm:p-5 relative overflow-hidden">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <FileText className="h-6 w-6 text-[#C9A86A] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-[#C9A86A] block">
+                      Official Document
+                    </span>
+                    <h3 className="font-serif text-sm sm:text-base text-[#EDE6D3] font-bold">
+                      First Round Registration Terms &amp; Conditions
+                    </h3>
+                    <p className="text-[11px] text-[#8A9A7E] leading-relaxed max-w-xl">
+                      Please review the official First Round Registration terms, allotment policies, and code of conduct before accepting and submitting your application.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+                  <a
+                    href="/First_Round_Registration.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#C9A86A] hover:bg-[#bfa060] text-[#1A1F1A] text-xs font-sans font-bold uppercase tracking-wider transition-all shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
+                    id="view-first-round-pdf"
+                  >
+                    <span>Read Terms (PDF)</span>
+                    <ExternalLink className="h-3.5 w-3.5 stroke-[2.5]" />
+                  </a>
+                  <a
+                    href="/First_Round_Registration.pdf"
+                    download="First_Round_Registration.pdf"
+                    title="Download First Round Registration PDF"
+                    className="p-2.5 border border-[#8A9A7E]/40 hover:border-[#C9A86A] bg-[#1A1F1A] text-[#EDE6D3] hover:text-[#C9A86A] transition-all cursor-pointer"
+                  >
+                    <Download className="h-4 w-4" />
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Declaration & Terms Acceptance Checkbox */}
+            <div className={`border p-4 transition-all ${errors.agreedToTerms ? "border-rose-500 bg-rose-950/20" : "border-[#C9A86A]/40 bg-[#1A1F1A]"}`}>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  id="firstRoundAgreedToTerms"
+                  checked={Boolean(formData.agreedToTerms)}
+                  onChange={(e) => {
+                    setFormData({ ...formData, agreedToTerms: e.target.checked });
+                    if (errors.agreedToTerms) {
+                      setErrors(prev => {
+                        const next = { ...prev };
+                        delete next.agreedToTerms;
+                        return next;
+                      });
+                    }
+                  }}
+                  className="mt-1 h-4 w-4 rounded-none accent-[#C9A86A] cursor-pointer"
+                />
+                <span className="text-xs text-[#EDE6D3] leading-relaxed">
+                  I have read, understood, and accept the terms and conditions written in{" "}
+                  <a
+                    href="/First_Round_Registration.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#C9A86A] underline hover:text-[#d6b77c] inline-flex items-center gap-0.5 font-semibold"
+                  >
+                    First_Round_Registration.pdf
+                    <ExternalLink className="h-3 w-3 inline ml-0.5" />
+                  </a>
+                  , and agree to abide by the allotment guidelines, payment verification protocols, and conference code of conduct for IISTMUN 2026.
+                </span>
+              </label>
+              {errors.agreedToTerms && (
+                <p className="text-[10px] text-rose-400 font-semibold pl-7 mt-1.5">{errors.agreedToTerms}</p>
+              )}
             </div>
 
             {/* Submission Actions */}

@@ -224,6 +224,7 @@ export interface SchoolRegistrationDetails {
   paymentScreenshotUrl?: string;
   paymentScreenshotName?: string;
   paymentStatus?: "Pending" | "Verified" | "Rejected";
+  agreedToTerms?: boolean;
 
   // Administrative Allocation
   allottedCommittee?: string;
@@ -314,6 +315,7 @@ export interface FirstRoundRegistrationDetails {
   paymentScreenshotUrl?: string;
   paymentScreenshotName?: string;
   paymentStatus?: "Pending" | "Verified" | "Rejected";
+  agreedToTerms?: boolean;
 
   // Administrative Allocation
   allottedCommittee?: string;
